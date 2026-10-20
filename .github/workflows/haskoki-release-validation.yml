@@ -1,0 +1,111 @@
+# SPDX-License-Identifier: Apache-2.0
+# PR events register and statically validate this workflow only. Runtime evidence
+# requires one deliberate dispatch; incomplete derivative coverage cannot pass.
+name: haskoki-release-validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/haskoki-release-validation.yml'
+      - '.github/scripts/haskoki_validation.py'
+      - '.github/requirements/haskoki-validation.txt'
+      - 'src/p11lab/data/providers/haskoki/**'
+      - 'tests/integration/test_haskoki*.py'
+      - 'tests/integration/haskoki/**'
+      - 'tests/test_haskoki_validation_workflow.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: none
+
+concurrency:
+  group: haskoki-release-validation-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  static:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Verify dependency closure in a fresh bounded test environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/haskoki-static-venv"
+          "$RUNNER_TEMP/haskoki-static-venv/bin/python" -m pip install --disable-pip-version-check \
+            --no-deps --only-binary :all: -r .github/requirements/haskoki-validation.txt
+          "$RUNNER_TEMP/haskoki-static-venv/bin/python" -m pip check
+          echo "$RUNNER_TEMP/haskoki-static-venv/bin" >> "$GITHUB_PATH"
+      - name: Verify official actionlint archive checksum and workflow semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/haskoki-actionlint"
+          cd "$RUNNER_TEMP/haskoki-actionlint"
+          curl --fail --silent --show-error --location \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output actionlint_1.7.12_linux_amd64.tar.gz
+          echo '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  actionlint_1.7.12_linux_amd64.tar.gz' | sha256sum --check
+          tar -xzf actionlint_1.7.12_linux_amd64.tar.gz actionlint
+          ./actionlint "$GITHUB_WORKSPACE/.github/workflows/haskoki-release-validation.yml"
+      - name: Run static safety and source contracts only
+        shell: bash
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+        run: python -m pytest -q tests/test_haskoki_validation_workflow.py tests/test_catalog.py
+
+  runtime:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout reviewed release candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Reject reruns and initialize private evidence area
+        run: python -I .github/scripts/haskoki_validation.py init --root "$RUNNER_TEMP/haskoki-validation"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Install wheel outside checkout
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/haskoki-venv"
+          "$RUNNER_TEMP/haskoki-venv/bin/python" -m pip install --disable-pip-version-check \
+            --no-deps --only-binary :all: -r .github/requirements/haskoki-validation.txt
+          "$RUNNER_TEMP/haskoki-venv/bin/python" -m pip wheel --no-build-isolation --no-deps \
+            --wheel-dir "$RUNNER_TEMP/haskoki-wheels" .
+          "$RUNNER_TEMP/haskoki-venv/bin/python" -m pip install --no-deps "$RUNNER_TEMP"/haskoki-wheels/*.whl
+          "$RUNNER_TEMP/haskoki-venv/bin/python" -m pip check
+          echo "$RUNNER_TEMP/haskoki-venv/bin" >> "$GITHUB_PATH"
+      - name: Preflight installed source, helper and complete expected test roster
+        run: |
+          python -I .github/scripts/haskoki_validation.py preflight \
+            --root "$RUNNER_TEMP/haskoki-validation" --repository "$GITHUB_WORKSPACE" \
+            --wheel-dir "$RUNNER_TEMP/haskoki-wheels"
+      - name: Build strict locked release runtime once
+        timeout-minutes: 220
+        run: python -I .github/scripts/haskoki_validation.py build --root "$RUNNER_TEMP/haskoki-validation"
+      - name: Run all release acceptance cases without fail-fast
+        timeout-minutes: 16
+        run: python -I .github/scripts/haskoki_validation.py tests --root "$RUNNER_TEMP/haskoki-validation"
+      - name: Retain safe outcomes and explicit limitations even on failure
+        if: always()
+        run: python -I .github/scripts/haskoki_validation.py summary --root "$RUNNER_TEMP/haskoki-validation"

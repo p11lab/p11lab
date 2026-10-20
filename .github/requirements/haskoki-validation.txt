@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# Complete minimal Python 3.12 test/wheel-build closure; no provider/tool builds.
+editables==0.6
+hatchling==1.32.4
+iniconfig==2.3.1
+packaging==26.3
+pathspec==1.1.1
+pluggy==1.7.0
+Pygments==2.21.0
+pytest==9.1.1
+tomlkit==0.15.2
+trove-classifiers==2026.9.21.13
