@@ -1,6 +1,7 @@
 """Cost, secret-publication and evidence contracts for manual Haskoki CI."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -122,6 +123,7 @@ def test_unexpected_stage_rejected_before_work(tmp_path):
 
 def test_dispatch_retries_fail_before_any_provider_build(tmp_path, monkeypatch):
     runner = module()
+    monkeypatch.setenv('GITHUB_EVENT_NAME', 'workflow_dispatch')
     monkeypatch.setenv('GITHUB_RUN_ATTEMPT', '2')
     with pytest.raises(ValueError, match='first attempt'):
         runner.initialize(tmp_path / 'run')
@@ -280,6 +282,10 @@ def test_summary_classifies_gate_refusal_separately_from_missing_coverage(tmp_pa
     (ValueError('PRIVATE-PIN PRIVATE-KEY'), 'validation_failure', {}),
 ])
 def test_driver_retains_only_allowlisted_failure_diagnostics(tmp_path, monkeypatch, capsys, error, category, numeric):
+    # This unit exercises diagnostics after an authorized initialization, not
+    # the ambient PR event or rerun that happens to execute the test suite.
+    monkeypatch.setenv('GITHUB_EVENT_NAME', 'workflow_dispatch')
+    monkeypatch.setenv('GITHUB_RUN_ATTEMPT', '1')
     runner = module()
     root = tmp_path / 'run'
     runner.initialize(root)
@@ -406,3 +412,32 @@ def test_cheap_static_job_checks_dependencies_in_its_own_fresh_venv():
     assert '"$RUNNER_TEMP/haskoki-static-venv/bin/python" -m pip check' in static
     assert 'echo "$RUNNER_TEMP/haskoki-static-venv/bin" >> "$GITHUB_PATH"' in static
     assert 'haskoki_validation.py build' not in static
+
+
+@pytest.mark.parametrize('event, attempt, message', [
+    ('pull_request', '1', 'manual dispatch'),
+    ('pull_request', '2', 'first attempt'),
+    ('workflow_dispatch', '2', 'first attempt'),
+    ('workflow_dispatch', '3', 'first attempt'),
+])
+def test_runtime_context_refusal_is_explicit_and_creates_no_state(tmp_path, monkeypatch, event, attempt, message):
+    runner = module()
+    monkeypatch.setenv('GITHUB_EVENT_NAME', event)
+    monkeypatch.setenv('GITHUB_RUN_ATTEMPT', attempt)
+    root = tmp_path / 'run'
+    with pytest.raises(ValueError, match=message):
+        runner.initialize(root)
+    assert not root.exists()
+
+
+@pytest.mark.parametrize('attempt', ['1', '2'])
+def test_diagnostic_unit_tests_are_hermetic_under_pull_request_context(attempt):
+    env = {key: value for key, value in os.environ.items() if key != 'PYTEST_ADDOPTS'}
+    env.update(GITHUB_EVENT_NAME='pull_request', GITHUB_RUN_ATTEMPT=attempt,
+               PYTEST_DISABLE_PLUGIN_AUTOLOAD='1')
+    result = subprocess.run([sys.executable, '-m', 'pytest', '-q', '-o', 'addopts=',
+                             str(Path(__file__).resolve()), '-k',
+                             'test_driver_retains_only_allowlisted_failure_diagnostics'],
+                            cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert '5 passed' in result.stdout
