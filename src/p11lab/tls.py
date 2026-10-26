@@ -17,6 +17,11 @@ import subprocess
 CLIENT_ENV_VARS = ('PKCS11_PROXY_TLS_CA_CERT', 'PKCS11_PROXY_TLS_CLIENT_CERT',
                    'PKCS11_PROXY_TLS_CLIENT_KEY')
 ENDPOINT_VAR = 'PKCS11_PROXY_ENDPOINT'
+CONNECT_TIMEOUT_VAR = 'PKCS11_PROXY_CONNECT_TIMEOUT'
+# Exact per-run shim transport set the runner emits and checker grandchildren
+# accept; no partial set is ever valid. Single source so producer (run) and
+# consumer (checker) cannot drift apart.
+TRANSPORT_ENV_VARS = (ENDPOINT_VAR, *CLIENT_ENV_VARS, CONNECT_TIMEOUT_VAR)
 
 # Pinned public proxy inputs. Derivative build.json and native-client manifests
 # record these component identities; a proxy component change requires new

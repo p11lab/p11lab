@@ -11,9 +11,12 @@ bundles (Debian 13 amd64, Windows x64 for BouncyHSM), and pinned-mTLS
 proxy lanes; the installed checker and independent consumers exercise the
 same artifacts. Fifteen providers carry full cohort documentation in
 [docs/developer-release-cohort.md](docs/developer-release-cohort.md); the
-rest are described by their catalogue entries. Nothing here is published
-yet: no registry images, tags, releases, or cache exports exist, and every
-candidate's distribution stays blocked or unreviewed pending admission.
+rest are described by their catalogue entries. Five release runtimes
+(haskoki, kryoptic, freehsm, bouncyhsm, softhsm2) are published as alpha
+images under per-provider repositories `ghcr.io/p11lab/<environment>`
+(see [delivery](docs/delivery.md)); digests are the identities and tags are
+mutable aliases. Every other candidate's distribution stays blocked or
+unreviewed pending admission.
 
 Start with the [provider application execution](docs/runtime-contract.md)
 contract, then the [native](docs/native.md), [proxy](docs/proxy.md),

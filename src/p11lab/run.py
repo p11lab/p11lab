@@ -642,7 +642,7 @@ def run_proxy(spec: RunSpec, plan: dict) -> RunResult:
                                     '--env', f'{proxy_tls.CLIENT_ENV_VARS[0]}={CLIENT_TLS_DIR}/ca.crt',
                                     '--env', f'{proxy_tls.CLIENT_ENV_VARS[1]}={CLIENT_TLS_DIR}/client.crt',
                                     '--env', f'{proxy_tls.CLIENT_ENV_VARS[2]}={CLIENT_TLS_DIR}/client.key',
-                                    '--env', 'PKCS11_PROXY_CONNECT_TIMEOUT=10']
+                                    '--env', f'{proxy_tls.CONNECT_TIMEOUT_VAR}=10']
                 consumer_id = engine.create(spec.consumer_artifact.reference, spec.argv[1:], consumer_options,
                                             labels, 'p11lab-' + run_id + '-app')
                 owned.append(('container', consumer_id))
@@ -664,8 +664,8 @@ def run_proxy(spec: RunSpec, plan: dict) -> RunResult:
                 host_env.update(proxy_tls.build_consumer_env(endpoint=endpoint, ca_cert=material['ca_cert'],
                                                              client_cert=material['client_cert'],
                                                              client_key=material['client_key']))
-                host_env.update(PKCS11_PROXY_CONNECT_TIMEOUT='10', P11LAB_SHIM=str(shim),
-                                P11LAB_MODULE=str(shim), P11LAB_OUTPUT_DIR=str(output))
+                host_env.update({proxy_tls.CONNECT_TIMEOUT_VAR: '10', 'P11LAB_SHIM': str(shim),
+                                'P11LAB_MODULE': str(shim), 'P11LAB_OUTPUT_DIR': str(output)})
                 status, stage_timeout, logs = _run_proxy_host_app(
                     spec.argv, cwd=cwd, env=host_env, output=output,
                     timeout=max(.01, deadline - time.monotonic()),

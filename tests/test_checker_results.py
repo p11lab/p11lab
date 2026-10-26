@@ -449,3 +449,171 @@ def test_checker_private_imports_live_only_in_adapter():
     for line in outside.splitlines():
         if line.strip().startswith("from pkcs11_check"):
             assert "._" not in line and " import _" not in line
+
+
+class _FakeToken:
+    def __init__(self, label):
+        self.label = label
+
+
+class _FakeSlot:
+    def __init__(self, slot_id, label):
+        self.slot_id = slot_id
+        self._token = _FakeToken(label)
+
+    def get_token(self):
+        return self._token
+
+
+def test_select_token_slot_matches_single_label():
+    from p11lab.checker import select_token_slot
+    slots = [_FakeSlot(7, 'haskoki-demo'), _FakeSlot(9, 'P11Lab')]
+    assert select_token_slot(slots, 'haskoki-demo') == (0, 7)
+    assert select_token_slot(slots, 'P11Lab') == (1, 9)
+
+
+def test_select_token_slot_reports_tried_and_observed_labels():
+    from p11lab.checker import select_token_slot
+    with pytest.raises(ValueError) as mismatch:
+        select_token_slot([_FakeSlot(7, 'haskoki-demo')], 'P11Lab')
+    assert "label='P11Lab'" in str(mismatch.value)
+    assert 'haskoki-demo' in str(mismatch.value)
+    with pytest.raises(ValueError) as ambiguous:
+        select_token_slot([_FakeSlot(7, 'P11Lab'), _FakeSlot(9, 'P11Lab')], 'P11Lab')
+    assert "label='P11Lab'" in str(ambiguous.value)
+
+
+PROXY_TRANSPORT = {
+    'PKCS11_PROXY_ENDPOINT': 'https://provider-daemon:8443',
+    'PKCS11_PROXY_TLS_CA_CERT': '/run/p11lab/tls/ca.crt',
+    'PKCS11_PROXY_TLS_CLIENT_CERT': '/run/p11lab/tls/client.crt',
+    'PKCS11_PROXY_TLS_CLIENT_KEY': '/run/p11lab/tls/client.key',
+    'PKCS11_PROXY_CONNECT_TIMEOUT': '10',
+}
+
+
+def test_checker_environment_preserves_complete_proxy_transport(tmp_path, monkeypatch):
+    from p11lab.checker import checker_environment
+    monkeypatch.setenv('PKCS11_PROXY_ENDPOINT', 'https://ambient.example:1')
+    env = checker_environment(tmp_path, 'p', 's', provider_descriptor={},
+                              proxy_env=dict(PROXY_TRANSPORT))
+    for name, value in PROXY_TRANSPORT.items():
+        assert env[name] == value
+
+
+def test_checker_environment_scrubs_ambient_proxy_without_explicit_transport(tmp_path, monkeypatch):
+    from p11lab.checker import checker_environment
+    for name, value in PROXY_TRANSPORT.items():
+        monkeypatch.setenv(name, value)
+    env = checker_environment(tmp_path, 'p', 's', provider_descriptor={})
+    for name in PROXY_TRANSPORT:
+        assert name not in env
+
+
+def test_checker_environment_rejects_partial_or_foreign_proxy_transport(tmp_path):
+    from p11lab.checker import checker_environment
+    partial = dict(PROXY_TRANSPORT)
+    del partial['PKCS11_PROXY_CONNECT_TIMEOUT']
+    with pytest.raises(ValueError):
+        checker_environment(tmp_path, 'p', 's', provider_descriptor={}, proxy_env=partial)
+    foreign = dict(PROXY_TRANSPORT, PKCS11_PROXY_EXTRA='1')
+    with pytest.raises(ValueError):
+        checker_environment(tmp_path, 'p', 's', provider_descriptor={}, proxy_env=foreign)
+
+
+def test_checker_environment_rejects_unclean_proxy_values(tmp_path):
+    from p11lab.checker import checker_environment
+    bad_endpoint = dict(PROXY_TRANSPORT, PKCS11_PROXY_ENDPOINT='http://provider-daemon:8443')
+    with pytest.raises(ValueError):
+        checker_environment(tmp_path, 'p', 's', provider_descriptor={}, proxy_env=bad_endpoint)
+    bad_timeout = dict(PROXY_TRANSPORT, PKCS11_PROXY_CONNECT_TIMEOUT='10\n20')
+    with pytest.raises(ValueError):
+        checker_environment(tmp_path, 'p', 's', provider_descriptor={}, proxy_env=bad_timeout)
+
+
+def test_proxy_transport_from_environ_requires_all_or_none(monkeypatch):
+    from p11lab.checker import proxy_transport_from_environ
+    assert proxy_transport_from_environ({}) is None
+    assert proxy_transport_from_environ(dict(PROXY_TRANSPORT)) == PROXY_TRANSPORT
+    with pytest.raises(ValueError):
+        proxy_transport_from_environ({'PKCS11_PROXY_ENDPOINT': 'https://provider-daemon:8443'})
+    for name in PROXY_TRANSPORT:
+        monkeypatch.delenv(name, raising=False)
+    assert proxy_transport_from_environ() is None
+    for name, value in PROXY_TRANSPORT.items():
+        monkeypatch.setenv(name, value)
+    assert proxy_transport_from_environ() == PROXY_TRANSPORT
+
+
+def test_validated_proxy_transport_accepts_only_the_clean_five():
+    from p11lab.checker import _validated_proxy_transport
+    assert _validated_proxy_transport(dict(PROXY_TRANSPORT)) == PROXY_TRANSPORT
+    partial = dict(PROXY_TRANSPORT)
+    del partial['PKCS11_PROXY_ENDPOINT']
+    with pytest.raises(ValueError):
+        _validated_proxy_transport(partial)
+    with pytest.raises(ValueError):
+        _validated_proxy_transport(dict(PROXY_TRANSPORT, PKCS11_PROXY_EXTRA='1'))
+    bad = dict(PROXY_TRANSPORT, PKCS11_PROXY_ENDPOINT='http://provider-daemon:8443')
+    with pytest.raises(ValueError):
+        _validated_proxy_transport(bad)
+
+
+def test_install_proxy_transport_leaves_direct_ambient_untouched(monkeypatch):
+    import os
+    from p11lab.checker import _install_proxy_transport
+    monkeypatch.setenv('PKCS11_PROXY_ENDPOINT', 'https://stale.example:1')
+    assert _install_proxy_transport('execute') is None
+    assert os.environ['PKCS11_PROXY_ENDPOINT'] == 'https://stale.example:1'
+    for name, value in PROXY_TRANSPORT.items():
+        monkeypatch.setenv(name, value)
+    assert _install_proxy_transport('execute') is None
+    assert os.environ['PKCS11_PROXY_ENDPOINT'] == PROXY_TRANSPORT['PKCS11_PROXY_ENDPOINT']
+
+
+def test_install_proxy_transport_scrubs_and_installs_for_proxy_action(monkeypatch):
+    import os
+    from p11lab.checker import _install_proxy_transport
+    for name in PROXY_TRANSPORT:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv('PKCS11_PROXY_TLS_DOMAIN', raising=False)
+    with pytest.raises(ValueError):
+        _install_proxy_transport('execute-proxy')
+    monkeypatch.setenv('PKCS11_PROXY_ENDPOINT', 'https://provider-daemon:8443')
+    with pytest.raises(ValueError):
+        _install_proxy_transport('execute-proxy')
+    for name, value in PROXY_TRANSPORT.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv('PKCS11_PROXY_TLS_DOMAIN', 'stale.example')
+    assert _install_proxy_transport('execute-proxy') == PROXY_TRANSPORT
+    assert 'PKCS11_PROXY_TLS_DOMAIN' not in os.environ
+    for name, value in PROXY_TRANSPORT.items():
+        assert os.environ[name] == value
+
+
+def test_run_checker_selects_execute_action_by_mode(tmp_path, monkeypatch):
+    import json
+    from p11lab.checker import run_checker
+    from p11lab.models import ArtifactRef, RunResult, RunSpec
+    import p11lab.run
+    captured = {}
+    receipt_path = tmp_path / 'outer-receipt.json'
+    receipt_path.write_text(json.dumps({'lifecycle_errors': [], 'exit_code': 0}))
+    def fake(spec):
+        captured[spec.mode] = spec.argv
+        return RunResult(app_returncode=0, lifecycle_errors=(), cleanup_errors=(),
+                         exit_code=0, receipt_path=receipt_path)
+    monkeypatch.setattr(p11lab.run, 'run_application', fake)
+    for mode in ('direct', 'proxy'):
+        spec = RunSpec(environment='softhsm2', channel='release', mode=mode,
+                       artifact=ArtifactRef('docker-local', 'sha256:' + '0' * 64,
+                                            '0' * 64, 'linux/amd64'),
+                       execution_location='provider', consumer_artifact=None,
+                       client_artifact=None, argv=(), inputs={},
+                       output_dir=tmp_path / ('out-' + mode), cwd=tmp_path,
+                       timeout_seconds=10)
+        run_checker(spec, 'smoke-v1')
+    assert captured['direct'][3] == 'execute'
+    assert captured['proxy'][3] == 'execute-proxy'
+    assert json.loads(captured['direct'][4])
+    assert json.loads(captured['proxy'][4])

@@ -18,6 +18,13 @@ from uuid import uuid4
 from .models import RunResult, RunSpec
 from .process import supervised_exec, write_process_logs
 from .receipts import write_receipt
+from .tls import (
+    CLIENT_ENV_VARS,
+    CONNECT_TIMEOUT_VAR,
+    ENDPOINT_VAR,
+    TRANSPORT_ENV_VARS,
+    build_consumer_env,
+)
 
 SOURCE = 'de4db3d2ee738a9f99d0654e4baf568cdbd4774a'
 WHEEL = '812c57e94fb967bc5ba939f0519bba67c58d5e755705b84c8442bbc2774d96f9'
@@ -75,6 +82,23 @@ def canonical_node(node: str, root: Path) -> str:
     return identities.pop() + '::' + tail
 
 
+def select_token_slot(slots, label: str) -> tuple[int, int]:
+    """Select the single token-present slot matching label; fail loud.
+
+    The caller supplies the expected token label (P11LAB_LABEL, default
+    'P11Lab'); providers with a fixed different label (haskoki:
+    'haskoki-demo') need the explicit input. A mismatch or ambiguity
+    reports the tried label and every observed token-present label so
+    both sides are named.
+    """
+    observed = [(index, slot.slot_id, slot.get_token().label) for index, slot in enumerate(slots)]
+    selected = [(index, native) for index, native, name in observed if name == label]
+    if len(selected) != 1:
+        raise ValueError('token identity must select exactly one token-present slot '
+                         f"(label={label!r} among {[name for _, _, name in observed]!r})")
+    return selected[0]
+
+
 def installed_identity() -> dict:
     import pkcs11_check.testcases as tests
     root = Path(tests.__file__).resolve().parent
@@ -125,7 +149,59 @@ def _declared_fixed_env(provider_descriptor) -> dict:
     return {entry['name']: entry['value'] for entry in provider_descriptor['runtime_env']}
 
 
-def checker_environment(output: Path, pin: str, so_pin: str, *, provider_descriptor=None) -> dict:
+def proxy_transport_from_environ(environ=None) -> dict | None:
+    """Collect explicitly passed proxy transport; partial ambient fails loud.
+
+    Direct runs carry no transport names and get None. Proxy runs must
+    carry exactly the five shim variables; anything in between is a broken
+    producer, never a defaultable state.
+    """
+    source = os.environ if environ is None else environ
+    present = {name: source[name] for name in TRANSPORT_ENV_VARS if name in source}
+    if present and set(present) != set(TRANSPORT_ENV_VARS):
+        raise ValueError('partial proxy transport in environment: %s' % sorted(present))
+    return present or None
+
+
+def _validated_proxy_transport(mapping: dict) -> dict:
+    """Validate exactly the five shim variables; no partial set is admitted."""
+    if set(mapping) != set(TRANSPORT_ENV_VARS):
+        raise ValueError('proxy transport requires exactly the five shim variables')
+    validated = build_consumer_env(
+        endpoint=mapping[ENDPOINT_VAR],
+        ca_cert=mapping[CLIENT_ENV_VARS[0]],
+        client_cert=mapping[CLIENT_ENV_VARS[1]],
+        client_key=mapping[CLIENT_ENV_VARS[2]],
+    )
+    timeout = mapping[CONNECT_TIMEOUT_VAR]
+    if not isinstance(timeout, str) or not timeout or any(c in timeout for c in '\0\n\r'):
+        raise ValueError('proxy transport requires a clean connect timeout')
+    validated[CONNECT_TIMEOUT_VAR] = timeout
+    return validated
+
+
+def _install_proxy_transport(action: str) -> dict | None:
+    """Install validated transport for the proxy action; direct stays ambient.
+
+    Only 'execute-proxy' collects the environment: the five collected
+    values re-validate, every other PKCS11_PROXY_* name is scrubbed (an
+    image-baked extra such as a TLS hostname override must not reach
+    shim discovery), and the validated five are installed. Ordinary
+    'execute' returns None with the ambient environment untouched, so
+    direct runs keep their exact pre-proxy scrubbing behavior.
+    """
+    if action != 'execute-proxy':
+        return None
+    validated = _validated_proxy_transport(proxy_transport_from_environ() or {})
+    for name in tuple(os.environ):
+        if name.startswith('PKCS11_PROXY_'):
+            del os.environ[name]
+    os.environ.update(validated)
+    return validated
+
+
+def checker_environment(output: Path, pin: str, so_pin: str, *, provider_descriptor=None,
+                        proxy_env=None) -> dict:
     # Inherited P11TEST_*, pytest options, TOML search locations and plugins must
     # not change selection. Keep only provider configuration and OS essentials.
     allowed = {'PATH', 'LD_LIBRARY_PATH', 'SYSTEMROOT', 'WINDIR', 'SOFTHSM2_CONF'}
@@ -134,6 +210,11 @@ def checker_environment(output: Path, pin: str, so_pin: str, *, provider_descrip
     # for the same names are ignored so adapter/descriptor drift cannot silently
     # change the checked configuration.
     env.update(_declared_fixed_env(provider_descriptor))
+    if proxy_env is not None:
+        # Transport names are declaration-ineligible (reserved PKCS11_
+        # prefix), so this explicit mapping is their only channel; values
+        # re-validate exactly as the runner emitted them (no partials).
+        env.update(_validated_proxy_transport(proxy_env))
     provenance_file = output.resolve() / 'build-provenance.json'
     with os.fdopen(os.open(provenance_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as stream:
         json.dump({'extra': {'checker': {'source_revision': SOURCE, 'wheel_sha256': WHEEL,
@@ -156,12 +237,14 @@ def checker_environment(output: Path, pin: str, so_pin: str, *, provider_descrip
 
 def execute_checker(*, installed_root: Path, module: Path, slot: int,
                     nodes: list[str], output_dir: Path, pin: str, so_pin: str,
-                    identity: dict) -> dict:
+                    identity: dict, proxy_env: dict | None = None) -> dict:
     """Run the public installed CLI with controlled settings; retain all findings.
 
     This library boundary also serves host/native execution. The caller supplies
     verified installation identity and readiness, and owns provider lifecycle.
     output_dir must be a new directory; credentials never enter argv/receipts.
+    proxy_env carries the exact five shim transport variables for proxy runs
+    (direct runs pass None); the controlled environment admits no partial set.
     """
     if type(slot) is not int or slot < 0:
         raise ValueError('slot must be a translated token-present index')
@@ -175,7 +258,7 @@ def execute_checker(*, installed_root: Path, module: Path, slot: int,
     output_dir.mkdir(parents=True, exist_ok=False)
     output_dir.chmod(0o700)
     targets = [str(installed_root.resolve() / node) for node in nodes]
-    env = checker_environment(output_dir, pin, so_pin)
+    env = checker_environment(output_dir, pin, so_pin, proxy_env=proxy_env)
     prefix = [sys.executable, '-m', 'pkcs11_check']
     collect = subprocess.run([*prefix, 'list-tests', '--include-disabled', *targets],
                              cwd=output_dir, env=env, capture_output=True, text=True, timeout=180)
@@ -391,12 +474,18 @@ def run_checker(spec: RunSpec, profile: str) -> RunResult:
 
     spec.argv is reserved and must be empty. For a shard, profile is a JSON
     selection under spec.cwd containing frozen nodes and the same build identity.
+    Token selection reads P11LAB_LABEL from spec.inputs with a 'P11Lab'
+    default; providers with a fixed different label (haskoki: 'haskoki-demo')
+    need the explicit input or selection fails loud. Proxy runs execute the
+    'execute-proxy' action (ambient shim transport is validated before
+    discovery); every other mode executes 'execute' with direct scrubbing.
     """
     from .run import run_application
     if spec.argv:
         raise ValueError('run_checker builds argv; provide an empty argv')
     selected = load_profile(profile)
-    argv = ('/opt/p11lab-checker/bin/python', '-m', 'p11lab.checker', 'execute',
+    argv = ('/opt/p11lab-checker/bin/python', '-m', 'p11lab.checker',
+            'execute-proxy' if spec.mode == 'proxy' else 'execute',
             json.dumps(selected['nodes'], separators=(',', ':')))
     result = run_application(replace(spec, argv=argv))
     try:
@@ -417,17 +506,15 @@ def run_checker(spec: RunSpec, profile: str) -> RunResult:
 
 
 def _main():
-    if sys.argv[1] != 'execute':
+    if sys.argv[1] not in ('execute', 'execute-proxy'):
         raise ValueError('expected execute')
+    proxy_env = _install_proxy_transport(sys.argv[1])
     from pkcs11_check.core.loader import load_module
     module = Path(os.environ['P11LAB_MODULE'])
     p11 = load_module(module, interface='auto')
     slots = p11.get_slots(token_present=True)
     label = os.environ.get('P11LAB_LABEL', 'P11Lab')
-    selected = [(i, s.slot_id) for i, s in enumerate(slots) if s.get_token().label == label]
-    if len(selected) != 1:
-        raise ValueError('token identity must select exactly one token-present slot')
-    slot, native_id = selected[0]
+    slot, native_id = select_token_slot(slots, label)
     from pkcs11_check.raw.rv import expect_rv
     from pkcs11_check.raw.types_std import CKR_OK
     expect_rv(p11.raw.C_Finalize(None), CKR_OK)
@@ -436,7 +523,8 @@ def _main():
     identity = installed_identity()
     record = execute_checker(installed_root=Path(identity['installed_root']), module=module, slot=slot,
                              nodes=json.loads(sys.argv[2]), output_dir=Path('/p11lab-output/checker'),
-                             pin=secret('P11LAB_PIN'), so_pin=secret('P11LAB_SO_PIN'), identity=identity)
+                             pin=secret('P11LAB_PIN'), so_pin=secret('P11LAB_SO_PIN'), identity=identity,
+                             proxy_env=proxy_env)
     record['token'] = {'label': label, 'native_slot_id': native_id, 'token_present_index': slot}
     write_receipt(Path('/p11lab-output/checker/checker-receipt.json'), record)
     sys.exit(record['returncode'] or (0 if record['evidence']['complete'] else 1))
