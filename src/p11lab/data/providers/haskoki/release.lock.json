@@ -19,7 +19,7 @@
           "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
         }
       ],
-      "archive_sha256": "a3ce4445a879ed54ba7e9d4fa0bf1ed58b4f8d5915ee798159fe6a52aee98786"
+      "archive_sha256": "be8bb8363ec624c05db9ab1c7132dab14348512cf10023b1dcc8c91882b1ec97"
     }
   ],
   "dependencies": [],
@@ -2898,7 +2898,7 @@
     {
       "role": "recipe",
       "path": "Dockerfile",
-      "sha256": "d53211dbd2b2871b538818b7ca77dd769503384a24350b3220673baabb60e7c6"
+      "sha256": "772ce169d45a498569113cf2e6164a54b3c247ed82323cbc112ec5933e9f3e79"
     },
     {
       "role": "adapter",

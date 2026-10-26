@@ -143,6 +143,11 @@ RUN set -eu; SO=$(cat /tmp/so-path); CTL=$(cat /tmp/ctl-path); \
  cp /tmp/hackage-observed.sha256 /runtime/usr/share/p11lab/build/; \
  cp /tmp/toolchain-manifest.txt /tmp/openssl-manifest.txt /tmp/hackage-manifest.txt /tmp/libffi-manifest.txt /runtime/usr/share/p11lab/build/; \
  (cd /build/haskoki && sha256sum cabal.project cabal.project.freeze haskoki.cabal toolchain.lock) > /runtime/usr/share/p11lab/build/cabal-inputs.sha256; \
+ CABAL_VER=$(sed -n -E 's/^version:[[:space:]]+([^[:space:]]+)[[:space:]]*$/\1/p' /build/haskoki/haskoki.cabal); \
+ [ -n "$CABAL_VER" ] || { echo 'haskoki.cabal: version field missing'; exit 1; }; \
+ [ "$(printf '%s\n' "$CABAL_VER" | grep -c .)" = 1 ] || { echo 'haskoki.cabal: ambiguous version field'; exit 1; }; \
+ printf '%s\n' "$CABAL_VER" | grep -qx '[0-9][0-9.]*' || { echo "haskoki.cabal: unexpected version format: $CABAL_VER"; exit 1; }; \
+ printf '%s\n' "$CABAL_VER" > /runtime/usr/share/p11lab/build/haskoki-version.txt; \
  cp /build/haskoki/dist-newstyle/cache/plan.json /runtime/usr/share/p11lab/build/cabal-plan.json; \
  { echo "ghc $(ghc --numeric-version)"; echo "cabal $(cabal --numeric-version)"; gcc --version | head -1; perl -v | sed -n '2p'; /opt/openssl-4.0.2/bin/openssl version; } > /runtime/usr/share/p11lab/build/toolchain.txt; \
  printf '%s\n' 'openssl_prefix=/opt/openssl-4.0.2' 'openssl_configure=--prefix=/opt/openssl-4.0.2 --openssldir=/opt/openssl-4.0.2/ssl --libdir=lib no-docs no-tests threads no-shared no-pinshared linux-x86_64' 'cabal_targets=flib:haskoki exe:haskoki-ctl' 'cabal_jobs=2' 'bundled_libhs_count=24' > /runtime/usr/share/p11lab/build/haskoki.txt; \
@@ -167,7 +172,10 @@ RUN chmod 755 /usr/local/bin/p11lab-provider /usr/local/bin/haskoki-ctl /usr/loc
  && ! grep -i -E 'libcrypto|libssl' /usr/share/p11lab/build/runtime-linked-dependencies.txt \
  && if ldd /usr/local/lib/p11lab/libhaskoki.so | grep 'libHS.*=>' | grep -v '/usr/local/lib/p11lab/' | grep -q .; then echo 'bundled lib resolved outside the provider directory'; exit 1; fi \
  && ldconfig -p | grep -q 'libffi.so.8.*=> /usr/local/lib/p11lab/' \
- && haskoki-ctl --version | grep -qx 'haskoki-ctl 0\.3\.0\.0' \
+ && EXPECTED_VER=$(cat /usr/share/p11lab/build/haskoki-version.txt) \
+ && printf '%s\n' "$EXPECTED_VER" | grep -qx '[0-9][0-9.]*' \
+ && ACTUAL_VER=$(haskoki-ctl --version) \
+ && [ "$ACTUAL_VER" = "haskoki-ctl $EXPECTED_VER" ] \
  && test -f /usr/local/lib/p11lab/ossl-modules/legacy.so \
  && mkdir -p /tmp/smoke/haskoki \
  && printf '%s\n' 'schema_version = 1' 'profile = "real-crypto"' '' '[storage]' 'kind = "sqlite"' 'path = "/tmp/smoke/haskoki/token.sqlite"' '' '[engine]' 'kind = "openssl"' '' '[trace]' 'enabled = false' > /tmp/smoke/haskoki/haskoki.toml \

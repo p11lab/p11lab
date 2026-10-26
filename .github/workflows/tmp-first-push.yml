@@ -108,3 +108,5 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           printf 'registry=%s\ndigest=%s\ncanonical=%s\naliases=%s\n' "$P11LAB_REGISTRY" "$INDEX_DIGEST" "$RT_TAG" "$ALIASES"
           docker logout "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)"
+
+# Trigger 2026-10-26 re-run with haskoki release fixes (comment-only; no logic change).
