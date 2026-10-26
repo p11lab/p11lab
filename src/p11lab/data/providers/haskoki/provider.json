@@ -49,8 +49,8 @@
       "lock": "rolling.lock.json"
     },
     "release": {
-      "status": "unavailable",
-      "reason": "No upstream release tags in the 2026-10-02 source-resolution snapshot."
+      "status": "locked",
+      "lock": "release.lock.json"
     }
   },
   "application_profile": "general-token",

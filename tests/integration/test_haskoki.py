@@ -1,7 +1,7 @@
 """Haskoki anchor acceptance: real init/readiness/crypto/persistence/lanes.
 
-Durable regression for the Haskoki provider (Task 8, rolling channel only;
-release stays unavailable: upstream has no release tags). Image lanes are
+Durable regression for the Haskoki provider (Task 8; release locked at
+upstream tag v0.5.0.0, rolling tracks main). Image lanes are
 env-gated; only caller-owned inputs and output artifacts are mounted, never
 a reference workspace:
 
@@ -50,7 +50,7 @@ STORE = '/var/lib/p11lab/haskoki/token.sqlite'
 TOKEN_LABEL = 'haskoki-demo'
 USER_PIN = '1234'
 SO_PIN = '5678'
-CHANNELS = ('rolling',)
+CHANNELS = ('release', 'rolling')
 
 
 IMAGES = json.loads(os.environ.get('P11LAB_TEST_HASKOKI_IMAGES', '{}'))
@@ -118,11 +118,11 @@ def test_rolling_locked():
     assert spec['channel_spec']['status'] == 'locked'
 
 
-def test_release_stays_unavailable():
-    spec = load_environment('haskoki', 'rolling')
+def test_release_locked():
+    spec = load_environment('haskoki', 'release')
+    assert spec['channel_spec']['status'] == 'locked'
     release = spec['channels']['release']
-    assert release['status'] == 'unavailable'
-    assert 'release tag' in release['reason']
+    assert release['lock'] == 'release.lock.json'
 
 
 @pytest.mark.parametrize('channel', CHANNELS)

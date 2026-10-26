@@ -73,7 +73,7 @@ def test_planned_entries_can_be_described_but_not_built():
         validate_build_inputs(spec)
 
 
-@pytest.mark.parametrize('environment', ['haskoki', 'pkcs11rs'])
+@pytest.mark.parametrize('environment', ['pkcs11rs'])
 def test_absent_release_tags_report_unavailable_reason(environment):
     spec = load_environment(environment, 'release')
     assert spec['channel_spec']['status'] == 'unavailable'

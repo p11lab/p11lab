@@ -147,9 +147,9 @@ def test_actual_inventory_requires_exact_source_identity():
 def test_cli_locked_operation_rejects_unlocked_channel_without_output(operation, tmp_path, capsys):
     from p11lab.cli import main
     output = tmp_path / 'attempt'
-    # haskoki release has no tag (unavailable); the last planned stub is
+    # pkcs11rs release has no tag (unavailable); the last planned stub is
     # locked, and both unlocked dispositions share the locked-inputs gate.
-    assert main([operation, 'haskoki', '--channel', 'release', '--output-dir', str(output)]) == 2
+    assert main([operation, 'pkcs11rs', '--channel', 'release', '--output-dir', str(output)]) == 2
     assert 'locked' in capsys.readouterr().err
     assert not output.exists()
 
