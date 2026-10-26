@@ -1765,7 +1765,7 @@ def test_validate_action_inputs_defaults_registry_per_environment():
 def test_runtime_aliases_derive_from_locks():
     assert publish.runtime_aliases("softhsm2", "release") == ["2.7.0", "latest"]
     assert publish.runtime_aliases("softhsm2", "rolling")[1] == "rolling"
-    assert publish.runtime_aliases("haskoki", "release") == []
+    assert publish.runtime_aliases("haskoki", "release") == ["v0.5.0.0", "latest"]
     assert publish.runtime_aliases("bouncyhsm", "release") == ["latest"]
     assert publish.runtime_aliases("cryptech", "release") == []
     assert publish.runtime_aliases("pkcs11rs", "release") == []
