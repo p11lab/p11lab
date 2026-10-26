@@ -16,8 +16,10 @@ validation and orchestration. Public CI integrations must use the same supported
 operations as local users and work without development-workspace mounts.
 
 The catalogue, lanes, demos, and delivery pipeline are implemented and under
-frozen-cohort audit; nothing is published yet (no registry images, tags,
-releases, or cache exports). `prd.md` remains an initial draft, not an
+frozen-cohort audit; five provider runtimes are published as alpha images
+under per-provider `ghcr.io/p11lab/<environment>` repositories (digests are
+identities, tags are aliases). No releases or cache exports exist yet.
+`prd.md` remains an initial draft, not an
 approved implementation specification. Current user decisions and verified
 component behavior take precedence over assumptions in that draft.
 
