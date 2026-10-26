@@ -69,7 +69,7 @@ env:
   # Expected-failures baselines per environment and suite (canonical node
   # IDs), reviewed entries only. Empty = unqualified. Extract to files
   # once non-empty.
-  BASELINES: '{"haskoki":{"smoke":[],"full":[]},"freehsm":{"smoke":[],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":[],"full":[]},"softhsm2":{"smoke":[],"full":[]}}'
+  BASELINES: '{"haskoki":{"smoke":[],"full":[]},"freehsm":{"smoke":[],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestProperties::test_sha256_empty_data"],"full":[]},"softhsm2":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_get_interface_list"],"full":[]}}'
   # Full-suite shard counts (smoke is always 1). Starting hints from
   # pkcs11-check test_pool.py timing practice; retune from evidence. Each
   # shard must fit the 900 s in-runner checker cap.
