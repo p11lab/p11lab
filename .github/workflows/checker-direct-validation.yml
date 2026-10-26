@@ -153,7 +153,7 @@ jobs:
           docker run --rm --network none --entrypoint /opt/p11lab-checker/bin/python \
             -e FULL_SHARDS -v "$PWD/planwork:/work" 'p11lab-ci/checker-softhsm2:local' \
             /work/planner.py "$suite" > planwork/planner.log 2>&1
-          grep '^MATRIX=' planwork/planner.log | head -n 1 | sed 's/^MATRIX=matrix=/' > planwork/matrix.out
+          grep '^MATRIX=' planwork/planner.log | head -n 1 | sed 's/^MATRIX=/matrix=/' > planwork/matrix.out
           test -s planwork/matrix.out || { echo 'planner produced no matrix' >&2; tail -n 20 planwork/planner.log >&2; exit 1; }
           cat planwork/matrix.out >> "$GITHUB_OUTPUT"
           printf 'suite=%s\n' "$suite" >> "$GITHUB_OUTPUT"
