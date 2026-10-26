@@ -1,0 +1,113 @@
+# TEMPORARY WORKFLOW — LIVES ON THE TEMP BRANCH ONLY. NEVER MERGE TO MAIN.
+# UNGATED alpha push, not delivery-qualified: this workflow builds a provider
+# runtime image and pushes it to ghcr.io without the source-first delivery
+# gates (no sealed sources, no anonymous readback, no admission verdict, no
+# handoff). Pushed bytes are identified by digest; tags are discovery aliases
+# only. Nothing pushed here is delivery-qualified or certified. Delete this
+# file (and branch) once the gated delivery path covers the first push.
+# First-push plan: release channels only; one matrix entry per environment.
+# No workflow_dispatch: gh/API resolves dispatchable workflows from the default
+# branch only, and this file exists solely on the temp branch, so dispatch 404s.
+name: tmp-first-push
+
+on:
+  push:
+    branches: [tmp/ci-per-provider-registry]
+    paths: [.github/workflows/tmp-first-push.yml]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-push:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    concurrency:
+      group: tmp-first-push-release-${{ matrix.environment }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [kryoptic, freehsm, bouncyhsm]
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Resolve the effective registry
+        shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ matrix.environment }}
+        run: |
+          set -eu
+          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry('', os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
+          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.10'
+
+      - name: Install P11Lab
+        shell: bash
+        run: |
+          set -eu
+          python -m pip install .
+          python --version
+          docker version --format '{{.Server.Version}}'
+          echo "ImageVersion=$ImageVersion"
+
+      - name: Build the runtime image
+        shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ matrix.environment }}
+        run: |
+          set -eu
+          p11lab build "$P11LAB_INPUT_ENVIRONMENT" --channel release --output-dir build-out
+          python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])'
+
+      - name: Push the canonical tag and aliases
+        shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ matrix.environment }}
+        run: |
+          set -eu
+          PROVIDER_ID=$(python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])')
+          docker image inspect "$PROVIDER_ID" > /dev/null
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
+          # The canonical tag is computed after a staging push fixes the digest.
+          STAGE_TAG="tmp-staging-release"
+          docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$STAGE_TAG"
+          docker push "$P11LAB_REGISTRY:$STAGE_TAG"
+          docker buildx imagetools inspect "$P11LAB_REGISTRY:$STAGE_TAG" --raw > pushed-manifest.json
+          INDEX_DIGEST="sha256:$(sha256sum pushed-manifest.json | cut -d' ' -f1)"
+          export INDEX_DIGEST
+          RT_TAG=$(python3 -c "from p11lab.publish import artifact_tag; import os; print(artifact_tag('rt', os.environ['P11LAB_INPUT_ENVIRONMENT'], 'release', os.environ['INDEX_DIGEST'].removeprefix('sha256:')))")
+          docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$RT_TAG"
+          docker push "$P11LAB_REGISTRY:$RT_TAG"
+          docker buildx imagetools inspect "$P11LAB_REGISTRY:$RT_TAG" --raw > pushed-rt-manifest.json
+          test "sha256:$(sha256sum pushed-rt-manifest.json | cut -d' ' -f1)" = "$INDEX_DIGEST"
+          # Human-friendly aliases (version/floating tags) for the same bytes.
+          # Each push is verified byte-identical to the canonical digest above.
+          ALIASES=$(python3 -c "from p11lab.publish import runtime_aliases; import os; print(' '.join(runtime_aliases(os.environ['P11LAB_INPUT_ENVIRONMENT'], 'release')))")
+          if [ "$P11LAB_INPUT_ENVIRONMENT" = "haskoki" ]; then
+            ALIASES="$ALIASES 0.5.0"
+          fi
+          for ALIAS in $ALIASES; do
+            docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$ALIAS"
+            docker push "$P11LAB_REGISTRY:$ALIAS"
+            SAFE_ALIAS=$(printf '%s' "$ALIAS" | tr -c 'a-zA-Z0-9_.-' '_')
+            docker buildx imagetools inspect "$P11LAB_REGISTRY:$ALIAS" --raw > "pushed-alias-$SAFE_ALIAS.json"
+            test "sha256:$(sha256sum "pushed-alias-$SAFE_ALIAS.json" | cut -d' ' -f1)" = "$INDEX_DIGEST"
+          done
+          {
+            echo "## tmp-first-push record"
+            echo "registry: \`$P11LAB_REGISTRY\`"
+            echo "digest: \`$INDEX_DIGEST\`"
+            echo "tags: \`$RT_TAG $ALIASES\` (plus staging \`$STAGE_TAG\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          printf 'registry=%s\ndigest=%s\ncanonical=%s\naliases=%s\n' "$P11LAB_REGISTRY" "$INDEX_DIGEST" "$RT_TAG" "$ALIASES"
+          docker logout "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)"
+
+# Trigger 2026-10-26 re-run with haskoki release fixes (comment-only; no logic change).
+# Trigger 2026-10-26 version-update rebuild: kryoptic v1.5.4, freehsm v2.4.0, bouncyhsm v2.3.4.

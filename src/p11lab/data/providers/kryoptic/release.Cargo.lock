@@ -367,7 +367,7 @@ dependencies = [
 
 [[package]]
 name = "kryoptic"
-version = "1.5.3"
+version = "1.5.4"
 dependencies = [
  "cryptoki",
  "kryoptic-lib",
@@ -376,7 +376,7 @@ dependencies = [
 
 [[package]]
 name = "kryoptic-lib"
-version = "1.5.3"
+version = "1.5.4"
 dependencies = [
  "asn1",
  "bimap",
@@ -404,10 +404,11 @@ dependencies = [
 
 [[package]]
 name = "kryoptic-tools"
-version = "1.5.3"
+version = "1.5.4"
 dependencies = [
  "clap",
  "cryptoki",
+ "data-encoding",
  "hex",
  "kryoptic-lib",
  "libc",
@@ -535,7 +536,7 @@ dependencies = [
 
 [[package]]
 name = "ossl"
-version = "1.5.3"
+version = "1.5.4"
 dependencies = [
  "bindgen",
  "cfg-if",
@@ -551,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "ossl-sys"
-version = "1.5.3"
+version = "1.5.4"
 dependencies = [
  "bindgen",
  "cfg-if",
@@ -621,9 +622,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1"
+checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
 dependencies = [
  "memchr",
  "serde",

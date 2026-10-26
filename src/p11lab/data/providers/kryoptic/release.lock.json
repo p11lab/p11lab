@@ -6,20 +6,20 @@
       "url": "https://github.com/latchset/kryoptic.git",
       "selector": {
         "kind": "tag",
-        "value": "v1.5.3"
+        "value": "v1.5.4"
       },
       "license_status": "unreviewed",
-      "revision": "3c650f9f98a626127897ef9858c3d6c0b795d459",
+      "revision": "f997876ff40740992ff3b51d92665e08ac4fbfc2",
       "license_observation": "Apache-2.0",
       "license_evidence": [
         {
           "variant": "stable",
           "path": "LICENSE.txt",
-          "url": "https://raw.githubusercontent.com/latchset/kryoptic/3c650f9f98a626127897ef9858c3d6c0b795d459/LICENSE.txt",
+          "url": "https://raw.githubusercontent.com/latchset/kryoptic/f997876ff40740992ff3b51d92665e08ac4fbfc2/LICENSE.txt",
           "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
         }
       ],
-      "archive_sha256": "7fdcf6484e0a27923f22b9f230de429e07aa169676326d042db35a6be4ef486a"
+      "archive_sha256": "a5039272f7a33f7f8bffe5e25e43236e81651a2e8ff77374829ca9b1ee94fdb1"
     }
   ],
   "dependencies": [],
@@ -3144,19 +3144,19 @@
     {
       "role": "dependency-lock",
       "path": "release.Cargo.lock",
-      "sha256": "7d9d5e78d0e271d3c5fea5c4e24659ef2082aeeda9771ab060ece80f0bc77107",
+      "sha256": "b551f76beb464fedcc105359f35a6c4bbaea7dd423baf0d344246a44cb2ecdc1",
       "context_path": "Cargo.lock"
     },
     {
       "role": "dependency-lock",
       "path": "release.crates.json",
-      "sha256": "6ea32cbd8304c14827ca08e8e26743be62b10ac84ccbd2b308449817c5d82da7",
+      "sha256": "8947877516f045383bba961084fc2fa0d6ede08738332f18e332edce457ec57f",
       "context_path": "crates.json"
     },
     {
       "role": "notice",
       "path": "FILE-NOTICES.txt",
-      "sha256": "a73ed2eb1c7ae4ed05d83c2073df1591f3249b0e1ddbc2aca0b641f3ad4bd078"
+      "sha256": "bb615dea47a839180c7256dce9817afafea9f2e1d2263422f9e268ca7837771e"
     },
     {
       "role": "adapter-common",
@@ -3193,8 +3193,8 @@
     "build_command": "cargo build --locked --offline --release --features pqc --jobs 2",
     "crate_freeze": {
       "method": "Per-channel Cargo.lock plus sha256-verified crates.io archives reconstructed into Cargo directory source; --locked --offline; no build-time resolution",
-      "lock_sha256": "7d9d5e78d0e271d3c5fea5c4e24659ef2082aeeda9771ab060ece80f0bc77107",
-      "manifest_sha256": "6ea32cbd8304c14827ca08e8e26743be62b10ac84ccbd2b308449817c5d82da7",
+      "lock_sha256": "b551f76beb464fedcc105359f35a6c4bbaea7dd423baf0d344246a44cb2ecdc1",
+      "manifest_sha256": "8947877516f045383bba961084fc2fa0d6ede08738332f18e332edce457ec57f",
       "crates": 132
     },
     "openssl": {

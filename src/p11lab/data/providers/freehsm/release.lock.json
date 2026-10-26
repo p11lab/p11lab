@@ -6,20 +6,20 @@
       "url": "https://github.com/afchine1337/freehsm.git",
       "selector": {
         "kind": "tag",
-        "value": "v2.2.0"
+        "value": "v2.4.0"
       },
       "license_status": "unreviewed",
-      "revision": "363af144216a825aa42b4d264bc672847d3816c6",
+      "revision": "b16966a375ee4fd40256c74b5d6987614fa4ac02",
       "license_observation": "Apache-2.0",
       "license_evidence": [
         {
           "variant": "stable",
           "path": "LICENSE",
-          "url": "https://raw.githubusercontent.com/afchine1337/freehsm/363af144216a825aa42b4d264bc672847d3816c6/LICENSE",
+          "url": "https://raw.githubusercontent.com/afchine1337/freehsm/b16966a375ee4fd40256c74b5d6987614fa4ac02/LICENSE",
           "sha256": "379273b78861b22f6de25c35a33f133bfd949aef1b8e4aefaba876cbd65f4a53"
         }
       ],
-      "archive_sha256": "988cb150f4f08fc86849dd05ac2d0c723d047e04e13b7241b29fd50257d6f630"
+      "archive_sha256": "6eec2743e0f031c8eb922c7d00bd606919a871c64ab79e227388c5f54a335a03"
     }
   ],
   "dependencies": [],
