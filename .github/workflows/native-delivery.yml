@@ -22,9 +22,8 @@ on:
         required: true
         default: 'release'
       registry:
-        description: 'Registry package for delivery artifacts.'
-        required: true
-        default: 'ghcr.io/mingulov/p11lab'
+        description: 'Registry repository for delivery artifacts (empty selects ghcr.io/p11lab/<environment>).'
+        required: false
       parent:
         description: 'Frozen native parent image digest reference (no default; fail closed).'
         required: true
@@ -174,6 +173,16 @@ jobs:
       - name: Checkout P11Lab
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Resolve the effective registry
+        shell: bash
+        env:
+          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -eu
+          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
+          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
+
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -223,11 +232,11 @@ jobs:
         working-directory: transport
         run: |
           set -eu
-          echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo '${{ inputs.registry }}' | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
           cd seal-out
           "$P11LAB_ORAS" push --artifact-type application/vnd.p11lab.sealed-source.v1 \
             --format json --export-manifest ../pushed-src-manifest.json \
-            "${{ inputs.registry }}:$(cat ../src-tag.txt)" \
+            "$P11LAB_REGISTRY:$(cat ../src-tag.txt)" \
             sealed-source.tar.gz sealed-source.json | tee ../pushed-src.json
 
       - name: Pack the sealed receipt for readback
@@ -256,6 +265,16 @@ jobs:
     steps:
       - name: Checkout P11Lab
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Resolve the effective registry
+        shell: bash
+        env:
+          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -eu
+          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
+          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -298,7 +317,7 @@ jobs:
             echo "=== anonymous pull by manifest digest ==="
             env -i "PATH=/usr/bin:/bin" "HOME=$RUNNER_TEMP/anon/home" "XDG_CONFIG_HOME=$RUNNER_TEMP/anon/xdg" \
               "$P11LAB_ORAS" pull --registry-config "$RUNNER_TEMP/anon/auth.json" --no-tty \
-              -o "$PWD/pulled" "${{ inputs.registry }}@$MANIFEST_DIGEST"
+              -o "$PWD/pulled" "$P11LAB_REGISTRY@$MANIFEST_DIGEST"
             echo "=== pulled ==="
             ls -la pulled
           } 2>&1 | tee readback-transcript.log
@@ -335,6 +354,16 @@ jobs:
     steps:
       - name: Checkout P11Lab
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Resolve the effective registry
+        shell: bash
+        env:
+          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -eu
+          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
+          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -388,7 +417,7 @@ jobs:
             --build-receipt build-transport/native-out/artifact.json \
             --manifest build-transport/native-out/manifest.json \
             --artifact-kind bundle --artifact-reference "$BUNDLE" --artifact-digest "$BIN_SHA" \
-            --registry "${{ inputs.registry }}" --output-dir admission-out \
+            --registry "$P11LAB_REGISTRY" --output-dir admission-out \
             --producer-wheel-sha256 "$WHEEL_SHA" \
             --source-manifest-digest "$SRC_MANIFEST_DIGEST" \
             --source-manifest readback-transport/pushed-src-manifest.json | tee admit.json
@@ -435,6 +464,16 @@ jobs:
       - name: Checkout P11Lab
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Resolve the effective registry
+        shell: bash
+        env:
+          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -eu
+          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
+          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
+
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -474,15 +513,15 @@ jobs:
           TARGET=$(python -c 'import json; print(json.load(open("native-out/manifest.json"))["target"])')
           test "$(sha256sum "$BUNDLE" | cut -d' ' -f1)" = "$BIN_SHA"
           NATIVE_TAG=$(python -c "from p11lab.publish import artifact_tag; print(artifact_tag('native', '${{ inputs.environment }}', '${{ inputs.channel }}', '$BIN_SHA', '$TARGET'))")
-          echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo '${{ inputs.registry }}' | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
           PUSHED=$(cd native-out && "$P11LAB_ORAS" push --artifact-type application/vnd.p11lab.native-bundle.v1 \
-            --format json "${{ inputs.registry }}:$NATIVE_TAG" "$(basename "$BUNDLE")" | tee ../pushed-native.json | \
+            --format json "$P11LAB_REGISTRY:$NATIVE_TAG" "$(basename "$BUNDLE")" | tee ../pushed-native.json | \
             python -c 'import json,sys; print(json.load(sys.stdin)["digest"])')
           # The manifest digest differs from the file digest; the file bytes
           # are verified after the anonymous pull below.
           echo "pushed-tag=$NATIVE_TAG" >> "$GITHUB_OUTPUT"
           echo "pushed-digest=$PUSHED" >> "$GITHUB_OUTPUT"
-          "$P11LAB_ORAS" logout "$(echo '${{ inputs.registry }}' | cut -d/ -f1)"
+          "$P11LAB_ORAS" logout "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)"
           mkdir -p "$RUNNER_TEMP/anon/home" pulled-bundle
           printf '{"auths":{}}\n' > "$RUNNER_TEMP/anon/auth.json"
           {
@@ -491,7 +530,7 @@ jobs:
             echo "=== anonymous bundle pull ==="
             env -i "PATH=/usr/bin:/bin" "HOME=$RUNNER_TEMP/anon/home" \
               "$P11LAB_ORAS" pull --registry-config "$RUNNER_TEMP/anon/auth.json" --no-tty \
-              -o "$PWD/pulled-bundle" "${{ inputs.registry }}@$PUSHED"
+              -o "$PWD/pulled-bundle" "$P11LAB_REGISTRY@$PUSHED"
             ls -la pulled-bundle
           } 2>&1 | tee ../binary-readback-transcript.log
           test "$(sha256sum pulled-bundle/*.tar.gz | cut -d' ' -f1)" = "$BIN_SHA"
@@ -525,6 +564,16 @@ jobs:
     steps:
       - name: Checkout P11Lab
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Resolve the effective registry
+        shell: bash
+        env:
+          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -eu
+          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
+          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -570,12 +619,12 @@ jobs:
           p11lab publish expose --admission admit-transport/admission-out/admission.json \
             --pushed-digest "${PUSHED_DIGEST#sha256:}" --pushed-tag "$PUSHED_TAG" --pushed-size "$PUSHED_SIZE" \
             --pulled-bundle exposure-transport/pulled-bundle.tar.gz \
-            --registry "${{ inputs.registry }}" --output-dir handoff-out
+            --registry "$P11LAB_REGISTRY" --output-dir handoff-out
           HANDOFF_SHA=$(sha256sum handoff-out/handoff.json | cut -d' ' -f1)
           HANDOFF_TAG=$(python -c "from p11lab.publish import artifact_tag; print(artifact_tag('handoff', '${{ inputs.environment }}', '${{ inputs.channel }}', '$HANDOFF_SHA'))")
-          echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo '${{ inputs.registry }}' | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
           cd handoff-out
           "$P11LAB_ORAS" push --artifact-type application/vnd.p11lab.handoff.v1 \
-            --format json "${{ inputs.registry }}:$HANDOFF_TAG" handoff.json | tee ../pushed-handoff.json
+            --format json "$P11LAB_REGISTRY:$HANDOFF_TAG" handoff.json | tee ../pushed-handoff.json
           echo "## Handoff" >> "$GITHUB_STEP_SUMMARY"
           echo "tag: \`$HANDOFF_TAG\`, bundle: \`$PUSHED_TAG\`" >> "$GITHUB_STEP_SUMMARY"

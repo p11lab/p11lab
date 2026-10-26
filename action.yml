@@ -20,9 +20,9 @@ inputs:
     required: false
     default: 'direct'
   registry:
-    description: 'Registry package holding the handoff.'
+    description: 'Registry repository holding the handoff (default ghcr.io/p11lab/<environment>).'
     required: false
-    default: 'ghcr.io/mingulov/p11lab'
+    default: ''
   handoff-digest:
     description: 'Immutable handoff digest (sha256:<hex>).'
     required: true

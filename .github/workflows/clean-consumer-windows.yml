@@ -22,9 +22,8 @@ on:
         required: true
         default: 'release'
       registry:
-        description: 'Registry package holding the handoff.'
-        required: true
-        default: 'ghcr.io/mingulov/p11lab'
+        description: 'Registry repository holding the handoff (empty selects ghcr.io/p11lab/<environment>).'
+        required: false
       handoff-digest:
         description: 'Immutable handoff digest (sha256:<hex>).'
         required: true

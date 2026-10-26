@@ -115,7 +115,7 @@ without asserting they all govern the Linux sqv executable.
 `eligible` means local evidence permits preparing this exact artifact for
 redistribution. Its `publication_status` remains blocked until the release
 workflow verifies anonymous, immutable source retrieval from the shared
-`ghcr.io/mingulov/p11lab` package **before** exposing matching binaries through a
+`ghcr.io/p11lab/<environment>` repositories **before** exposing matching binaries through a
 registry, public cache or CI artifact. Private uploads and authenticated readback
 are insufficient. Publish source directions beside binary access and retain source
 while the corresponding binary is available and for additional applicable duties.

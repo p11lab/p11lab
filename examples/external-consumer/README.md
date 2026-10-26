@@ -70,7 +70,7 @@ equivalents and drop `--local-proof`:
 - Fetch ORAS with `install-oras.sh` from the installed package
   (`python -c 'from p11lab.catalog import package_data; ...'` for
   `data/delivery/install-oras.sh`), instead of the bundled binary.
-- Fetch `handoff.json` by digest with ORAS from `ghcr.io/mingulov/p11lab`,
+- Fetch `handoff.json` by digest with ORAS from `ghcr.io/p11lab/<environment>`,
   instead of the bundled copy.
 - Fetch `prepare-consumer.py` from the P11Lab source revision matching the
   handoff's producer wheel (each release records the wheel-to-revision

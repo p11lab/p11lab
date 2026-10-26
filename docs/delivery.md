@@ -1,14 +1,20 @@
 # Delivery: registry contract, pipeline, and consumers
 
-P11Lab publishes provider environments source-first through one shared
-package, `ghcr.io/mingulov/p11lab`. Digests are identities; tags are
-discovery aliases only. No `stable`/`latest` tag and no formal release are
-part of this work.
+P11Lab publishes provider environments source-first through one
+repository per catalogue environment, `ghcr.io/p11lab/<environment>`
+(for example `ghcr.io/p11lab/softhsm2`). Digests are identities; tags
+are discovery aliases only. Runtime images additionally carry
+human-friendly aliases (upstream version plus `latest` on release;
+`rolling` plus `rolling-<rev12>` on rolling); those aliases are mutable
+conveniences and are never accepted as acquisition identity.
+(2026-10-26: adopted per-provider repositories with version/`latest`
+aliases, replacing the single-package layout that excluded them.)
 
 ## Registry contract
 
-One package holds every delivery artifact. Each artifact is acquired by
-immutable digest reference (`ghcr.io/mingulov/p11lab@sha256:<hex>`); the
+Each environment repository holds that environment's delivery artifacts.
+Each artifact is acquired by immutable digest reference
+(`ghcr.io/p11lab/<environment>@sha256:<hex>`); the
 tag recorded beside it is an alias that must never be trusted as identity.
 Acquisition entry points (`p11lab.publish.require_digest_reference`, the
 reusable action, the consumer examples) refuse tag-form references.
@@ -27,13 +33,29 @@ digest for images, the file digest for ORAS artifacts. Tag roles
 | `sbom` | SPDX inventory (when reviewed evidence exists) | planned/future: no push path exists yet |
 | `handoff` | Handoff manifest binding the digests above plus the verdict | finalize job, after binary readback |
 
+Runtime images are additionally pushed under human-friendly aliases
+from `p11lab.publish.runtime_aliases`, recorded in the handoff
+`binary.aliases` beside the canonical digest alias: the verbatim
+upstream release tag plus `latest` on the release channel (for example
+`ghcr.io/p11lab/softhsm2:2.7.0`), `rolling-<lock-rev12>` plus `rolling`
+on the rolling channel. The versioned alias is conditional: it appears
+only when the channel lock pins exactly one git source with a usable tag
+selector (release) or revision (rolling), and never when it would spell a
+floating (`latest`/`rolling`) or canonical alias name; otherwise the
+channel floats alone. The canonical alias keeps the `<env>` segment
+so tags stay self-describing across repositories. Native bundles and
+ORAS artifacts (`src`, `sbom`, `handoff`) keep canonical digest aliases
+only: OCI tags share one namespace per repository, so version tags
+there would collide with the image tags. `latest` tracks the
+release-channel head only; no `stable` tag exists.
+
 Source companions are retained durably in the registry, never as
 short-lived CI artifacts. CI artifacts carry job transport only
 (`retention-days: 1`) and must never be mistaken for publication.
 
 A newly created GHCR package may need an owner visibility setting before
 anonymous pulls work; that setting is an explicit coordinator step before
-the first publication to the package.
+the first publication to each of the 24 environment packages.
 
 ## Pipeline sequence
 
@@ -82,7 +104,7 @@ carry an `if: eligible` gate so a blocked run can never upload.
   `state-dir`, `timeout`, `working-directory`. The canonical spec lives in
   `p11lab.publish.ACTION_INPUTS`; tests enforce parity with `action.yml`.
 - The action installs p11lab from its own revision (self-pinning
-  `uses: mingulov/p11lab@<sha>`), bootstraps the pinned ORAS release,
+  `uses: p11lab/p11lab@<sha>`), bootstraps the pinned ORAS release,
   fetches the handoff anonymously by digest, acquires the binary by
   digest, and runs `p11lab run` only. Pass credentials by file path
   (`*_FILE` inputs), never inline; only input names are logged.
@@ -99,7 +121,7 @@ carry an `if: eligible` gate so a blocked run can never upload.
 Example (Linux, direct mode):
 
 ```yaml
-- uses: mingulov/p11lab@<pinned-sha>
+- uses: p11lab/p11lab@<pinned-sha>
   id: provider
   with:
     environment: softhsm2
@@ -128,6 +150,9 @@ Missing, non-regular, malformed, or invocation-mismatched receipts leave
 `receipt-path` and `app-returncode` empty without changing `exit-code`.
 Receipt shape and invocation checks are not provider qualification or
 proof of authenticity against caller-controlled host processes.
+
+The `registry` input defaults to `ghcr.io/p11lab/<environment>`;
+pass it explicitly only to use a mirror or local registry.
 
 Direct mode needs Linux runners with Docker; native mode needs the
 bundle's host floor instead (Debian 13 amd64, or the Windows floor for
@@ -159,13 +184,13 @@ export PATH="$HOME/p11lab-oras:$PATH"
 # 2. Fetch the handoff by digest, anonymously.
 printf '{"auths":{}}\n' > anon-auth.json
 oras pull --registry-config anon-auth.json -o handoff \
-  ghcr.io/mingulov/p11lab@sha256:<handoff-digest>
+  ghcr.io/p11lab/softhsm2@sha256:<handoff-digest>
 python3 -m p11lab publish show-handoff --handoff handoff/handoff.json
 
 # 3. Fetch the bundle by its manifest reference, anonymously, then verify
 # the file bytes against the handoff file digest.
 oras pull --registry-config anon-auth.json -o bundle \
-  ghcr.io/mingulov/p11lab@sha256:<bundle-manifest-digest>
+  ghcr.io/p11lab/softhsm2@sha256:<bundle-manifest-digest>
 sha256sum bundle/*.tar.gz  # must equal the handoff binary file digest
 
 # 4. Install and run. No Docker is used or needed.
@@ -204,9 +229,9 @@ manifest digests from the handoff (`source.reference`, `binary.reference`):
 ```sh
 printf '{"auths":{}}\n' > anon-auth.json
 oras pull --registry-config anon-auth.json -o verify \
-  ghcr.io/mingulov/p11lab@sha256:<source-manifest-digest>
+  ghcr.io/p11lab/softhsm2@sha256:<source-manifest-digest>
 sha256sum verify/sealed-source.tar.gz  # must equal the sealed file digest
-DOCKER_CONFIG="$PWD/empty-docker" docker pull ghcr.io/mingulov/p11lab@sha256:<binary-manifest-digest>
+DOCKER_CONFIG="$PWD/empty-docker" docker pull ghcr.io/p11lab/softhsm2@sha256:<binary-manifest-digest>
 ```
 
 ## Pins

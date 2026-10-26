@@ -31,7 +31,27 @@ class PublishError(ValueError):
 
 
 SCHEMA_VERSION = 1
-REGISTRY_PACKAGE = "ghcr.io/mingulov/p11lab"
+REGISTRY_NAMESPACE = "ghcr.io/p11lab"
+
+
+def package_repo(environment: str) -> str:
+    """Default delivery repository for one catalogue environment."""
+    _require(isinstance(environment, str) and _TAG_ENV.fullmatch(environment),
+             "invalid catalogue environment for repository")
+    return REGISTRY_NAMESPACE + "/" + environment
+
+
+def require_repository(value: str) -> str:
+    """Accept only strict repository paths (explicit registry inputs)."""
+    _require(isinstance(value, str) and _REPO.fullmatch(value), "registry must be a repository path")
+    return value
+
+
+def effective_registry(raw: str, environment: str) -> str:
+    """Resolve an explicit registry input or the per-environment default."""
+    if raw:
+        return require_repository(raw)
+    return package_repo(environment)
 
 # Pinned acquisition tool. The installer scripts embed these same values;
 # tests enforce parity. Resolved 2026-10-05: v1.3.4 is the latest stable
@@ -78,8 +98,8 @@ PUBLISH_WORKFLOWS = (
     "windows-native-bouncyhsm.yml",
 )
 
-# Registry tag roles inside the single package. Tags are aliases; only the
-# recorded digest identifies an artifact for acquisition.
+# Registry tag roles inside each environment repository. Tags are aliases;
+# only the recorded digest identifies an artifact for acquisition.
 TAG_ROLES = ("src", "rt", "sbom", "native", "handoff")
 _TAG_ENV = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 _PLATFORM = re.compile(r"[a-z0-9]+/[a-z0-9]+\Z")
@@ -95,7 +115,8 @@ ACTION_INPUTS = {
     "environment": {"required": True, "description": "Catalogue environment ID (e.g. softhsm2)."},
     "channel": {"required": True, "description": "Locked channel: release or rolling."},
     "mode": {"required": False, "default": "direct", "description": "Execution mode: direct or native."},
-    "registry": {"required": False, "default": REGISTRY_PACKAGE, "description": "Registry package holding the handoff."},
+    "registry": {"required": False, "default": "",
+                 "description": "Registry repository holding the handoff (default ghcr.io/p11lab/<environment>)."},
     "handoff-digest": {"required": True, "description": "Immutable handoff digest (sha256:<hex>)."},
     "command": {"required": True, "description": "Application argv as a JSON array of strings."},
     "inputs": {"required": False, "default": "", "description": "Newline-separated NAME=VALUE provider inputs."},
@@ -153,6 +174,75 @@ def parse_tag(tag: str) -> dict:
     return {"role": role, "environment": environment, "channel": channel, "target": target, "short": short}
 
 
+_TAG_ALIAS = re.compile(r"[a-zA-Z0-9_][a-zA-Z0-9_.\-]{0,127}\Z")
+_GIT_REV = re.compile(r"[0-9a-f]{40}\Z")
+# Floating names stay channel-owned: a versioned alias that spells one is
+# dropped so a release build can never overwrite the rolling discovery tag
+# (or vice versa) in the shared per-environment repository.
+_RESERVED_ALIASES = frozenset({"latest", "rolling"})
+
+
+def aliases_for_sources(sources, channel: str) -> list[str]:
+    """Version/floating aliases for one lock source roster (pure)."""
+    floats = {"release": "latest", "rolling": "rolling"}
+    if channel not in floats:
+        return []
+    aliases: list[str] = []
+    if isinstance(sources, list) and len(sources) == 1 and isinstance(sources[0], dict):
+        only = sources[0]
+        if channel == "release":
+            selector = only.get("selector") if isinstance(only.get("selector"), dict) else {}
+            if only.get("kind") == "git" and selector.get("kind") == "tag":
+                aliases.append(selector.get("value"))
+        else:
+            revision = only.get("revision")
+            if only.get("kind") == "git" and isinstance(revision, str) and _GIT_REV.fullmatch(revision):
+                aliases.append("rolling-" + revision[:12])
+    aliases.append(floats[channel])
+    kept: list[str] = []
+    for alias in aliases:
+        if not (isinstance(alias, str) and _TAG_ALIAS.fullmatch(alias)) or alias in kept:
+            continue
+        if alias != floats[channel] and (alias in _RESERVED_ALIASES or _is_canonical_alias(alias)):
+            continue
+        kept.append(alias)
+    return kept
+
+
+def _is_canonical_alias(value: str) -> bool:
+    """Whether a version string spells a delivery alias (must not shadow one)."""
+    try:
+        parse_tag(value)
+    except PublishError:
+        return False
+    return True
+
+
+def runtime_aliases(environment: str, channel: str) -> list[str]:
+    """Human-friendly runtime tags derived from the locked channel bytes.
+
+    Pure over packaged lock bytes: the same lock always yields the same
+    aliases. Release floats ``latest`` (plus the verbatim upstream tag
+    when the lock pins exactly one); rolling floats ``rolling`` (plus
+    ``rolling-<rev12>`` when the lock pins exactly one git revision).
+    Discovery aliases only; never acquisition identity.
+    """
+    if channel not in {"release", "rolling"}:
+        return []
+    try:
+        descriptor = json.loads(packaged_asset(environment, "provider.json").read_bytes())
+        channels = descriptor.get("channels") if isinstance(descriptor, dict) else None
+        entry = channels.get(channel) if isinstance(channels, dict) else None
+        if (not isinstance(entry, dict) or entry.get("status") != "locked"
+                or not isinstance(entry.get("lock"), str) or not entry["lock"]):
+            return []
+        lock = json.loads(packaged_asset(environment, entry["lock"]).read_bytes())
+        sources = lock.get("sources") if isinstance(lock, dict) else None
+    except (OSError, ValueError):
+        return []
+    return aliases_for_sources(sources, channel)
+
+
 def require_digest_reference(reference: str) -> dict:
     """Accept only immutable digest references; tag aliases are rejected."""
     _require(isinstance(reference, str), "artifact reference must be a string")
@@ -177,7 +267,7 @@ def validate_action_inputs(values: dict) -> dict:
     _require(_TAG_ENV.fullmatch(normalized["environment"]), "action environment must be a catalogue ID")
     _require(normalized["channel"] in {"release", "rolling"}, "action channel must be release or rolling")
     _require(normalized["mode"] in {"direct", "native"}, "action mode must be direct or native")
-    _require(_REPO.fullmatch(normalized["registry"]), "action registry must be a repository path")
+    normalized["registry"] = effective_registry(normalized["registry"], normalized["environment"])
     _require(re.fullmatch(r"sha256:[0-9a-f]{64}", normalized["handoff-digest"]), "action handoff-digest must be sha256:<hex>")
     try:
         command = json.loads(normalized["command"])
@@ -833,6 +923,10 @@ def expose(*, admission_path: Path, pushed_digest: str, pushed_tag: str, pushed_
                                 catalogue.get("target") if role == "native" else None)
     _require(pushed_tag == expected_tag, f"exposed tag {pushed_tag} is not the delivery alias {expected_tag}")
     binary["tag"] = pushed_tag
+    # Runtime images carry human-friendly aliases (version/floating tags)
+    # pushed alongside the canonical digest alias; native bundles keep the
+    # canonical alias only (OCI tags share one namespace per repository).
+    binary["aliases"] = runtime_aliases(catalogue_env, catalogue_channel) if role == "runtime" else []
     binary["reference"] = registry + "@sha256:" + pushed_digest
     handoff = {"schema_version": SCHEMA_VERSION, "registry": registry, "catalogue": catalogue,
                "source": admission["source"], "binary": binary, "admission": admission["verdict"],

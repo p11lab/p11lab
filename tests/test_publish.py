@@ -46,13 +46,14 @@ def test_tag_scheme_binds_digest_short_and_parses():
 
 
 def test_acquisition_requires_digest_references():
-    parsed = publish.require_digest_reference("ghcr.io/mingulov/p11lab@sha256:" + "cd" * 32)
-    assert parsed["repository"] == "ghcr.io/mingulov/p11lab"
+    parsed = publish.require_digest_reference("ghcr.io/p11lab/softhsm2@sha256:" + "cd" * 32)
+    assert parsed["repository"] == "ghcr.io/p11lab/softhsm2"
     local = publish.require_digest_reference("127.0.0.1:5050/p11lab@sha256:" + "cd" * 32)
     assert local["repository"] == "127.0.0.1:5050/p11lab"
-    for alias in ("ghcr.io/mingulov/p11lab:latest",
-                  "ghcr.io/mingulov/p11lab:rt-softhsm2-release-aabbccddee12",
-                  "ghcr.io/mingulov/p11lab@sha256:xyz",
+    for alias in ("ghcr.io/p11lab/softhsm2:latest",
+                  "ghcr.io/p11lab/softhsm2:2.7.0",
+                  "ghcr.io/p11lab/softhsm2:rt-softhsm2-release-aabbccddee12",
+                  "ghcr.io/p11lab/softhsm2@sha256:xyz",
                   "not a reference"):
         with pytest.raises(ValueError):
             publish.require_digest_reference(alias)
@@ -64,7 +65,7 @@ def test_validate_action_inputs_defaults_and_failures():
     normalized = publish.validate_action_inputs(base)
     assert normalized["mode"] == "direct" and normalized["timeout_seconds"] == 300
     assert normalized["command_argv"] == ["app", "--x"] and normalized["input_entries"] == []
-    assert normalized["registry"] == publish.REGISTRY_PACKAGE
+    assert normalized["registry"] == "ghcr.io/p11lab/softhsm2"
     full = publish.validate_action_inputs(base | {"mode": "native", "inputs": "A=1\nB=2",
         "state-dir": "/tmp/state", "timeout": "45", "working-directory": "caller"})
     assert full["input_entries"] == ["A=1", "B=2"] and full["timeout_seconds"] == 45
@@ -145,8 +146,8 @@ inputs:
     default: direct
 
   registry:
-    default: 'ghcr.io/mingulov/p11lab'
-    description: Registry package holding the handoff.
+    default: ''
+    description: Registry repository holding the handoff (default ghcr.io/p11lab/<environment>).
     required: false
 
   handoff-digest:
@@ -742,6 +743,7 @@ def test_expose_binds_pushed_bundle_after_readback(tmp_path):
     assert handoff["binary"]["reference"] == "127.0.0.1:5050/p11lab@sha256:" + pushed
     assert handoff["binary"]["manifest_sha256"] == pushed
     assert handoff["binary"]["file_sha256"] == digest
+    assert handoff["binary"]["aliases"] == []
     assert handoff["admission"]["status"] == "blocked"
     assert "digest" not in handoff and "handoff_sha256" not in handoff and "self_digest" not in handoff
     assert exposed["reference"].endswith(pushed)
@@ -817,6 +819,7 @@ def test_expose_compares_engine_inspects_for_runtimes(tmp_path):
     handoff = publish.show_handoff(Path(exposed["handoff"]))
     assert handoff["binary"]["engine_id"] == "sha256:" + engine
     assert handoff["binary"]["manifest_sha256"] == pushed
+    assert handoff["binary"]["aliases"] == ["2.7.0", "latest"]
     drifted = dict(after, RootFS={"Layers": ["sha256:" + "dd" * 32]})
     drifted_path = tmp_path / "drifted.json"
     drifted_path.write_text(json.dumps([drifted]))
@@ -1740,3 +1743,105 @@ def test_action_real_native_receipt_boundary(tmp_path, monkeypatch, native_recei
     assert outputs["receipt-path"] == str(run_dir / "run-output/receipt.json")
     receipt = json.loads(Path(outputs["receipt-path"]).read_text())
     assert receipt["mode"] == "native" and "run_id" not in receipt
+
+
+def test_package_repo_builds_per_environment_repository():
+    assert publish.package_repo("softhsm2") == "ghcr.io/p11lab/softhsm2"
+    assert publish.package_repo("opensc-pivapplet") == "ghcr.io/p11lab/opensc-pivapplet"
+    for bad in ("", "SoftHSM2", "../evil", "a b", "a/b"):
+        with pytest.raises(ValueError):
+            publish.package_repo(bad)
+
+
+def test_validate_action_inputs_defaults_registry_per_environment():
+    base = {"environment": "softhsm2", "channel": "release",
+            "handoff-digest": "sha256:" + "ef" * 32, "command": '["app"]'}
+    assert publish.validate_action_inputs(base)["registry"] == "ghcr.io/p11lab/softhsm2"
+    explicit = publish.validate_action_inputs(base | {"registry": "127.0.0.1:5050/p11lab"})
+    assert explicit["registry"] == "127.0.0.1:5050/p11lab"
+    assert publish.ACTION_INPUTS["registry"]["default"] == ""
+
+
+def test_runtime_aliases_derive_from_locks():
+    assert publish.runtime_aliases("softhsm2", "release") == ["2.7.0", "latest"]
+    assert publish.runtime_aliases("softhsm2", "rolling")[1] == "rolling"
+    assert publish.runtime_aliases("haskoki", "release") == []
+    assert publish.runtime_aliases("bouncyhsm", "release") == ["latest"]
+    assert publish.runtime_aliases("cryptech", "release") == []
+    assert publish.runtime_aliases("pkcs11rs", "release") == []
+    assert publish.runtime_aliases("nope", "release") == []
+
+
+def test_runtime_aliases_cover_every_locked_channel():
+    import re
+    grammar = re.compile(r"[a-zA-Z0-9_][a-zA-Z0-9_.\-]{0,127}\Z")
+    providers = ROOT / "src" / "p11lab" / "data" / "providers"
+    seen = 0
+    for descriptor in sorted(providers.glob("*/provider.json")):
+        env = descriptor.parent.name
+        channels = json.loads(descriptor.read_text())["channels"]
+        for channel, float_tag in (("release", "latest"), ("rolling", "rolling")):
+            if channels.get(channel, {}).get("status") != "locked":
+                continue
+            seen += 1
+            aliases = publish.runtime_aliases(env, channel)
+            assert aliases and aliases[-1] == float_tag, (env, channel, aliases)
+            assert all(grammar.fullmatch(a) for a in aliases), (env, channel, aliases)
+    assert seen > 30  # both channels across the catalogue, not an empty walk
+    assert publish.runtime_aliases("opensc-pico", "release") == ["0.27.1", "latest"]
+    assert publish.runtime_aliases("nss", "release") == ["NSS_3_130_RTM", "latest"]
+    assert publish.runtime_aliases("sc-hsm", "release") == ["V2.12", "latest"]
+    assert publish.runtime_aliases("softhsm2", "rolling") == ["rolling-884cb38f3d20", "rolling"]
+
+
+def test_delivery_workflows_resolve_registry_per_environment():
+    for name in ("provider-delivery.yml", "native-delivery.yml"):
+        text = (ROOT / ".github" / "workflows" / name).read_text()
+        assert "effective_registry" in text and "P11LAB_REGISTRY" in text
+        assert "'$P11LAB_REGISTRY'" not in text, name  # shell vars need double quotes
+        assert 'echo "P11LAB_REGISTRY$(' not in text, name  # no masked substitution
+        assert "package_repo('${{ inputs.environment }}')" not in text, name
+        assert text.count("- name: Resolve the effective registry") == 5, name
+        for line in text.splitlines():
+            if "${{ inputs.registry }}" in line:
+                # Runner-level env mapping only: never interpolated into shell.
+                assert "P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}" in line, (name, line)
+
+
+def test_provider_delivery_pushes_runtime_aliases():
+    text = (ROOT / ".github" / "workflows" / "provider-delivery.yml").read_text()
+    assert "runtime_aliases" in text
+    assert 'STAGE_TAG="t13-staging-${{ inputs.channel }}"' in text
+
+
+def test_require_repository_accepts_strict_paths_only():
+    assert publish.require_repository("ghcr.io/p11lab/softhsm2") == "ghcr.io/p11lab/softhsm2"
+    assert publish.require_repository("127.0.0.1:5050/p11lab") == "127.0.0.1:5050/p11lab"
+    for bad in ("", "ghcr.io", "a\nb", "a;evil", "a b", "$(touch x)", "P11LAB_REGISTRY=evil"):
+        with pytest.raises(ValueError):
+            publish.require_repository(bad)
+
+
+def test_effective_registry_prefers_validated_explicit_input():
+    assert publish.effective_registry("", "softhsm2") == "ghcr.io/p11lab/softhsm2"
+    assert publish.effective_registry("127.0.0.1:5050/p11lab", "softhsm2") == "127.0.0.1:5050/p11lab"
+    with pytest.raises(ValueError):
+        publish.effective_registry("evil\nP11LAB_REGISTRY=x", "softhsm2")
+    with pytest.raises(ValueError):
+        publish.effective_registry("", "nope!")
+
+
+def test_aliases_for_sources_reserves_floating_names():
+    def git(sel=None, rev="ab" * 20):
+        return {"kind": "git", "selector": sel, "revision": rev}
+    assert publish.aliases_for_sources([git({"kind": "tag", "value": "2.7.0"})], "release") == ["2.7.0", "latest"]
+    assert publish.aliases_for_sources([git({"kind": "tag", "value": "rolling"})], "release") == ["latest"]
+    assert publish.aliases_for_sources([git({"kind": "tag", "value": "latest"})], "release") == ["latest"]
+    assert publish.aliases_for_sources(
+        [git({"kind": "tag", "value": "src-softhsm2-release-cdcdcdcdcdcd"})], "release") == ["latest"]
+    assert publish.aliases_for_sources(
+        [git({"kind": "tag", "value": "rt-x-rolling-abcdef123456"})], "release") == ["latest"]
+    assert publish.aliases_for_sources([git(rev="cd" * 20)], "rolling") == ["rolling-" + "cd" * 6, "rolling"]
+    assert publish.aliases_for_sources([], "release") == ["latest"]
+    assert publish.aliases_for_sources([git(), git()], "rolling") == ["rolling"]
+    assert publish.aliases_for_sources("nope", "release") == ["latest"]
