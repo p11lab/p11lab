@@ -1,0 +1,473 @@
+# SPDX-License-Identifier: Apache-2.0
+# Direct-lane pkcs11-check runs for pushed provider runtimes (basic + full).
+# Pipeline: derivative (local-only checker images, never pushed) -> plan
+# (frozen shard plans, computed INSIDE a derivative container) -> shard
+# matrix (one checker run per shard via `p11lab run --mode direct`:
+# init -> health -> checker -> post-health) -> merge (roster validation +
+# baseline verdict inside a derivative container, fail closed). Plan and
+# merge run containerized because roster validation compares source paths:
+# only the shared /opt/p11lab-checker layout agrees across plan, shard,
+# and merge legs.
+# Suites: smoke = frozen smoke-v1 selection, unsharded (PR gate, minutes).
+# full = complete suite sharded per provider (~10 min/shard rule borrowed
+# from pkcs11-check test_pool.py) and ACTIVATES ONLY when a frozen full-v1
+# profile lands (run_checker rejects non-frozen selections by design; until
+# then full fails closed naming the prerequisite). Tags are aliases: digests
+# below are the run identities (verified 2026-10-26; new pushes MOVE tags).
+# Images are UNGATED alpha: no admission verdict, no licensing review, no
+# qualification claim. Baselines start empty (unqualified providers fail on
+# first findings) and grow only from reviewed evidence. Proxy lane is a
+# separate follow-up: it needs daemon derivatives + checker consumers +
+# client bundles that do not exist yet.
+name: checker-direct-validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'smoke (PR-fast) or full (complete suite, sharded; needs frozen full-v1 profile).'
+        required: true
+        default: 'smoke'
+      channel:
+        description: 'Locked channel (release only until rolling digests are verified).'
+        required: true
+        default: 'release'
+  pull_request:
+    paths:
+      - '.github/workflows/checker-direct-validation.yml'
+      - 'src/p11lab/data/providers/haskoki/**'
+      - 'src/p11lab/data/providers/freehsm/**'
+      - 'src/p11lab/data/providers/kryoptic/**'
+      - 'src/p11lab/data/providers/bouncyhsm/**'
+      - 'src/p11lab/data/providers/softhsm2/**'
+      - 'src/p11lab/data/tools.json'
+      - 'src/p11lab/data/profiles/smoke-v1.json'
+
+permissions:
+  contents: read
+  actions: read # merge selects shard artifacts by name via gh (avoids GBs of derivative tarballs)
+
+concurrency:
+  group: checker-direct-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  HASKOKI_DIGEST: 'sha256:dc7086e2b831f47223460d9ac3afd8cd8106deb9c135d4084d963cd0b7f84daa'
+  FREEHSM_DIGEST: 'sha256:ea6e772d2e1ac81a25cc9c05993734877f9e01af962ce90b2fad155f8546f14c'
+  KRYOPTIC_DIGEST: 'sha256:5c88844a01ccee85fda9bc57acbaa67c8b936ee539b411fa6b4af912f77c70cd'
+  BOUNCYHSM_DIGEST: 'sha256:201278cde7c272203a317e00f30ff8ebc8485e3a066939aff83484435b58d3ba'
+  SOFTHSM2_DIGEST: 'sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16'
+  CHECKER_VERSION: '0.2.2'
+  # Expected-failures baselines per environment and suite (canonical node
+  # IDs), reviewed entries only. Empty = unqualified. Extract to files
+  # once non-empty.
+  BASELINES: '{"haskoki":{"smoke":[],"full":[]},"freehsm":{"smoke":[],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":[],"full":[]},"softhsm2":{"smoke":[],"full":[]}}'
+  # Full-suite shard counts (smoke is always 1). Starting hints from
+  # pkcs11-check test_pool.py timing practice; retune from evidence. Each
+  # shard must fit the 900 s in-runner checker cap.
+  FULL_SHARDS: '{"haskoki":2,"freehsm":4,"kryoptic":5,"bouncyhsm":8,"softhsm2":2}'
+
+jobs:
+  plan:
+    needs: derivative
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      matrix: ${{ steps.freeze.outputs.matrix }}
+      suite: ${{ steps.freeze.outputs.suite }}
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+
+      - name: Install p11lab CLI and validate catalogue
+        run: |
+          python -m pip install --disable-pip-version-check .
+          p11lab validate
+          docker version --format '{{.Server.Version}}'
+
+      - name: Download one derivative image (shared layout)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          # Any single derivative: all five share the identical
+          # /opt/p11lab-checker layout the roster validation compares.
+          name: checker-direct-derivative-softhsm2-${{ github.run_id }}
+          path: incoming-derivative/
+
+      - name: Freeze shard plans (inside derivative container)
+        id: freeze
+        run: |
+          if [ '${{ github.event_name }}' = 'pull_request' ]; then suite='smoke'; else suite='${{ inputs.suite }}'; fi
+          case "$suite" in smoke|full) ;; *) echo "unknown suite $suite" >&2; exit 1 ;; esac
+          channel='${{ inputs.channel || 'release' }}'
+          test "$channel" = 'release' || { echo "channel $channel is not verified for checker-direct" >&2; exit 1; }
+          if [ "$suite" = 'full' ] && [ ! -f 'src/p11lab/data/profiles/full-v1.json' ]; then
+            echo 'full suite needs a frozen full-v1 profile (run_checker rejects non-frozen selections); smoke-v1 is the only frozen profile' >&2
+            exit 1
+          fi
+          gzip -dc 'incoming-derivative/derivative-softhsm2.tar.gz' | docker load
+          mkdir -p planwork/plan
+          cat > planwork/planner.py <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          import pkcs11_check.testcases as tests
+          from p11lab.checker import load_profile
+          from p11lab.shards import plan_shards
+
+          suite = sys.argv[1]
+          root = Path(tests.__file__).resolve().parent
+          counts = json.loads(os.environ['FULL_SHARDS'])
+          if suite == 'smoke':
+              rosters = {env: load_profile()['nodes'] for env in counts}
+              counts = {env: 1 for env in counts}
+              frozen = load_profile()
+          else:
+              profile_name = '/opt/p11lab-code/p11lab/data/profiles/full-v1.json'
+              frozen = json.loads(Path(profile_name).read_text())
+              rosters = {env: frozen['nodes'] for env in counts}
+          matrix = []
+          for env, roster in sorted(rosters.items()):
+              plan_dir = Path('/work/plan') / env
+              plan = plan_shards(root, roster, counts[env], plan_dir)
+              for shard in plan['shards']:
+                  # Full frozen identity + shard nodes: load_profile(path)
+                  # rejects nodes-only files.
+                  profile = dict(frozen, nodes=shard['nodes'])
+                  (plan_dir / ('shard-%d.json' % shard['shard_id'])).write_text(json.dumps(profile, indent=2))
+                  matrix.append({'environment': env, 'shard': shard['shard_id'],
+                                 'nodes': len(shard['nodes'])})
+          print('MATRIX=' + json.dumps({'include': matrix}))
+          print('suite=%s shards=%d' % (suite, len(matrix)), file=sys.stderr)
+          PY
+          docker run --rm --network none --entrypoint /opt/p11lab-checker/bin/python \
+            -e FULL_SHARDS -v "$PWD/planwork:/work" 'p11lab-ci/checker-softhsm2:local' \
+            /work/planner.py "$suite" > planwork/planner.log 2>&1
+          grep '^MATRIX=' planwork/planner.log | head -n 1 | sed 's/^MATRIX=matrix=/' > planwork/matrix.out
+          test -s planwork/matrix.out || { echo 'planner produced no matrix' >&2; tail -n 20 planwork/planner.log >&2; exit 1; }
+          cat planwork/matrix.out >> "$GITHUB_OUTPUT"
+          printf 'suite=%s\n' "$suite" >> "$GITHUB_OUTPUT"
+          mv planwork/plan ./plan
+
+      - name: Upload shard plans
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-direct-plan-${{ github.run_id }}
+          path: plan/
+          retention-days: 30
+          if-no-files-found: error
+
+  derivative:
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [haskoki, freehsm, kryoptic, bouncyhsm, softhsm2]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Pull runtime by digest and verify identity
+        run: |
+          digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
+          digest="${!digest_var}"
+          test -n "$digest" || { echo 'no digest pin' >&2; exit 1; }
+          ref="ghcr.io/p11lab/${{ matrix.environment }}@$digest"
+          docker pull "$ref"
+          actual="$(docker inspect --format '{{index .RepoDigests 0}}' "$ref" | cut -d@ -f2)"
+          test "$actual" = "$digest" || { echo "digest drift: $actual" >&2; exit 1; }
+
+      - name: Build local checker derivative (never pushed)
+        run: |
+          # Online-build deviation from the offline checker.Dockerfile recipe
+          # (checker toolset acquisition is not implemented yet): same
+          # /opt/p11lab-checker layout, adapter sources from this checkout.
+          # Replace with a pulled derivative once published.
+          rev="$(python3 -c 'import json; print(json.load(open("src/p11lab/data/tools.json"))["tools"]["checker"]["source"]["revision"])')"
+          url="$(python3 -c 'import json; print(json.load(open("src/p11lab/data/tools.json"))["tools"]["checker"]["source"]["url"])')"
+          digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
+          cat > "$RUNNER_TEMP/Dockerfile.checker" <<EOF
+          FROM ghcr.io/p11lab/${{ matrix.environment }}@${!digest_var}
+          RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv git \
+            && rm -rf /var/lib/apt/lists/* \
+            && python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version"
+          RUN python3 -m venv /opt/p11lab-checker
+          RUN /opt/p11lab-checker/bin/pip install --no-cache-dir "pkcs11-check @ git+$url@$rev"
+          COPY src/p11lab /opt/p11lab-code/p11lab/
+          RUN chmod -R a+rX /opt/p11lab-code \
+            && /opt/p11lab-checker/bin/python -c 'import sysconfig; open(sysconfig.get_paths()["purelib"] + "/p11lab.pth", "w").write("/opt/p11lab-code\n")' \
+            && /opt/p11lab-checker/bin/python -c "import importlib.metadata as m; assert m.version('pkcs11-check') == '$CHECKER_VERSION', m.version('pkcs11-check')" \
+            && mkdir -p /usr/share/p11lab \
+            && /opt/p11lab-checker/bin/python -c 'import json; from p11lab.checker import SOURCE,WHEEL,LOCK; open("/usr/share/p11lab/checker-install.json","w").write(json.dumps({"source_revision":SOURCE,"wheel_sha256":WHEEL,"runtime_lock_sha256":LOCK}))' \
+            && /opt/p11lab-checker/bin/python -c 'from p11lab.checker import installed_identity,source_inventory,load_profile; from pathlib import Path; i=installed_identity(); source_inventory(Path(i["installed_root"]),load_profile()["nodes"])'
+          EOF
+          docker build --no-cache -f "$RUNNER_TEMP/Dockerfile.checker" \
+            -t "p11lab-ci/checker-${{ matrix.environment }}:local" .
+
+      - name: Save derivative image
+        run: |
+          docker save "p11lab-ci/checker-${{ matrix.environment }}:local" \
+            | gzip -1 > "derivative-${{ matrix.environment }}.tar.gz"
+          ls -la derivative-*.tar.gz
+
+      - name: Upload derivative image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-direct-derivative-${{ matrix.environment }}-${{ github.run_id }}
+          path: derivative-${{ matrix.environment }}.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  shard:
+    needs: [plan, derivative]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+
+      - name: Install p11lab CLI
+        run: |
+          python -m pip install --disable-pip-version-check .
+          docker version --format '{{.Server.Version}}'
+
+      - name: Download shard plan
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-direct-plan-${{ github.run_id }}
+          path: incoming-plan/
+
+      - name: Download own derivative image
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-direct-derivative-${{ matrix.environment }}-${{ github.run_id }}
+          path: incoming-derivative/
+
+      - name: Load derivative and shard profile
+        id: inputs
+        run: |
+          gzip -dc "incoming-derivative/derivative-${{ matrix.environment }}.tar.gz" | docker load
+          printf 'id=%s\n' "$(docker inspect --format '{{.Id}}' 'p11lab-ci/checker-${{ matrix.environment }}:local')" >> "$GITHUB_OUTPUT"
+          mkdir -p run-cwd
+          cp "incoming-plan/${{ matrix.environment }}/shard-${{ matrix.shard }}.json" \
+            run-cwd/shard-profile.json
+
+      - name: Run checker shard (direct lane)
+        id: checker
+        timeout-minutes: 200
+        run: |
+          case '${{ matrix.environment }}' in
+            haskoki) pin='1234'; so_pin='5678' ;;
+            *) pin='1234'; so_pin='12345678' ;;
+          esac
+          echo "::add-mask::$pin"
+          echo "::add-mask::$so_pin"
+          mkdir -p run-cwd/secrets shard-out
+          printf '%s' "$pin" > run-cwd/secrets/pin
+          printf '%s' "$so_pin" > run-cwd/secrets/so-pin
+          chmod 600 run-cwd/secrets/pin run-cwd/secrets/so-pin
+          set +e
+          python - '${{ matrix.environment }}' '${{ matrix.shard }}' \
+            '${{ steps.inputs.outputs.id }}' <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from p11lab.checker import run_checker
+          from p11lab.models import ArtifactRef, RunSpec
+
+          env, shard, image_id = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+          profile = Path('run-cwd/shard-profile.json').resolve()
+          inputs = {'P11LAB_LABEL': {'haskoki': 'haskoki-demo'}.get(env, 'P11Lab'),
+                    'P11LAB_PIN_FILE': str(Path('run-cwd/secrets/pin').resolve()),
+                    'P11LAB_SO_PIN_FILE': str(Path('run-cwd/secrets/so-pin').resolve())}
+          spec = RunSpec(environment=env, channel='release', mode='direct',
+                         artifact=ArtifactRef('docker-local', image_id, image_id.removeprefix('sha256:'),
+                                              'linux/amd64'),
+                         execution_location='provider', consumer_artifact=None, client_artifact=None,
+                         argv=(), inputs=inputs, output_dir=Path('shard-out').resolve(),
+                         cwd=Path('run-cwd').resolve(), timeout_seconds=3600)
+          result = run_checker(spec, str(profile))
+          receipt = json.loads((spec.output_dir / 'checker/checker-receipt.json').read_text())
+          # Project the 3-key seal: validate_shard_roster compares
+          # attempt['checker'] against plan['checker'] exactly.
+          seal = {k: receipt['checker'][k] for k in
+                  ('source_revision', 'wheel_sha256', 'runtime_lock_sha256')}
+          attempt = {'shard_id': shard, 'attempt_id': receipt['attempt_id'],
+                     'directory': str(spec.output_dir / 'checker'), 'nodes': receipt['nodes'],
+                     'sources': receipt['sources'], 'checker': seal, 'selected': True,
+                     'exit_code': result.exit_code, 'app_returncode': result.app_returncode,
+                     'lifecycle_errors': list(result.lifecycle_errors),
+                     'cleanup_errors': list(result.cleanup_errors)}
+          Path('attempt.json').write_text(json.dumps(attempt, indent=2))
+          print('shard %d exit=%s app=%s lifecycle=%s' % (
+              shard, result.exit_code, result.app_returncode, result.lifecycle_errors))
+          PY
+          status=$?
+          set -e
+          printf 'run_status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          echo "shard driver exit: $status (verdict decided by merge below)"
+
+      - name: Upload shard evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-direct-shard-${{ matrix.environment }}-${{ matrix.shard }}-${{ github.run_id }}
+          path: |
+            shard-out/
+            attempt.json
+          retention-days: 30
+          if-no-files-found: error
+
+  merge:
+    needs: [plan, shard]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Download plans and shards (by name, skips derivative tarballs)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p evidence
+          gh run download '${{ github.run_id }}' --name 'checker-direct-plan-${{ github.run_id }}' --dir evidence-plan
+          python3 - '${{ needs.plan.outputs.matrix }}' <<'PY'
+          import json
+          import subprocess
+          import sys
+          for leg in json.loads(sys.argv[1])['include']:
+              name = 'checker-direct-shard-%s-%d-%s' % (
+                  leg['environment'], leg['shard'], '${{ github.run_id }}')
+              subprocess.run(['gh', 'run', 'download', '${{ github.run_id }}', '--name', name,
+                              '--dir', 'evidence/' + name], check=True)
+          PY
+          mv evidence-plan evidence/checker-direct-plan-${{ github.run_id }}
+
+      - name: Download one derivative image (shared layout)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-direct-derivative-softhsm2-${{ github.run_id }}
+          path: incoming-derivative/
+
+      - name: Validate rosters, merge, verdict (inside derivative container)
+        id: verdict
+        run: |
+          gzip -dc 'incoming-derivative/derivative-softhsm2.tar.gz' | docker load
+          mkdir -p mergework/merged
+          cat > mergework/merger.py <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          from p11lab.checker import canonical_node
+          from p11lab.shards import merge_shards, validate_shard_roster
+
+          suite = sys.argv[1]
+          run_id = os.environ['CI_RUN_ID']
+          baselines = json.loads(os.environ['BASELINES'])
+          problems, failures = [], []
+
+          for env, expected in sorted(baselines.items()):
+              plan = json.loads((Path('/work/evidence/checker-direct-plan-%s' % run_id) / env / 'plan.json').read_text())
+              attempts = []
+              for shard_dir in sorted(Path('/work/evidence').glob('checker-direct-shard-%s-*' % env)):
+                  record = json.loads((shard_dir / 'attempt.json').read_text())
+                  # Re-anchor the worker-local directory to the merged copy.
+                  record['directory'] = str(shard_dir / 'shard-out/checker')
+                  attempts.append(record)
+              roster = validate_shard_roster(plan, attempts)
+              if not roster.get('complete'):
+                  problems.append('%s: incomplete shard roster: %s' % (env, roster.get('errors')))
+                  continue
+              merged = merge_shards(plan, attempts, Path('/work/merged') / env)
+              if not merged.get('complete'):
+                  problems.append('%s: merge incomplete: %s' % (env, merged.get('errors')))
+                  continue
+              root = Path(plan['installed_root'])
+              reports = [json.loads(line) for line in
+                         (Path('/work/merged') / env / 'merged/report.jsonl').read_text().splitlines() if line.strip()]
+              for report in reports:
+                  if report.get('$report_type') != 'TestReport' or report.get('lifecycle') == 'session-teardown':
+                      continue
+                  outcome = str(report.get('outcome', report.get('status', ''))).lower()
+                  if outcome in {'passed', 'pass'}:
+                      continue
+                  try:
+                      node_id = canonical_node(report['nodeid'], root)
+                  except (KeyError, ValueError):
+                      problems.append('%s: unrecognized report node %r' % (env, report.get('nodeid')))
+                      continue
+                  if node_id not in expected[suite]:
+                      failures.append('%s: %s (%s)' % (env, node_id, outcome or 'unknown'))
+
+          verdict = 'pass' if not problems and not failures else 'fail'
+          lines = ['## Checker direct (%s suite)' % suite,
+                   'infra problems: %d; new failures vs baseline: %d' % (len(problems), len(failures))]
+          lines += ['- infra: ' + p for p in problems]
+          lines += ['- NEW failure: ' + f for f in failures[:100]]
+          if len(failures) > 100:
+              lines.append('- ... and %d more' % (len(failures) - 100))
+          Path('/work/merged/summary.md').write_text('\n'.join(lines) + '\n')
+          Path('/work/merged/verdict.json').write_text(json.dumps({'verdict': verdict}))
+          print('\n'.join(lines))
+          sys.exit(0 if verdict == 'pass' else 1)
+          PY
+          set +e
+          docker run --rm --network none --entrypoint /opt/p11lab-checker/bin/python \
+            -e BASELINES -e CI_RUN_ID='${{ github.run_id }}' \
+            -v "$PWD/evidence:/work/evidence:ro" -v "$PWD/mergework:/work" \
+            'p11lab-ci/checker-softhsm2:local' /work/merger.py '${{ needs.plan.outputs.suite }}'
+          status=$?
+          set -e
+          printf 'verdict_status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          mv mergework/merged ./merged
+
+      - name: Publish verdict
+        if: always()
+        run: |
+          if [ -f merged/summary.md ]; then cat merged/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+          test '${{ steps.verdict.outputs.verdict_status }}' = '0' || { echo 'merge verdict: FAIL (see summary)' >&2; exit 1; }
+          test -f merged/verdict.json && python3 -c 'import json; assert json.load(open("merged/verdict.json"))["verdict"] == "pass"'
+
+      - name: Upload merged evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-direct-merged-${{ github.run_id }}
+          path: merged/
+          retention-days: 30
+          if-no-files-found: warn
