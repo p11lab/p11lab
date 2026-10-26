@@ -388,9 +388,9 @@
     },
     {
       "name": "quick-xml",
-      "version": "0.41.0",
-      "sha256": "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1",
-      "url": "https://static.crates.io/crates/quick-xml/quick-xml-0.41.0.crate"
+      "version": "0.42.0",
+      "sha256": "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b",
+      "url": "https://static.crates.io/crates/quick-xml/quick-xml-0.42.0.crate"
     },
     {
       "name": "quote",

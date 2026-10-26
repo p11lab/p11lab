@@ -3156,7 +3156,7 @@
     {
       "role": "notice",
       "path": "FILE-NOTICES.txt",
-      "sha256": "a73ed2eb1c7ae4ed05d83c2073df1591f3249b0e1ddbc2aca0b641f3ad4bd078"
+      "sha256": "bb615dea47a839180c7256dce9817afafea9f2e1d2263422f9e268ca7837771e"
     },
     {
       "role": "adapter-common",

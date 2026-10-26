@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [haskoki, kryoptic, freehsm, softhsm2, bouncyhsm]
+        environment: [kryoptic, freehsm, bouncyhsm]
     steps:
       - name: Checkout P11Lab
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -110,3 +110,4 @@ jobs:
           docker logout "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)"
 
 # Trigger 2026-10-26 re-run with haskoki release fixes (comment-only; no logic change).
+# Trigger 2026-10-26 version-update rebuild: kryoptic v1.5.4, freehsm v2.4.0, bouncyhsm v2.3.4.

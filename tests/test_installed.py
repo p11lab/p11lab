@@ -45,7 +45,7 @@ print(Path.cwd())
 
 def test_installed_describe_explains_unavailable_and_rejects_unknown_channel(installed):
     command, _, caller, env = installed
-    result = subprocess.run([str(command), 'describe', 'haskoki', '--channel', 'release'], cwd=caller, env=env, capture_output=True, text=True, check=True)
+    result = subprocess.run([str(command), 'describe', 'pkcs11rs', '--channel', 'release'], cwd=caller, env=env, capture_output=True, text=True, check=True)
     assert json.loads(result.stdout)['channel_spec']['status'] == 'unavailable'
     result = subprocess.run([str(command), 'describe', 'haskoki', '--channel', 'made-up'], cwd=caller, env=env, capture_output=True, text=True)
     assert result.returncode == 2
