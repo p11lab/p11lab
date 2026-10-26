@@ -2650,8 +2650,8 @@
     },
     {
       "role": "notice",
-      "path": "FILE-NOTICES.txt",
-      "sha256": "2a83d5adcbcb85d3ace59814334c8462d8c3ec61fe9a61b35d50fff4a646a14b",
+      "path": "FILE-NOTICES-rolling.txt",
+      "sha256": "2bcbb8007ff145df93d8c12b520a6697e016aaa9b87a133b17a7dfd3d219f552",
       "context_path": "FILE-NOTICES.txt"
     },
     {
@@ -2661,32 +2661,32 @@
     },
     {
       "role": "build-helper",
-      "path": "dotnet-locks/BouncyHsm.packages.lock.json",
-      "sha256": "e4919f55c334288bf79b45e233294e4f308756557c14dd2d2e836c0f26333883",
+      "path": "dotnet-locks-rolling/BouncyHsm.packages.lock.json",
+      "sha256": "317b13cb9070f4268d42a82779dcbc5de5d181db40eca8138bd02a23cb6b45c2",
       "context_path": "dotnet-locks/BouncyHsm.packages.lock.json"
     },
     {
       "role": "build-helper",
-      "path": "dotnet-locks/BouncyHsm.Core.packages.lock.json",
-      "sha256": "2074a9f55f963f404b06fa2d9fd44644dbfd07bd99eef8988b3b1740abf20608",
+      "path": "dotnet-locks-rolling/BouncyHsm.Core.packages.lock.json",
+      "sha256": "8e75b66ef3592f336a9d11acd5f27de2a12361a0e923052eadcb3a738b6eeeef",
       "context_path": "dotnet-locks/BouncyHsm.Core.packages.lock.json"
     },
     {
       "role": "build-helper",
-      "path": "dotnet-locks/BouncyHsm.Client.packages.lock.json",
-      "sha256": "aa529136ced0b0b98a8fc2560f3524a9c1d6a4538fbbb5655e9030bf4d4a1074",
+      "path": "dotnet-locks-rolling/BouncyHsm.Client.packages.lock.json",
+      "sha256": "fbafd6b10281da5d496c6a260b2dcad28af3b3f4c8712285a1d8f870d259de70",
       "context_path": "dotnet-locks/BouncyHsm.Client.packages.lock.json"
     },
     {
       "role": "build-helper",
-      "path": "dotnet-locks/BouncyHsm.Infrastructure.packages.lock.json",
-      "sha256": "f60864c3d1ed033abce73759eceefb989fa407d6e9ec8258833d469ecbd3b979",
+      "path": "dotnet-locks-rolling/BouncyHsm.Infrastructure.packages.lock.json",
+      "sha256": "e476d07a58e4b54b2ebcc5add98e04db5b3f113e4fddcf2110763184d102057a",
       "context_path": "dotnet-locks/BouncyHsm.Infrastructure.packages.lock.json"
     },
     {
       "role": "build-helper",
-      "path": "dotnet-locks/BouncyHsm.Spa.packages.lock.json",
-      "sha256": "a7c154f10760b986dcbe46949633530dd53e5e35fd1f40ccfb1c2e4cb08d0e9e",
+      "path": "dotnet-locks-rolling/BouncyHsm.Spa.packages.lock.json",
+      "sha256": "15b3a611fecb6a8353537bec6e6bc88edb504da22c1cbc8946366bdd703427cc",
       "context_path": "dotnet-locks/BouncyHsm.Spa.packages.lock.json"
     }
   ],

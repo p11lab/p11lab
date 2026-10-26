@@ -224,3 +224,38 @@ def test_native_target_loader_still_refuses_bouncyhsm_status():
 
     with pytest.raises(CatalogError, match="not-packaged"):
         catalog.load_native_target("bouncyhsm", "release", "debian13-amd64")
+
+
+def test_bouncyhsm_native_locks_match_per_channel_source_revisions():
+    from p11lab import native
+    from p11lab.native import load_bouncyhsm_target
+
+    for channel, target in (("release", "windows-amd64"), ("release", "debian13-amd64"),
+                            ("rolling", "windows-amd64"), ("rolling", "debian13-amd64")):
+        lock = load_bouncyhsm_target("bouncyhsm", channel, target)["native_lock"]
+        assert lock["source"]["revision"] == native.BOUNCY_SOURCE_REVISIONS[channel]
+
+
+def test_bouncyhsm_native_loader_rejects_cross_channel_revision(tmp_path, monkeypatch):
+    import json
+    from p11lab import catalog, native
+    from p11lab.catalog import CatalogError
+    from p11lab.native import load_bouncyhsm_target
+
+    real = catalog.packaged_asset
+
+    def mutate(name, revision):
+        lock = json.loads(real("bouncyhsm", name).read_bytes())
+        lock["source"]["revision"] = revision
+        mutated = tmp_path / name
+        mutated.write_text(json.dumps(lock))
+        monkeypatch.setattr(catalog, "packaged_asset",
+                            lambda e, n: mutated if n == name else real(e, n))
+
+    mutate("release.windows-amd64.lock.json", native.BOUNCY_SOURCE_REVISIONS["rolling"])
+    with pytest.raises(CatalogError, match="source revision mismatch"):
+        load_bouncyhsm_target("bouncyhsm", "release", "windows-amd64")
+    monkeypatch.undo()
+    mutate("rolling.debian13-amd64.lock.json", native.BOUNCY_SOURCE_REVISIONS["release"])
+    with pytest.raises(CatalogError, match="source revision mismatch"):
+        load_bouncyhsm_target("bouncyhsm", "rolling", "debian13-amd64")

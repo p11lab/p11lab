@@ -926,7 +926,10 @@ BOUNCY_LINUX_PROBE = "bin/bouncyhsm-probe"
 BOUNCY_WINDOWS_PROBE = "bin/bouncyhsm-probe.exe"
 BOUNCY_LINUX_SERVER = "server/BouncyHsm.dll"
 BOUNCY_WINDOWS_SERVER = "server/BouncyHsm.exe"
-BOUNCY_SOURCE_REVISION = "f09ab9a342741c56bb56621a707c1b94dfdeac4b"
+BOUNCY_SOURCE_REVISIONS = {
+    "release": "27bc4987237eda064b1c4b82177942b859cb2027",
+    "rolling": "f09ab9a342741c56bb56621a707c1b94dfdeac4b",
+}
 BOUNCY_DOTNET_RUNTIME_FLOOR = (10, 0, 12)
 BOUNCY_NATIVE_EXTRAS = (
     "P11LAB_STATE_DIR",
@@ -988,7 +991,7 @@ def load_bouncyhsm_target(environment: str, channel: str, target: str) -> dict:
         }
     ):
         raise CatalogError("invalid bouncyhsm native target contract")
-    if lock.get("source", {}).get("revision") != BOUNCY_SOURCE_REVISION:
+    if lock.get("source", {}).get("revision") != BOUNCY_SOURCE_REVISIONS[channel]:
         raise CatalogError("bouncyhsm native lock source revision mismatch")
     for entry in lock.get("binaries", []):
         if (
@@ -1452,7 +1455,7 @@ def build_bouncyhsm_bundle(
         }
     provider_asset = packaged_asset(environment, "provider.json").read_bytes()
     p11lab_license = package_data("runtime/LICENSE").read_bytes()
-    notices = packaged_asset(environment, "FILE-NOTICES.txt").read_bytes()
+    notices = packaged_asset(environment, f"FILE-NOTICES-{channel}.txt").read_bytes()
     add_payload("share/p11lab/provider.json", provider_asset, 0o644)
     add_payload("share/licenses/p11lab/LICENSE", p11lab_license, 0o644)
     add_payload("share/licenses/bouncyhsm/FILE-NOTICES.txt", notices, 0o644)

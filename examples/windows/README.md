@@ -18,8 +18,8 @@ operations as the acceptance workflow.
 
 ```powershell
 # Fetch and record the pinned archive (hash enforced by the builder too).
-curl.exe -sSL -o BouncyHsm.zip https://github.com/harrison314/BouncyHsm/releases/download/v2.3.2/BouncyHsm.zip
-(Get-FileHash BouncyHsm.zip -Algorithm SHA256).Hash  # 61A1CF42...
+curl.exe -sSL -o BouncyHsm.zip https://github.com/harrison314/BouncyHsm/releases/download/v2.3.4/BouncyHsm.zip
+(Get-FileHash BouncyHsm.zip -Algorithm SHA256).Hash  # AF483A48...
 
 # Build the probe from the locked sources.
 cl /std:clatest /O2 /W4 /WX <p11lab>\src\p11lab\data\providers\bouncyhsm\probe.c /link /OUT:bouncyhsm-probe.exe
@@ -52,7 +52,7 @@ git -C upstream checkout f09ab9a342741c56bb56621a707c1b94dfdeac4b
 '{"sdk":{"version":"10.0.401","rollForward":"disable"}}' | Set-Content upstream/global.json
 Push-Location upstream; dotnet --version; Pop-Location  # must print 10.0.401
 foreach ($p in "BouncyHsm", "BouncyHsm.Client", "BouncyHsm.Core", "BouncyHsm.Infrastructure", "BouncyHsm.Spa") {
-  Copy-Item "<p11lab>\src\p11lab\data\providers\bouncyhsm\dotnet-locks\$p.packages.lock.json" "upstream\src\Src\$p\packages.lock.json"
+  Copy-Item "<p11lab>\src\p11lab\data\providers\bouncyhsm\dotnet-locks-rolling\$p.packages.lock.json" "upstream\src\Src\$p\packages.lock.json"
 }
 dotnet publish upstream/src/Src/BouncyHsm/BouncyHsm.csproj -c Release -o payload/server /p:RestoreLockedMode=true /p:Deterministic=true /p:DebugSymbols=false /p:DebugType=None
 msbuild upstream/src/Src/BouncyHsm.Pkcs11Lib/BouncyHsm.Pkcs11Lib.vcxproj /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v145 /p:OutDir=%CD%\dll\

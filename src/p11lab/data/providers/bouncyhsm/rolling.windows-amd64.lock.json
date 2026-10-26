@@ -58,8 +58,8 @@
       "sha256": "8f8a76c2c41d51917b05cc12b51a71f6787f26b82aa3952630afa1aefe8e99f0"
     },
     {
-      "path": "FILE-NOTICES.txt",
-      "sha256": "2a83d5adcbcb85d3ace59814334c8462d8c3ec61fe9a61b35d50fff4a646a14b"
+      "path": "FILE-NOTICES-rolling.txt",
+      "sha256": "2bcbb8007ff145df93d8c12b520a6697e016aaa9b87a133b17a7dfd3d219f552"
     }
   ],
   "toolchain": [

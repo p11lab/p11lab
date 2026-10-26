@@ -1,0 +1,152 @@
+BouncyHSM provider notices (P11Lab build assembly; admission: unreviewed).
+
+Source: https://github.com/harrison314/BouncyHsm.git at
+f09ab9a342741c56bb56621a707c1b94dfdeac4b (tag v2.3.2 and main agree).
+Root grant: BSD-3-Clause, Jozef Gajdos 2024; full text is LICENSE beside
+this file, copied from the pinned source. P11Lab Apache-2.0 does not
+relicense upstream material.
+
+Embedded native helper utils/cmp.c and utils/cmp.h (compiled into the
+PKCS#11 client module) are MIT, Charles Gunyon 2020, full text:
+
+The MIT License (MIT)
+
+Copyright (c) 2020 Charles Gunyon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+Native cryptoki headers (cryptoki/pkcs11*.h) carry OASIS Open 2016/2019/2024
+copyright under the OASIS IPR Policy; they are not BSD-3-Clause. The
+applicable OASIS code-component grant for this exact header version needs
+review before distribution.
+
+Managed server closure: locked NuGet restore (packages.lock.json per product
+project, content-hash verified, signatures verified). License declarations
+below are nuspec observations, not full license texts:
+
+package=version license-declaration
+BlazorComponentUtilities 1.7.1 file:LICENSE.txt
+BlazorStrap 5.2.104 url:NONE-DECLARED
+BlazorStrap.V5 5.2.104 url:NONE-DECLARED
+BouncyCastle.Cryptography 2.7.0 expression:MIT
+Dunet 1.16.2 expression:MIT
+LiteDB 5.0.21 expression:MIT
+MessagePack 3.1.9 expression:MIT
+MessagePack.Annotations 3.1.9 expression:MIT
+MessagePackAnalyzer 3.1.9 expression:MIT
+Microsoft.AspNetCore.App.Internal.Assets 10.0.12 expression:MIT
+Microsoft.AspNetCore.Authorization 10.0.11 expression:MIT
+Microsoft.AspNetCore.Components 10.0.11 expression:MIT
+Microsoft.AspNetCore.Components.Analyzers 10.0.11 expression:MIT
+Microsoft.AspNetCore.Components.Forms 10.0.11 expression:MIT
+Microsoft.AspNetCore.Components.Web 10.0.11 expression:MIT
+Microsoft.AspNetCore.Components.WebAssembly 10.0.11 expression:MIT
+Microsoft.AspNetCore.Components.WebAssembly 10.0.12 expression:MIT
+Microsoft.AspNetCore.Components.WebAssembly.Server 10.0.12 expression:MIT
+Microsoft.AspNetCore.Connections.Abstractions 10.0.11 expression:MIT
+Microsoft.AspNetCore.Http.Connections.Client 10.0.11 expression:MIT
+Microsoft.AspNetCore.Http.Connections.Common 10.0.11 expression:MIT
+Microsoft.AspNetCore.Metadata 10.0.11 expression:MIT
+Microsoft.AspNetCore.SignalR.Client 10.0.11 expression:MIT
+Microsoft.AspNetCore.SignalR.Client.Core 10.0.11 expression:MIT
+Microsoft.AspNetCore.SignalR.Common 10.0.11 expression:MIT
+Microsoft.AspNetCore.SignalR.Protocols.Json 10.0.11 expression:MIT
+Microsoft.Bcl.AsyncInterfaces 10.0.12 expression:MIT
+Microsoft.Extensions.Caching.Abstractions 10.0.12 expression:MIT
+Microsoft.Extensions.Configuration 10.0.11 expression:MIT
+Microsoft.Extensions.Configuration 10.0.12 expression:MIT
+Microsoft.Extensions.Configuration.Abstractions 10.0.11 expression:MIT
+Microsoft.Extensions.Configuration.Abstractions 10.0.12 expression:MIT
+Microsoft.Extensions.Configuration.Binder 10.0.11 expression:MIT
+Microsoft.Extensions.Configuration.Binder 10.0.12 expression:MIT
+Microsoft.Extensions.Configuration.FileExtensions 10.0.11 expression:MIT
+Microsoft.Extensions.Configuration.Json 10.0.11 expression:MIT
+Microsoft.Extensions.DependencyInjection 10.0.11 expression:MIT
+Microsoft.Extensions.DependencyInjection.Abstractions 10.0.11 expression:MIT
+Microsoft.Extensions.DependencyInjection.Abstractions 10.0.12 expression:MIT
+Microsoft.Extensions.DependencyModel 10.0.0 expression:MIT
+Microsoft.Extensions.Diagnostics 10.0.11 expression:MIT
+Microsoft.Extensions.Diagnostics.Abstractions 10.0.11 expression:MIT
+Microsoft.Extensions.Features 10.0.11 expression:MIT
+Microsoft.Extensions.FileProviders.Abstractions 10.0.11 expression:MIT
+Microsoft.Extensions.FileProviders.Physical 10.0.11 expression:MIT
+Microsoft.Extensions.FileSystemGlobbing 10.0.11 expression:MIT
+Microsoft.Extensions.Hosting.WindowsServices 10.0.12 expression:MIT
+Microsoft.Extensions.Logging 10.0.11 expression:MIT
+Microsoft.Extensions.Logging.Abstractions 10.0.11 expression:MIT
+Microsoft.Extensions.Logging.Abstractions 10.0.12 expression:MIT
+Microsoft.Extensions.Options 10.0.11 expression:MIT
+Microsoft.Extensions.Options 10.0.12 expression:MIT
+Microsoft.Extensions.Options.ConfigurationExtensions 10.0.11 expression:MIT
+Microsoft.Extensions.Options.ConfigurationExtensions 10.0.12 expression:MIT
+Microsoft.Extensions.Primitives 10.0.11 expression:MIT
+Microsoft.Extensions.Primitives 10.0.12 expression:MIT
+Microsoft.Extensions.Validation 10.0.11 expression:MIT
+Microsoft.JSInterop 10.0.11 expression:MIT
+Microsoft.JSInterop.WebAssembly 10.0.11 expression:MIT
+Microsoft.JSInterop.WebAssembly 10.0.12 expression:MIT
+Microsoft.NET.ILLink.Tasks 10.0.12 expression:MIT
+Microsoft.NET.Sdk.WebAssembly.Pack 10.0.12 expression:MIT
+Microsoft.NET.StringTools 17.11.4 expression:MIT
+Namotion.Reflection 3.5.0 expression:MIT
+Newtonsoft.Json 13.0.3 expression:MIT
+NJsonSchema 11.6.1 expression:MIT
+NJsonSchema.Annotations 11.6.1 expression:MIT
+NJsonSchema.NewtonsoftJson 11.6.1 expression:MIT
+NJsonSchema.Yaml 11.6.1 expression:MIT
+NSwag.Annotations 14.7.1 expression:MIT
+NSwag.AspNetCore 14.7.1 expression:MIT
+NSwag.Core 14.7.1 expression:MIT
+NSwag.Core.Yaml 14.7.1 expression:MIT
+NSwag.Generation 14.7.1 expression:MIT
+NSwag.Generation.AspNetCore 14.7.1 expression:MIT
+Riok.Mapperly 4.3.1 expression:Apache-2.0
+Serilog 4.3.1 expression:Apache-2.0
+Serilog.AspNetCore 10.0.0 expression:Apache-2.0
+Serilog.Extensions.Hosting 10.0.0 expression:Apache-2.0
+Serilog.Extensions.Logging 10.0.0 expression:Apache-2.0
+Serilog.Formatting.Compact 3.0.0 expression:Apache-2.0
+Serilog.Settings.Configuration 10.0.0 expression:Apache-2.0
+Serilog.Sinks.Console 6.1.1 expression:Apache-2.0
+Serilog.Sinks.Debug 3.0.0 expression:Apache-2.0
+Serilog.Sinks.File 7.0.0 expression:Apache-2.0
+Serilog.Sinks.Seq 9.1.0 expression:Apache-2.0
+SmartAnalyzers.CSharpExtensions.Annotations 4.2.11 expression:MIT
+System.ComponentModel.Annotations 5.0.0 expression:MIT
+System.IO.Hashing 10.0.12 expression:MIT
+System.IO.Pipelines 10.0.12 expression:MIT
+System.Runtime.CompilerServices.Unsafe 6.1.2 expression:MIT
+System.ServiceProcess.ServiceController 10.0.12 expression:MIT
+System.Text.Encodings.Web 10.0.12 expression:MIT
+System.Text.Json 10.0.12 expression:MIT
+YamlDotNet 16.3.0 expression:MIT
+
+BlazorStrap and BlazorStrap.V5 declare no license in their nuspecs; their
+recorded source is commit 233264f8d349619e2dafb3a33454fa9fe58f9930. Full
+license/copyright/NOTICE resolution for every managed package, the embedded
+browser runtime, and static web assets is required before any distribution;
+this file alone is not distribution evidence.
+
+.NET SDK 10.0.401 (build-only) and ASP.NET Core runtime 10.0.12 (shipped in
+the Linux runtime image) are MIT with third-party notices; the runtime
+ThirdPartyNotices file travels beside this file as
+dotnet-ThirdPartyNotices.txt. Debian base/builder
+packages keep their own copyright files; libicu76's copyright file travels
+beside this file. P11Lab entrypoint/probe/adapter material is Apache-2.0;
+see the P11Lab LICENSE.

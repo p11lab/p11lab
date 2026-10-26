@@ -6,16 +6,16 @@
   "parent": {
     "kind": "docker-local",
     "platform": "linux/amd64",
-    "reference": "sha256:6a3f9d9e0334e3e61072a9145173af51c303d976ee2f6585c0b2ba75a040e948",
-    "sha256": "6a3f9d9e0334e3e61072a9145173af51c303d976ee2f6585c0b2ba75a040e948"
+    "reference": "sha256:7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf",
+    "sha256": "7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf"
   },
   "source": {
     "kind": "git",
     "url": "https://github.com/harrison314/BouncyHsm.git",
-    "revision": "f09ab9a342741c56bb56621a707c1b94dfdeac4b",
+    "revision": "27bc4987237eda064b1c4b82177942b859cb2027",
     "license_status": "unreviewed",
     "license_observation": "BSD-3-Clause",
-    "archive_sha256": "531dbdbc2ba3c245592e89079ca6d52f035314981858d3e5862f745b58cdf6fd"
+    "archive_sha256": "7e539837cb63aedc1c3c087b90937baac94e3f9a483b470dfad383f3c0e5bc05"
   },
   "module": "lib/libBouncyHsm.Pkcs11.so",
   "lifecycle": {
@@ -56,7 +56,7 @@
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/BrowserDebugHost.dll",
-      "sha256": "64af18da4c494521a5f01b93755a28554ee4037cd38ccfe4ca920f0b91a4bb17"
+      "sha256": "722f1661dfad0260a78c8ebc29f3e6e121ca66dfce2324d200c008d45a938698"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/BrowserDebugHost.runtimeconfig.json",
@@ -64,23 +64,23 @@
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/BrowserDebugProxy.dll",
-      "sha256": "6c31c1158f69d17fdc7e3d9961c8a34c50e3035cbe3da72a1a5cc33d4657bc95"
+      "sha256": "32cf4fca1509f6e50e79e0835a1bd2eecd069fca27f96e4d2c95b4e6d0a2c8c1"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.CodeAnalysis.CSharp.Scripting.dll",
-      "sha256": "74a7f826c4d295e2a754a89b11911a0aca91a5c887848c7dfaf269df5c5ff698"
+      "sha256": "2f06568140c98b1f9532054ddd5da322383c0ae14ef955a68b0e0b77ca4c94ea"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.CodeAnalysis.CSharp.dll",
-      "sha256": "0de872a9225627365b3f8e5e730ce4079a0a28fcaa01cb1e739e869034aeb0bd"
+      "sha256": "cb745aac40e035270f7dfd78140701acaa2b6490e1134866256641994ecb9de7"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.CodeAnalysis.Scripting.dll",
-      "sha256": "ea9067f80a283c922603f30c1358dc23646eff10c28648325e1663f645d511e3"
+      "sha256": "3da22c86c353ae48679bc84df6d5087977f2bb25e242161e77fa35fce6582670"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.CodeAnalysis.dll",
-      "sha256": "00ccfcd0765625c2f0d6a6f1cf42702436b9178e82108c638c9040f2bb0d9d59"
+      "sha256": "2866ec668d4d6788141eb29157158e7786536ee2083ef71929e7a61b3e54a146"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.FileFormats.dll",
@@ -88,7 +88,7 @@
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.NET.WebAssembly.Webcil.dll",
-      "sha256": "8253191cafea82cabba62c6f1165c321b1755d43bd72dc24480776d99fdb2e46"
+      "sha256": "654f2170ef513d0f3ae7d93b6d8b0d06c0ab99a781eeb2e2defdce3e7b35e6a7"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.SymbolStore.dll",
@@ -96,7 +96,7 @@
     },
     {
       "path": "opt/bouncyhsm/server/BlazorDebugProxy/Newtonsoft.Json.dll",
-      "sha256": "76b6bed0d6c916585d4057264f3c08141dd35c3e1ea61e9d2e22c7f88af82418"
+      "sha256": "7df4dc7dfdf1054bddca51294df11475e31c345c18fc7e634a990df722a62af9"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorStrap.V5.dll",
@@ -116,19 +116,19 @@
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.Client.dll",
-      "sha256": "3c022eb9679681622854a819f4c15e010a9b05e10a6857bac2114c587f039bc9"
+      "sha256": "908d976d88e406cdcee4cedc4d10b96a9026a1b4622b401df327336269ee6eaa"
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.Core.dll",
-      "sha256": "d97f8e138cf151750863d65984a1ebcc9d0adfdb183cf9d968cbde8261c3b215"
+      "sha256": "377696adf3d423e2ccb3e39c068e106f53cec0e9241ecaca8cf17a10d690fad9"
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.Infrastructure.dll",
-      "sha256": "d4989951e389de8d0cca9f5a7bd4be24e260b10f9a07c90912e5298d347ac12e"
+      "sha256": "f916b0beb0348d71b89a17c52131d5cba05534512f0663853606b2c2bb67ab6b"
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.Spa.dll",
-      "sha256": "2031d2c0f88a0fec73803c35aa60cdfab4d5e8c4971bbce7b49a9e06acda7c6d"
+      "sha256": "5bda0abe99c6b1d51feeafdb2f586e17897e362374bb5b1cb52b3cc9acb8e3e9"
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.Spa.runtimeconfig.json",
@@ -136,11 +136,11 @@
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.deps.json",
-      "sha256": "5b955a8d4cbb1f978d14d34b6a29fb9788982ce6ab0cd85c7ae25be122d73fec"
+      "sha256": "8e4f882bc3be9f5ddba35e6be652f11819b47fd87e7d62f3a136c4cdfe3f81d4"
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.dll",
-      "sha256": "44294847cb6d4b6b27d0a79dbe2c0f82efdd31a64624901532447c2ff871ad07"
+      "sha256": "e59db93dacd517caf7ff2c0256f666dc536a173a01efbe0f0698134b758c45aa"
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.runtimeconfig.json",
@@ -148,7 +148,7 @@
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.staticwebassets.endpoints.json",
-      "sha256": "879611ba62ff527c66d56b66c5d11b3c5d7978260de6b236546d1f8e7ce1a22d"
+      "sha256": "da277bc92f29b341dcc507bcbf9c4e5f4cc262df5b07365bdb140f890e487e18"
     },
     {
       "path": "opt/bouncyhsm/server/CSharpExtensions.Annotations.dll",
@@ -164,31 +164,31 @@
     },
     {
       "path": "opt/bouncyhsm/server/MessagePack.Annotations.dll",
-      "sha256": "d6d77e65edef6b60ce8fb9e5cba402d70fd97d1401c240c8b2c5389e08009315"
+      "sha256": "1e51e087987bc857e55863eb4e986c2f2f0bf17230eb2c243e5dc25c34e7cf86"
     },
     {
       "path": "opt/bouncyhsm/server/MessagePack.dll",
-      "sha256": "6dedc861263288ee726ad9c919431cede00d35764f47ce9a3fa2f93d7f08a7f7"
+      "sha256": "a7f8d30a8e6f4a1b445bf6752621a4a7b1f4ff11f5d4dc62dba0d8d7d6995e36"
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.AspNetCore.Components.WebAssembly.Server.dll",
-      "sha256": "9dad5fe00f792b0a466bf255c1f58eefbcea2a81d6e64adb95559831cd334cd8"
+      "sha256": "22ea59fe8c306f72e9cc36c937907d061f61fc2804554c9de42ccee29a518719"
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.AspNetCore.Components.WebAssembly.dll",
-      "sha256": "99244cde579cdb581729b210afabc6a579eef4e51eb8ed472a4badfa70470cca"
+      "sha256": "17552fdc934eb0105e549a1a77d08b531f91d718cd29f8af18722cd4e0f9ad9e"
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.AspNetCore.Http.Connections.Client.dll",
-      "sha256": "7be6904b1db6c0b40f0a9db39132fa705380b96207656f5a9da4d52568077397"
+      "sha256": "774836d9ac97adbf5624f686a03bbc1306d780c7cb6f524e5be343135720f3be"
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.AspNetCore.SignalR.Client.Core.dll",
-      "sha256": "99a72f70d22c8728a75da8215a2eb09d45b5494a9fb52d3c05349e79aa4429b5"
+      "sha256": "38412214f0c67f1bded26ba59e33612e7c16850d74e72000cfb6f68775e71453"
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.AspNetCore.SignalR.Client.dll",
-      "sha256": "9df40f13922d167b6c69a7fa7843d027105d82de9b8223a2624595604e16aadf"
+      "sha256": "c6f8b0db98b630d8d4edd1e79654e1ddf9fce9340804f90ae11278ffa5a9bca5"
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.Extensions.DependencyModel.dll",
@@ -196,11 +196,11 @@
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.Extensions.Hosting.WindowsServices.dll",
-      "sha256": "7b2b4645b30652d74a40aa00cf25c6db15f4d35b3768f03caef79404c0dabce7"
+      "sha256": "f86c16c9e14e89f2ebc7bdab4b4dc156ffb927265bfdde5f46470227cf3c3339"
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.JSInterop.WebAssembly.dll",
-      "sha256": "b4bd2975cb51f80fda0f9ae8840af895680e303cc1bf9fdf32e7011ab337507f"
+      "sha256": "1564bd354c3a56d35f318b30b063b56e59564dc8ca80e10a20f4122914f6226d"
     },
     {
       "path": "opt/bouncyhsm/server/Microsoft.NET.StringTools.dll",
@@ -300,11 +300,11 @@
     },
     {
       "path": "opt/bouncyhsm/server/System.IO.Hashing.dll",
-      "sha256": "cea6795cf9f7b139b2215ff6de794a6f6e44e78640fb30fa4c0d5fa8472df8e5"
+      "sha256": "550d10bb0ba785057915fb0ecbc6a3e8802fdee2e2ac22d80966691ccb11e2ff"
     },
     {
       "path": "opt/bouncyhsm/server/System.ServiceProcess.ServiceController.dll",
-      "sha256": "bcd63c1f1e896e84056f3d7047e483b5feaa80fa890267f54d8594c71894dff2"
+      "sha256": "e1a6153e09aca1a7f1c200547346c7baefec810a7da7dc83c8d9e43ea9cef50d"
     },
     {
       "path": "opt/bouncyhsm/server/YamlDotNet.dll",
@@ -324,7 +324,7 @@
     },
     {
       "path": "opt/bouncyhsm/server/runtimes/win/lib/net10.0/System.ServiceProcess.ServiceController.dll",
-      "sha256": "ea5a19f84a144a74962d5060e63f65e10ecb32614f70acad33ddf7cfdb28f2c1"
+      "sha256": "8805428d049009fcddf6ab59e5dfd647b894a50c00bbbf69fd9071f0923bf5a0"
     },
     {
       "path": "opt/bouncyhsm/server/web.config",
@@ -471,160 +471,160 @@
       "sha256": "c1035a714ac332e60a8b889087ed4850bcca67b7992a4ebb944cffab68d4fd9a"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Client.9nywi1lwew.wasm",
-      "sha256": "9b425e3fa2aff3c9e144ea56e9361c6c85d756c75e7398730bb72b0273d90cb8"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Client.zlvipozw5v.wasm",
+      "sha256": "87b9a5c9a6a1f84900b41944506c5e4ba6d0f10c0c90dbbac8ed4d94ec2dd80e"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Client.9nywi1lwew.wasm.br",
-      "sha256": "2af105ec0461ed19cdf9c637e43e7b9a3c6b39df269644121d64b425b66120e2"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Client.zlvipozw5v.wasm.br",
+      "sha256": "ac4e5dffd3cdd15951a337b51d718fda8ccbcf1af15e0933c5a30593c5c0f1ca"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Client.9nywi1lwew.wasm.gz",
-      "sha256": "71663cca907317a6cacb01e723da456f6abd884debea50a6b8d4f1cfd3aea07a"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Client.zlvipozw5v.wasm.gz",
+      "sha256": "0ed7ed9a133c1a3a9aca2ad6fc14b42b743eff17ec828de0d5881c32cd415d02"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Spa.49gekyccic.wasm",
-      "sha256": "c865a6d70c3abd354b84ab0f23ddb9e9263377a1496a778e55b81c0c7ab18734"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Spa.5t3t8gpro6.wasm",
+      "sha256": "77af4a4605403641dbf506e7777dcb2b3e40b254ae41f322eb752ef09ab189af"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Spa.49gekyccic.wasm.br",
-      "sha256": "94cb1ea4a80f9e86fb786f86925868e9edffb02dafa6d68b6db382f2fe29b25e"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Spa.5t3t8gpro6.wasm.br",
+      "sha256": "1fdec34f0bc6dc8c49884f79390b484858474a82e47f9c150e22d4f8c8624c84"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Spa.49gekyccic.wasm.gz",
-      "sha256": "3bd4c843601e33f15a48bb308d01ec1f134d932ce323e9d2ed761076a89119a6"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/BouncyHsm.Spa.5t3t8gpro6.wasm.gz",
+      "sha256": "81aee58519796ff7b26349fc21e30ee46d6a032330ad9f69800ca413fd6330a4"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Forms.pikld7qd2v.wasm",
-      "sha256": "df1bba0e72cd8c22ec57f68fdd06975c691130096bab82beb034130fae33a99f"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Forms.7wmt9gtk40.wasm",
+      "sha256": "27d23b54fae7cfe1163e5782936b71deff53f4f5ad5288ea630ec47b3b3de086"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Forms.pikld7qd2v.wasm.br",
-      "sha256": "07789ce167fca5dd293543c07f360fb51ca826b1cf18d9011f2babc3b5a23ea3"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Forms.7wmt9gtk40.wasm.br",
+      "sha256": "76c456a44c92d99e0bf84f1ba2e42b728b4f70849a224b4c4cde3e795c07a200"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Forms.pikld7qd2v.wasm.gz",
-      "sha256": "e55db252e4969cf84cc94be37ef7627a0864b20bbca74a37f988b7b999dc33a7"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Forms.7wmt9gtk40.wasm.gz",
+      "sha256": "f3d0843a947282c6cca75d1a34459e13dbb23c96dc1a07d1a0e30fb36186cb3f"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Web.xfx8ad0vgj.wasm",
-      "sha256": "b346c9e097ffa0cd9ea10dbaf74db58864eba79229160de04f7e69f6574da6ca"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Web.753gx1b1wr.wasm",
+      "sha256": "ebc8d3c472bd21a17e519b50116a9ba4cc9da254edc988fe9fd462505f57d126"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Web.xfx8ad0vgj.wasm.br",
-      "sha256": "0a2cb0a077ec0a420be0492cb2531955c42999390caae806a448c25ed89941cd"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Web.753gx1b1wr.wasm.br",
+      "sha256": "9d179ea7db111194bf053dd90de25cc8e4c6f04dc1f17e46c94a1015faf5d244"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Web.xfx8ad0vgj.wasm.gz",
-      "sha256": "aecc3b8469edbabecb3bd577254b845d13f28688a5fa81b41fc39ce426e1ec91"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.Web.753gx1b1wr.wasm.gz",
+      "sha256": "aa37bbc79635f962b9d6bec959cb9375f3962bea99b6c38088e83938279c6a63"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.WebAssembly.280gmonbpy.wasm",
-      "sha256": "de34e9e18bc85874c5de14fdbc0507ff706a99f4d4a87216f9c1f96aef2ed587"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.WebAssembly.k7kkr0zyxd.wasm",
+      "sha256": "504e9b6ec8afdffd57bcc5018decd3eb23ab7f48d7638ed78b8c36f3fd0c1bb0"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.WebAssembly.280gmonbpy.wasm.br",
-      "sha256": "6fc5e148b49e5238f1b7dd6412a1a335854817e76d2863700099075714687910"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.WebAssembly.k7kkr0zyxd.wasm.br",
+      "sha256": "b907f661f593b6831dd6c6438a76d339b70ba84bbc36004ffa8ec9573fb9ebe6"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.WebAssembly.280gmonbpy.wasm.gz",
-      "sha256": "c5d2f676eeff93a6c0ece3bc1a5a51bb20ef8007c14a8ec917b989837e3e53f5"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.WebAssembly.k7kkr0zyxd.wasm.gz",
+      "sha256": "e1dad36960f9f5bee9b918b6abb716e7e15afe17399d4c433229aee70a2ca510"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.kbss9svh9w.wasm",
-      "sha256": "6047831267b4b30c049d5f26d938ad62eeff4c20eedc5ae2b661e94ba9dc8d44"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.bqgh4samgz.wasm",
+      "sha256": "f30299168ee8ba8565ace575a9374e674857e24fd1b044eb1d072282a5934cd5"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.kbss9svh9w.wasm.br",
-      "sha256": "ffb067212b11b7b2e82ef21e1052c4b35e9ac4c720dbab6e560a454830171258"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.bqgh4samgz.wasm.br",
+      "sha256": "85863c752a3ac3d9017711639aaab6762792e6a943694867d6086e1070ae2914"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.kbss9svh9w.wasm.gz",
-      "sha256": "5209869684d81aedd3db938817dd837d3124f5e051e7282b8ad877e738058e82"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Components.bqgh4samgz.wasm.gz",
+      "sha256": "b1f1fa5d1220851988fcf7284884785e7db6bfcf73e56bc007e270dfc1cc90b5"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Connections.Abstractions.uk9r942ck0.wasm",
-      "sha256": "c23dbe655cca243898651c6928827e35a41a094b87a3e482a8db64f9d5ae1fa1"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Connections.Abstractions.d9jt00eb2z.wasm",
+      "sha256": "3f59ddfbc630e133b7c6572973f555eec42d7fdb82a947b7b0922e91c7af007f"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Connections.Abstractions.uk9r942ck0.wasm.br",
-      "sha256": "89e4c687f8300f3ada147ec5064ace30509d9bc8f77ae6766ab07db91a48b1ad"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Connections.Abstractions.d9jt00eb2z.wasm.br",
+      "sha256": "b6bda1ad717511a83179cab146d199dc13a1932ff3e0340f40b41fb431ea9e2f"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Connections.Abstractions.uk9r942ck0.wasm.gz",
-      "sha256": "024d9d5b058d8852e720960ef7701112b4cbc611ffe7d2a8675b7e26898e94ad"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Connections.Abstractions.d9jt00eb2z.wasm.gz",
+      "sha256": "2f828d622f435b109b6af642ab2f154719cae401ad9b669cf14b1ae0cfec203d"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Client.cewt9nrvoh.wasm",
-      "sha256": "441e3de6af65d57e4fbfbcc3b28884787be417553023dcd714fa81ccb92b9525"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Client.8eg6rodst8.wasm",
+      "sha256": "80c317760d3aef232474199bec09bcf42b1d19d3cf4c1285bd6cde9af6e55008"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Client.cewt9nrvoh.wasm.br",
-      "sha256": "beaf74c206f62c3e9cc408772e6cacf8471b611c2913992d01dd1407d4a58254"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Client.8eg6rodst8.wasm.br",
+      "sha256": "536f57f88bb1ea9673b9f7113f452e82b01a22f0db607101d4139321539fb75a"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Client.cewt9nrvoh.wasm.gz",
-      "sha256": "d1a8c82027aac9ca8ce7e2c30f9312fd9b41ba3db5bd0183813b17239c51ef4a"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Client.8eg6rodst8.wasm.gz",
+      "sha256": "a2e07985e51dca7d1c547afc3639371aff6b9aebdbd7048804360a8b5e33d6d6"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Common.qd7vq4o204.wasm",
-      "sha256": "e2dede7baa371cddcd3206978e036a1ffd116c2ae67851185a76b86e84657f33"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Common.tds99dwhv0.wasm",
+      "sha256": "f134ab3125117ed04005b85d87c1eb07242023804928c94690fd3cc9a7e26c49"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Common.qd7vq4o204.wasm.br",
-      "sha256": "de0f8e1e604ef1904916e43de3463b3beec32edb0e1a210fbb253ad1ccaf2fcb"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Common.tds99dwhv0.wasm.br",
+      "sha256": "1b36ccaafd2d156e37baaeafae453354f7a0da19939cd60e6e2db21eaf6df22c"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Common.qd7vq4o204.wasm.gz",
-      "sha256": "db3e32f8dfa74967980400efd567e3b6d899c52c8a5ff5613c16e74b702b8550"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.Http.Connections.Common.tds99dwhv0.wasm.gz",
+      "sha256": "667fd721eccea482ef8f637d50932b7dc4132a5b88d342bda58e3e4159ec58ff"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.Core.2n8ems7tab.wasm",
-      "sha256": "3e993470cf1e12c769063d7194c0b8a1eefea848b1fdaec95ca57807042c14a0"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.Core.5k4y8un5bt.wasm",
+      "sha256": "953bf5e56cb535204d8fdb63c36d6f677fc5d1a4ebd6052874617333a1f4bb3d"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.Core.2n8ems7tab.wasm.br",
-      "sha256": "037815b7dd0e1f38ce0e8a9f3a5beb31214b94e008a014dced316a28c50aedeb"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.Core.5k4y8un5bt.wasm.br",
+      "sha256": "a29d46c3b660bc016b402faec370f87e5a0c0bafa1b56fee5d1412482c9d0461"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.Core.2n8ems7tab.wasm.gz",
-      "sha256": "bf72d9495edf54ca07c53d6d3203a16cdc7277da87c5cafc278fdb42354c764c"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.Core.5k4y8un5bt.wasm.gz",
+      "sha256": "cae45a8bacf59fc3b8495d1081a3da1ae39bb531b81fceed8aa4dbf90304d436"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.v7tg6iv7nc.wasm",
-      "sha256": "ebf592933aa9e9640916269eed096a05bb8786b1f8f8782c2cea3f090d42f8cc"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.vhgflhp8mf.wasm",
+      "sha256": "bd55b9a1939f209ef67632abcc4ce7b4b4852209d3646ba7a48928f06c1445ae"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.v7tg6iv7nc.wasm.br",
-      "sha256": "f34a676041b95c6bfe6ca478a6fc8840062efbbdf3d7100bace54d3f588aeeab"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.vhgflhp8mf.wasm.br",
+      "sha256": "5e8edb9fa42f7160c2239ccf699c8dc04f267a27c9ecd357364eca17bb67d5fb"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.v7tg6iv7nc.wasm.gz",
-      "sha256": "ef99fec7ce68280a15dba3650effd65a42743935892d97ccc56ec9b1c366379d"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Client.vhgflhp8mf.wasm.gz",
+      "sha256": "eaa968f3b29703b59a632d5393045a30176fb733e0760807466f9524d98904bb"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Common.phrewcg5hr.wasm",
-      "sha256": "536d0cf9e508c37cdd099777daf9c90001d57108c035871b32bcc767d51b6c4e"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Common.3n7is7jdur.wasm",
+      "sha256": "d18069c5b261b487d16b8f5ae2194830da09750e79ddda1f97c288e7807617d1"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Common.phrewcg5hr.wasm.br",
-      "sha256": "9ad55b33a9432f1af9ae137c2b1ffc8377243caa7edb6748ca6519658dcb1e7a"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Common.3n7is7jdur.wasm.br",
+      "sha256": "818d81a8e65a58bb45266328cf154f34fb7725f355f4ebfe16210e45a3e1eb4e"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Common.phrewcg5hr.wasm.gz",
-      "sha256": "9c407e629ae04928bf09c2b46538c0d1797744928fbdc2099bb062731bef0881"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Common.3n7is7jdur.wasm.gz",
+      "sha256": "c6ea4cc9637b45ef19ed07acd313c3fc1b1c44d00b3e11dfa0253b754d18b1af"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Protocols.Json.y0dbdtwch5.wasm",
-      "sha256": "4e28f4425ca8605ed9a48314101808454bcbbad6c1a42b919f4cb7cfc801ad47"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Protocols.Json.1lc9hbmw2m.wasm",
+      "sha256": "0b3be3d2421995a1fda42b2e32ba387be15a570449cd0ac74c54315f6797093b"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Protocols.Json.y0dbdtwch5.wasm.br",
-      "sha256": "5fff39e2352898ec031122183277eb705f737c251fe97253e3db9c0b5aca0eb9"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Protocols.Json.1lc9hbmw2m.wasm.br",
+      "sha256": "36e27c728b1c0f6a3d550ee80c0852bb9e1d48f34774b7bbd9a78a4517937fd8"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Protocols.Json.y0dbdtwch5.wasm.gz",
-      "sha256": "bff1a4c0ee52e4c77f1fda987772a5713c81a79edff25877acccf6068a9e36bf"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.AspNetCore.SignalR.Protocols.Json.1lc9hbmw2m.wasm.gz",
+      "sha256": "487f7b7993ecf0cb707266b6a50cc38bff911d0d2a56ef7b1d5f7c26cf98453f"
     },
     {
       "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.CSharp.kluc7mprjw.wasm",
@@ -639,160 +639,160 @@
       "sha256": "1237ac227322013cf6b62742e54ea3a29d36f71f40a0460bef9b0c4f55d0bfc2"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Abstractions.phvn7pjmsp.wasm",
-      "sha256": "2d1ad6fd2da302632a7fbd44bb03b180c6d576b0eeed0a698e52bc3e38988005"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Abstractions.rk2e36pjps.wasm",
+      "sha256": "75f008fcf8dbaecdaabfbb0a15adb8161ede3b0489cf1b6b1066af8aedc12e0a"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Abstractions.phvn7pjmsp.wasm.br",
-      "sha256": "4bd0bc51e686283319d0be9b38b5ca0ede1d67da8fac98eb5cdba08f68fda6f1"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Abstractions.rk2e36pjps.wasm.br",
+      "sha256": "4bb113182b6b7343020cfb271c2aeba9ff7596ba48da6bdf5b6475624149d899"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Abstractions.phvn7pjmsp.wasm.gz",
-      "sha256": "524ca978860d030c16a07815d3cb3debf6b0ae165fb1ef7852def87ba83225cb"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Abstractions.rk2e36pjps.wasm.gz",
+      "sha256": "9b76c7c4377d8655e02f9822e203ba4c39d564efb1c77129a863d8a1e4e79a5b"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Json.jygd6wn873.wasm",
-      "sha256": "e5b2686e5d8299599c24b2c59f3f4209d8f7c48684c99e9ad15003d1de7f2244"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Json.frazqtnewj.wasm",
+      "sha256": "3bffe598cee205652d0631f6149dcd321388f3144c080928fc1995f3e966e43a"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Json.jygd6wn873.wasm.br",
-      "sha256": "bfd528ee9e5a36f4bf34f9d23923b4955ac60612e7d28ada64d4c63abafcc71c"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Json.frazqtnewj.wasm.br",
+      "sha256": "6338df0d2f5c2c86c746e787e1a5226deb1c097a7ba6ffb09b84d4a84011ee9f"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Json.jygd6wn873.wasm.gz",
-      "sha256": "cfda5967ebe70820db38f281df5236343ecb86953ed918ec4df8473d667c2856"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.Json.frazqtnewj.wasm.gz",
+      "sha256": "0e0620890a3219556b82bec9a0130f1844632270245f322a615e6074469ba65b"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.t6ukke4ckb.wasm",
-      "sha256": "d5a19b7ce95177a901746104aa56235686ed9ae41d879853d501a9c337ae603e"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.o9a3igp31l.wasm",
+      "sha256": "44c71d0b06b5b144b77e5a1cf797f2ea9d7aa3047d2b4dd71e937eb145aeedeb"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.t6ukke4ckb.wasm.br",
-      "sha256": "57bfb917f5bae7b988cf72358343ce38c4b2d33fca9fbb068c717f99996df3fd"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.o9a3igp31l.wasm.br",
+      "sha256": "6bee8038a798a935b9511a08f5ed016efb4ab5257b7b444fc6ac85cd511f109b"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.t6ukke4ckb.wasm.gz",
-      "sha256": "c122534e2556cba895bad58262889a2b425ee92e4476c419ebd13e92aa9a1173"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Configuration.o9a3igp31l.wasm.gz",
+      "sha256": "cdca6feaf8711e57b8af503d9812ee874c564d6cdedc90778054dcc06e046b00"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.3mnq62438m.wasm",
-      "sha256": "0b08a93eb148041a6e77c41937765481a1728fb830c4c6484fc3284289217659"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.549437kzzd.wasm",
+      "sha256": "2566d101b4e1f29a161f3af81a6948ea9f09aa48d95c0a59e7a896b8bd7c0c5c"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.3mnq62438m.wasm.br",
-      "sha256": "449506bb4d44de61283d17fea752fdce8d17cd7c057b95c60615dd2ddcde5be7"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.549437kzzd.wasm.br",
+      "sha256": "7483a4a94cd0a2ee04352bccc057763b93f74c932febbc928fb9a9a290701c2b"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.3mnq62438m.wasm.gz",
-      "sha256": "24257d7b24818cef9dabc8e5f1fb48c4bcf7a47e8697b876890dd8a7700e743b"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.549437kzzd.wasm.gz",
+      "sha256": "b820e0cf1d2e88aafe18fa7a550385dd94d5599497f1b365a039a9283052c6da"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.Abstractions.1lx4buslqy.wasm",
-      "sha256": "05a6ff9d2e4a2a025827b5d185365ab0f5b098648bdabc542a8450c5b05362aa"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.Abstractions.fj634qtydx.wasm",
+      "sha256": "dbbf174975143ed54b2c1cf4fb49288d4538d6143cd1de6cc6efd6e58e9f3d9c"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.Abstractions.1lx4buslqy.wasm.br",
-      "sha256": "6a1156b6b96ca5a5e05a019b8c0efa0ad0cd5523b2a709d8d386b1d1d7803597"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.Abstractions.fj634qtydx.wasm.br",
+      "sha256": "7fc98d6fc2a83790bae9bb2a76c1a3c99b360655a0c07df8c18ced1bc0b82e5b"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.Abstractions.1lx4buslqy.wasm.gz",
-      "sha256": "eb9fac66fec669a45080da92b2ede3866f4f992d4b8b4932c97a382b890ea5e7"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.DependencyInjection.Abstractions.fj634qtydx.wasm.gz",
+      "sha256": "f98664da8cc8098ba7e66d496546e970eee2d928944d58ccf108b02b4c96c129"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Features.uvxh1g28e2.wasm",
-      "sha256": "cac67676135fb5353f809bbf8a8a825be9212722ac69702bd1f6ccb894b459b2"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Features.2qvmjsryln.wasm",
+      "sha256": "1a5dbdc6f61fcbde42bbb966b4fe046366b675a69fa1e5be498d95552fca18c6"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Features.uvxh1g28e2.wasm.br",
-      "sha256": "bdf96fbd550f6ae58025fc3d5091fafa566f8ec3ea4254930bb48870078701c6"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Features.2qvmjsryln.wasm.br",
+      "sha256": "0b0b4fdf8e681cd1a8788afe08ba182df5677b2b02aafc8e60b5634fe8e80309"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Features.uvxh1g28e2.wasm.gz",
-      "sha256": "80c96e4485f3f090ed67186f472b6a36f3b71b502a1edc2397e2773079f05ce5"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Features.2qvmjsryln.wasm.gz",
+      "sha256": "d9af3ecf4f44dfb8ad9f473c0f3d42d13eb5451f5d2728979d4dfde759c87d5d"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.Abstractions.xy251nwra0.wasm",
-      "sha256": "b74421d0705c4e6fe2fe35783b5e194ffb3d8546889f529ab9cc049da3978f77"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.Abstractions.uvlslkrln3.wasm",
+      "sha256": "ca52082c90ce37c831f98c8274d6e4fea40d98539e6686f59bfd048e449d101c"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.Abstractions.xy251nwra0.wasm.br",
-      "sha256": "aca241b553dc7685efd6fcd125df89e7c62a865f9a64033cac3891e1ffe61801"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.Abstractions.uvlslkrln3.wasm.br",
+      "sha256": "060e991cc576a30d8269af5bb394c4464313d82cd2a68de192d0a2d286b8b168"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.Abstractions.xy251nwra0.wasm.gz",
-      "sha256": "97dab5d994ea04783e3d2b8e4ddf816a9bc4d674f8e98968dbbd0d98a650ae01"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.Abstractions.uvlslkrln3.wasm.gz",
+      "sha256": "66720aad01b4cbc192f42598674300942b318b331c9629ec73410c82a7f7e204"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.n58ap2v4mj.wasm",
-      "sha256": "cb38db599c4289711c5d2b4b832d1e8d2a32a1612410d32d715e396cb994d75a"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.zjn42s223n.wasm",
+      "sha256": "c1dd8556d7ca900acd4f89c177e7f17a2a274a8a11800c75d3384adc922c6f77"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.n58ap2v4mj.wasm.br",
-      "sha256": "dd845af3cd459dab5accf181f3e9ed18e2418b39f90bc31392716b8c30622050"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.zjn42s223n.wasm.br",
+      "sha256": "71cdc2b1deb4b0e8f3f526d300b580d86c10d0628a2ff1bf8c48171f8938a8b6"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.n58ap2v4mj.wasm.gz",
-      "sha256": "a94f815a21b77d9d69c3a008a74688ee06e5c6af02e24a39b4c9df05fd3f8c51"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Logging.zjn42s223n.wasm.gz",
+      "sha256": "bf3f310197316ca5ccff64fc7a381807fd52f606d471957f41e2639b89ec8f8d"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Options.n2bsjd9ih3.wasm",
-      "sha256": "0f7eaafdc69dd6f01b4d72ba6685f265fbe849e4f66785f391f685ad0389f36e"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Options.s782sr4c30.wasm",
+      "sha256": "18be58e0b12a3d95425ff8bc76616a4fe2aeb4ef55ad3b186b545cf5726a09be"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Options.n2bsjd9ih3.wasm.br",
-      "sha256": "028fa45e0ac18c65f44d78566fe28edcf9816a7af8691ea462a0f1faef808495"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Options.s782sr4c30.wasm.br",
+      "sha256": "c7857cf3b50bb2eee71098d4b1703ac8e7e72e8f72ac283998cccb5412acb157"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Options.n2bsjd9ih3.wasm.gz",
-      "sha256": "4237e88caa6105ec4fc1eb5d0e422291c6f46cba6ed483e25d9ecf5a6ce6fe5e"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Options.s782sr4c30.wasm.gz",
+      "sha256": "7fae34f2517dae8ee78f9fe03d62eea0a9d822fe04b739d9ff6fd95a9dd4f360"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Primitives.ic9wbsf5sl.wasm",
-      "sha256": "aefdebe9ca0c2aebe8c3a1dce8e03178dbf207b45b9e20330bd2a38efb34ccfb"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Primitives.1w0lc1mcj1.wasm",
+      "sha256": "c1877a3f545055dc75c0b19b5545dd71aea94410703c9b61aa72f2c4ee9431fd"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Primitives.ic9wbsf5sl.wasm.br",
-      "sha256": "a2f88ded61e313cb74d47c38b577d9c9f5389cfd64e13c2a004f912def17575d"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Primitives.1w0lc1mcj1.wasm.br",
+      "sha256": "72b58cbc051f7e9df3cc9e9908c0a4e25a7dd64c73edf676af3c0ba8af754fd7"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Primitives.ic9wbsf5sl.wasm.gz",
-      "sha256": "136703d2b34ed3440005774b1eea826c5a0f6bb08334d7005620ed8fcc49c517"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Primitives.1w0lc1mcj1.wasm.gz",
+      "sha256": "e3e516abe718c0ef791c5d30e3ac849a97bb5f50fb2cf16caf7da5faec2eb4e3"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Validation.1igmz3eei4.wasm",
-      "sha256": "094c0dd141278153779da97e8d0b445fab937a383fb458b4ada1807e94f1cf47"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Validation.lspj8863f6.wasm",
+      "sha256": "abae8380c0d57b48f9b795ba0815ae3b26c97f155fd69ee86ab7d04396d7c87d"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Validation.1igmz3eei4.wasm.br",
-      "sha256": "2d77bfcebeb2421a1f300e0a8065ad8e0246444dfb79b632a4dc4ebc0694d1b3"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Validation.lspj8863f6.wasm.br",
+      "sha256": "c393b9a0ab686c5057ca37f5bd280196c045525610528afa3cd6733db72fb4d4"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Validation.1igmz3eei4.wasm.gz",
-      "sha256": "4ffb3610190b301278b6920373c6bbc33d610e73532db0bf52232c54dcc59297"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.Extensions.Validation.lspj8863f6.wasm.gz",
+      "sha256": "7f228e4cf861713d1c12fe41beb1ad0737f4f419f5a7ece74213a11f058391bc"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.2fss1bo23t.wasm",
-      "sha256": "de2b40a605e5c01d6087a6f3f121bbede60fb7c65c3e38e868c380156f176421"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.WebAssembly.gfego8d62w.wasm",
+      "sha256": "f4cacc49a177531eea25dbb5f6d7dae7d958b483ac9dd4bc3446f2c3854d9ce0"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.2fss1bo23t.wasm.br",
-      "sha256": "130db486c349f7b0e177291c834419580f6113dd325a6492220206ae650cb872"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.WebAssembly.gfego8d62w.wasm.br",
+      "sha256": "67b7482d0448d739a0648065791546a1e0b85de7b4f426516dfe3a1a0816bba3"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.2fss1bo23t.wasm.gz",
-      "sha256": "8f409c491d9145a8b9a2464276b59bb37dd98d5f59671b9bb2bd3aef89d8452b"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.WebAssembly.gfego8d62w.wasm.gz",
+      "sha256": "25deb33fe232c5fd81507f624490fd1ecc23744c518b11132e3f9f29579829d5"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.WebAssembly.cok88e5v83.wasm",
-      "sha256": "ac2a91475ba8bf232d114656ade4111ce6f338806dfd36fafb81ebd618eb2623"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.i9pwapwe1o.wasm",
+      "sha256": "e615dc8eef986e7925242c8f80861dbf6dd8d5afc0f41d3644e6473102807283"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.WebAssembly.cok88e5v83.wasm.br",
-      "sha256": "a27bd57c638831da46c7487882f6177d641622f01ba379999898d2ca9db4f1d0"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.i9pwapwe1o.wasm.br",
+      "sha256": "8007da6932b09f597092b86d2872738ccbd998a60a42a63bc65672cd36afa3d3"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.WebAssembly.cok88e5v83.wasm.gz",
-      "sha256": "ddb3c5160d8bd697d0ce5dd1cafadbd1761e2943310c225af9d5c8f227ee51f6"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/Microsoft.JSInterop.i9pwapwe1o.wasm.gz",
+      "sha256": "9b85b95b970a5407bd9760bef4464cd4f1fb7759f36a0959c9a7591ef3ce9f1a"
     },
     {
       "path": "opt/bouncyhsm/server/wwwroot/_framework/System.400l3mulw9.wasm",
@@ -1095,16 +1095,16 @@
       "sha256": "87f41a6a87e2c226bed339dbdfce7db1b6c5d20b19da6c4667e5a4918c6f2e16"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/System.Private.CoreLib.vbekd3gz49.wasm",
-      "sha256": "8b5e67e750f9eade6e2c32da32d704c902eb4e82d9686a1a533767533ab38deb"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/System.Private.CoreLib.x5mi7xalj6.wasm",
+      "sha256": "b5ab7ccf2f509ff249f9131b21c160be45271877f6288ea8ed12c30e17c5688d"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/System.Private.CoreLib.vbekd3gz49.wasm.br",
-      "sha256": "15ff4fef825086a633fb1675dc1ba3c0b916ce7e3465e8f5a22de0b2a89d61c8"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/System.Private.CoreLib.x5mi7xalj6.wasm.br",
+      "sha256": "99772ff358e0cc2408d2ff31fc140a881cf6133abb3e6e68c5b7724ea070a681"
     },
     {
-      "path": "opt/bouncyhsm/server/wwwroot/_framework/System.Private.CoreLib.vbekd3gz49.wasm.gz",
-      "sha256": "12fbdf090afc0c1ecdb3544862e0f63a2d59306a8f66938d99998dd3ced217ce"
+      "path": "opt/bouncyhsm/server/wwwroot/_framework/System.Private.CoreLib.x5mi7xalj6.wasm.gz",
+      "sha256": "2ddc71bc530ed712954dc6ae52a39b31362c26981d22ca164b8d580267f76aed"
     },
     {
       "path": "opt/bouncyhsm/server/wwwroot/_framework/System.Private.Uri.7e92wxv9ce.wasm",
@@ -1276,15 +1276,15 @@
     },
     {
       "path": "opt/bouncyhsm/server/wwwroot/_framework/dotnet.js",
-      "sha256": "8842e7eeb6c64a8e06639996aec8bceb1fff06ac2118a4a43682cf6be212db3a"
+      "sha256": "b1c53ad0e6616df53e994dc795533b4d968f0a3615fad59ff22bb2ce5a8257e2"
     },
     {
       "path": "opt/bouncyhsm/server/wwwroot/_framework/dotnet.js.br",
-      "sha256": "7ddd1e834f428fe3f448405340518b490571f44873ce19f4196730bf519958f6"
+      "sha256": "acae357f80485975e31a4553eee9defd0484a6f01c8a092e5335a8018184896b"
     },
     {
       "path": "opt/bouncyhsm/server/wwwroot/_framework/dotnet.js.gz",
-      "sha256": "0035f406b00e3b99e7577e638ae06c392f9318e1475ac8c3abe6535216490cb9"
+      "sha256": "467ccc7400d6d4628334c343fd73a20b446c1018e67b01033e83805f52bb0231"
     },
     {
       "path": "opt/bouncyhsm/server/wwwroot/_framework/dotnet.native.b6l13xorvf.js",
@@ -1540,11 +1540,11 @@
     },
     {
       "path": "usr/local/bin/bouncyhsm-probe",
-      "sha256": "668f9e966f0fdf29de76d460c817aa7616ddaa5e17e235bd3850d704ac746fac"
+      "sha256": "f167ef7e530372db65f29541a280ae782565cb15beefb5d53f715e3f4991567e"
     },
     {
       "path": "usr/local/lib/p11lab/libBouncyHsm.Pkcs11.so",
-      "sha256": "719a5743dbe888e079e9c1cf46d70e7d036ee5514e40c3d7fe5d6bbc45956c95"
+      "sha256": "c38865e4f7db29e3b6e7bf7c1a5c52c6450e1a83047b36d5d053e4dea24d5e35"
     },
     {
       "path": "usr/share/licenses/bouncyhsm/LICENSE",
@@ -1561,14 +1561,14 @@
       "sha256": "8f8a76c2c41d51917b05cc12b51a71f6787f26b82aa3952630afa1aefe8e99f0"
     },
     {
-      "path": "FILE-NOTICES.txt",
+      "path": "FILE-NOTICES-release.txt",
       "sha256": "2a83d5adcbcb85d3ace59814334c8462d8c3ec61fe9a61b35d50fff4a646a14b"
     }
   ],
   "toolchain": [
     {
       "name": "debian13-runtime-image",
-      "sha256": "6a3f9d9e0334e3e61072a9145173af51c303d976ee2f6585c0b2ba75a040e948"
+      "sha256": "7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf"
     },
     {
       "name": "dotnet-sdk",
