@@ -16,9 +16,13 @@
 # below are the run identities (verified 2026-10-26; new pushes MOVE tags).
 # Images are UNGATED alpha: no admission verdict, no licensing review, no
 # qualification claim. Baselines start empty (unqualified providers fail on
-# first findings) and grow only from reviewed evidence. Proxy lane is a
-# separate follow-up: it needs daemon derivatives + checker consumers +
-# client bundles that do not exist yet.
+# first findings) and grow only from reviewed evidence. PROVENANCE NOTE: the
+# online derivative build resolves checker dependencies unlocked, yet the
+# install seal carries the frozen SOURCE/WHEEL/LOCK identities (the frozen
+# recipe's acquisition path is not implemented yet). This deviation is
+# explicit and temporary: revisit when checker toolset acquisition lands.
+# Proxy lane is a separate follow-up: it needs daemon derivatives + checker
+# consumers + client bundles that do not exist yet.
 name: checker-direct-validation
 
 on:
@@ -42,6 +46,10 @@ on:
       - 'src/p11lab/data/providers/softhsm2/**'
       - 'src/p11lab/data/tools.json'
       - 'src/p11lab/data/profiles/smoke-v1.json'
+      - 'src/p11lab/checker.py'
+      - 'src/p11lab/shards.py'
+      - 'src/p11lab/run.py'
+      - 'src/p11lab/models.py'
 
 permissions:
   contents: read
@@ -294,7 +302,9 @@ jobs:
           esac
           echo "::add-mask::$pin"
           echo "::add-mask::$so_pin"
-          mkdir -p run-cwd/secrets shard-out
+          # NOTE: shard-out must NOT be pre-created: run_application
+          # requires output_dir to be absent (fresh attempt directory).
+          mkdir -p run-cwd/secrets
           printf '%s' "$pin" > run-cwd/secrets/pin
           printf '%s' "$so_pin" > run-cwd/secrets/so-pin
           chmod 600 run-cwd/secrets/pin run-cwd/secrets/so-pin
@@ -304,14 +314,19 @@ jobs:
           import json
           import sys
           from pathlib import Path
+          from p11lab.catalog import load_environment
           from p11lab.checker import run_checker
           from p11lab.models import ArtifactRef, RunSpec
 
           env, shard, image_id = sys.argv[1], int(sys.argv[2]), sys.argv[3]
           profile = Path('run-cwd/shard-profile.json').resolve()
-          inputs = {'P11LAB_LABEL': {'haskoki': 'haskoki-demo'}.get(env, 'P11Lab'),
-                    'P11LAB_PIN_FILE': str(Path('run-cwd/secrets/pin').resolve()),
-                    'P11LAB_SO_PIN_FILE': str(Path('run-cwd/secrets/so-pin').resolve())}
+          # Gate LABEL on the descriptor allowlist: freehsm fixes its
+          # label in-adapter and rejects P11LAB_LABEL as unknown input.
+          inputs = {}
+          if 'P11LAB_LABEL' in load_environment(env, 'release')['inputs']:
+              inputs['P11LAB_LABEL'] = {'haskoki': 'haskoki-demo'}.get(env, 'P11Lab')
+          inputs['P11LAB_PIN_FILE'] = str(Path('run-cwd/secrets/pin').resolve())
+          inputs['P11LAB_SO_PIN_FILE'] = str(Path('run-cwd/secrets/so-pin').resolve())
           spec = RunSpec(environment=env, channel='release', mode='direct',
                          artifact=ArtifactRef('docker-local', image_id, image_id.removeprefix('sha256:'),
                                               'linux/amd64'),
@@ -349,6 +364,8 @@ jobs:
             attempt.json
           retention-days: 30
           if-no-files-found: error
+          # Roster validation requires the hidden per-target report caches.
+          include-hidden-files: true
 
   merge:
     needs: [plan, shard]
@@ -362,6 +379,7 @@ jobs:
       - name: Download plans and shards (by name, skips derivative tarballs)
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           mkdir -p evidence
           gh run download '${{ github.run_id }}' --name 'checker-direct-plan-${{ github.run_id }}' --dir evidence-plan
@@ -409,6 +427,13 @@ jobs:
                   # Re-anchor the worker-local directory to the merged copy.
                   record['directory'] = str(shard_dir / 'shard-out/checker')
                   attempts.append(record)
+                  # Runner outcomes are infra evidence, independent of the
+                  # provider baseline: lifecycle/cleanup failures fail here.
+                  # (app_returncode alone does not: checker test failures
+                  # are baseline-gated below, not infra.)
+                  for key in ('lifecycle_errors', 'cleanup_errors'):
+                      for err in record.get(key) or []:
+                          problems.append('%s shard %s %s: %s' % (env, record.get('shard_id'), key, err))
               roster = validate_shard_roster(plan, attempts)
               if not roster.get('complete'):
                   problems.append('%s: incomplete shard roster: %s' % (env, roster.get('errors')))
@@ -417,21 +442,37 @@ jobs:
               if not merged.get('complete'):
                   problems.append('%s: merge incomplete: %s' % (env, merged.get('errors')))
                   continue
+              summary = merged.get('summary', {}) or {}
+              for key in ('crashed', 'timeout', 'error', 'child_crash', 'child_timeout'):
+                  if summary.get(key):
+                      problems.append('%s: %d %s outcomes (incomplete evidence)' % (env, summary[key], key))
+              if summary.get('incomplete'):
+                  problems.append('%s: merged summary marked incomplete' % env)
               root = Path(plan['installed_root'])
               reports = [json.loads(line) for line in
                          (Path('/work/merged') / env / 'merged/report.jsonl').read_text().splitlines() if line.strip()]
+              seen = set()
               for report in reports:
-                  if report.get('$report_type') != 'TestReport' or report.get('lifecycle') == 'session-teardown':
-                      continue
                   outcome = str(report.get('outcome', report.get('status', ''))).lower()
-                  if outcome in {'passed', 'pass'}:
+                  # Pass-like and outcome-less metadata records carry no
+                  # verdict. NOTE: 'skipped' is deliberately NOT pass-like:
+                  # skipped tests are missing runtime evidence and must be
+                  # explicitly baselined.
+                  if not outcome or outcome in {'passed', 'pass', 'ok', 'success'}:
                       continue
-                  try:
-                      node_id = canonical_node(report['nodeid'], root)
-                  except (KeyError, ValueError):
-                      problems.append('%s: unrecognized report node %r' % (env, report.get('nodeid')))
-                      continue
-                  if node_id not in expected[suite]:
+                  rtype = report.get('$report_type', '?')
+                  if 'nodeid' in report:
+                      try:
+                          node_id = canonical_node(report['nodeid'], root)
+                      except ValueError:
+                          problems.append('%s: unrecognized report node %r' % (env, report.get('nodeid')))
+                          continue
+                  else:
+                      # Teardown/synthetic records without a node: baselinable
+                      # synthetic id, never silently dropped.
+                      node_id = '<%s:%s>' % (env, rtype)
+                  if node_id not in expected[suite] and node_id not in seen:
+                      seen.add(node_id)
                       failures.append('%s: %s (%s)' % (env, node_id, outcome or 'unknown'))
 
           verdict = 'pass' if not problems and not failures else 'fail'
@@ -471,3 +512,4 @@ jobs:
           path: merged/
           retention-days: 30
           if-no-files-found: warn
+          include-hidden-files: true
