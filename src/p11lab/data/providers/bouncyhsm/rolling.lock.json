@@ -2686,7 +2686,7 @@
     {
       "role": "build-helper",
       "path": "dotnet-locks-rolling/BouncyHsm.Spa.packages.lock.json",
-      "sha256": "15b3a611fecb6a8353537bec6e6bc88edb504da22c1cbc8946366bdd703427cc",
+      "sha256": "ccd7f8939d0bdfdaee23b20fbd9366fc34d4b435e6b7c42df0f83c5a0ac987c8",
       "context_path": "dotnet-locks/BouncyHsm.Spa.packages.lock.json"
     }
   ],
