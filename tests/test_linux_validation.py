@@ -125,7 +125,7 @@ def test_linux_validation_checker_requirement_uses_catalogue_pin(tmp_path):
     source = json.loads((ROOT / "src/p11lab/data/tools.json").read_text())["tools"]["checker"]["source"]
     requirement = (tmp_path / "checker-requirement.txt").read_text()
     assert requirement == f"pkcs11-check @ git+{source['url']}@{source['revision']}\n"
-    assert 'metadata.version("pkcs11-check") == "0.2.2"' in step("Verify checker provenance")
+    assert 'metadata.version("pkcs11-check") == "0.2.3"' in step("Verify checker provenance")
     assert 'direct["vcs_info"]["commit_id"] == source["revision"]' in step("Verify checker provenance")
     assert 'direct["url"] == source["url"]' in step("Verify checker provenance")
     assert "import pkcs11_check.testcases" in step("Verify checker provenance")

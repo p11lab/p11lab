@@ -22,7 +22,7 @@ RUN test -n "$PYTHON_DEBS_MANIFEST_SHA256" \
  && python3.13 -m venv /opt/p11lab-checker
 COPY runtime-wheelhouse/ /tmp/runtime-wheelhouse/
 COPY runtime-requirements.txt /tmp/runtime-requirements.txt
-RUN echo 'fe8bce22bb409a005977449cadb64f70ea19dd0a0ce9d685d78ac11447926372  /tmp/runtime-requirements.txt' | sha256sum -c - \
+RUN echo '98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab  /tmp/runtime-requirements.txt' | sha256sum -c - \
  && /opt/p11lab-checker/bin/python -m pip install --no-index --no-cache-dir --only-binary=:all: \
       --find-links /tmp/runtime-wheelhouse --require-hashes -r /tmp/runtime-requirements.txt \
  && /opt/p11lab-checker/bin/python -m pip check \
@@ -32,7 +32,7 @@ RUN echo 'fe8bce22bb409a005977449cadb64f70ea19dd0a0ce9d685d78ac11447926372  /tmp
  && dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\t${source:Package}\t${source:Version}\n' \
       | sort > /usr/share/p11lab/checker/debian-packages.tsv \
  && rm -rf /tmp/runtime-wheelhouse /tmp/runtime-requirements.txt \
- && printf '%s\n' '{"source_revision":"de4db3d2ee738a9f99d0654e4baf568cdbd4774a","wheel_sha256":"812c57e94fb967bc5ba939f0519bba67c58d5e755705b84c8442bbc2774d96f9","runtime_lock_sha256":"fe8bce22bb409a005977449cadb64f70ea19dd0a0ce9d685d78ac11447926372"}' > /usr/share/p11lab/checker-install.json
+ && printf '%s\n' '{"source_revision":"9df03bd8b811966fa7856394b19e3f57ffcd8a40","wheel_sha256":"58ac3451ae0dba207a48affa460309e4024c2ec7aefb04ef73062f420fdcffec","runtime_lock_sha256":"98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab"}' > /usr/share/p11lab/checker-install.json
 COPY p11lab/ /opt/p11lab-code/p11lab/
 RUN chmod -R a+rX /opt/p11lab-code /usr/share/p11lab/checker /usr/share/p11lab/checker-install.json \
  && printf '%s\n' /opt/p11lab-code > /opt/p11lab-checker/lib/python3.13/site-packages/p11lab.pth \

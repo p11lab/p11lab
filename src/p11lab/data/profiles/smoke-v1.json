@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "name": "p11lab-smoke-v1",
-  "checker_version": "0.2.2",
-  "source_revision": "de4db3d2ee738a9f99d0654e4baf568cdbd4774a",
-  "wheel_sha256": "812c57e94fb967bc5ba939f0519bba67c58d5e755705b84c8442bbc2774d96f9",
-  "runtime_lock_sha256": "fe8bce22bb409a005977449cadb64f70ea19dd0a0ce9d685d78ac11447926372",
+  "checker_version": "0.2.3",
+  "source_revision": "9df03bd8b811966fa7856394b19e3f57ffcd8a40",
+  "wheel_sha256": "58ac3451ae0dba207a48affa460309e4024c2ec7aefb04ef73062f420fdcffec",
+  "runtime_lock_sha256": "98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab",
   "nodes": [
     "test_interface.py::TestLibraryInfo::test_module_loads",
     "test_interface.py::TestLibraryInfo::test_interface_version_reported",

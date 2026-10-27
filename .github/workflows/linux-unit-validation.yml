@@ -70,7 +70,7 @@ jobs:
           source = json.loads(Path("src/p11lab/data/tools.json").read_text())["tools"]["checker"]["source"]
           direct = json.loads(metadata.distribution("pkcs11-check").read_text("direct_url.json"))
           assert sys.version_info[:3] == (3, 12, 14), sys.version
-          assert metadata.version("pkcs11-check") == "0.2.2"
+          assert metadata.version("pkcs11-check") == "0.2.3"
           assert direct["url"] == source["url"]
           assert direct["vcs_info"]["vcs"] == "git"
           assert direct["vcs_info"]["commit_id"] == source["revision"]
