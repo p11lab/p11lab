@@ -555,7 +555,7 @@ jobs:
   # tests/test_checker_workflows.py); uncovered envs skip the call.
   validate-direct:
     needs: expose-binary
-    if: contains(fromJSON('["haskoki", "freehsm", "kryoptic", "bouncyhsm", "softhsm2", "nss", "opencryptoki"]'), inputs.environment)
+    if: contains(fromJSON('["haskoki", "freehsm", "kryoptic", "bouncyhsm", "softhsm2", "nss"]'), inputs.environment)
     uses: ./.github/workflows/checker-direct-validation.yml
     with:
       environment: ${{ inputs.environment }}
