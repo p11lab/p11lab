@@ -19,9 +19,11 @@
 # behavior; see the bouncyhsm baseline note below), haskoki fourth
 # (trial 40500120170: 23/23 smoke nodes pass with an empty baseline),
 # freehsm fifth (trial 40501649480: 23/23 smoke nodes pass with an empty
-# baseline). New envs stay EXCLUDED until their proxy constraints and
-# lanes are reviewed (docs/proxy.md documents the SoftHSM topology
-# only). One daemon per shard leg; no daemon sharing.
+# baseline), nss sixth (admitted on reviewed smoke evidence: 3 SHA-256
+# digest skips identical through the daemon and natively; see the nss
+# baseline note below). New envs stay EXCLUDED until their proxy
+# constraints and lanes are reviewed (docs/proxy.md documents the
+# SoftHSM topology only). One daemon per shard leg; no daemon sharing.
 # Baselines are a SEPARATE namespace from direct: transport facts (e.g.
 # negotiation skips) differ across lanes, so proxy findings must never be
 # judged against direct baselines. PROXY_BASELINES starts empty and grows
@@ -89,6 +91,7 @@ on:
       - 'src/p11lab/data/providers/bouncyhsm/**'
       - 'src/p11lab/data/providers/haskoki/**'
       - 'src/p11lab/data/providers/freehsm/**'
+      - 'src/p11lab/data/providers/nss/**'
       - 'src/p11lab/data/tools.json'
       - 'src/p11lab/data/profiles/smoke-v1.json'
       - 'src/p11lab/data/runtime/**'
@@ -117,6 +120,7 @@ env:
   BOUNCYHSM_DIGEST: 'sha256:809ab1985931c7356f53e3675d26632870c06aedaf961987e7e92b1c5496c08e'
   HASKOKI_DIGEST: 'sha256:dc7086e2b831f47223460d9ac3afd8cd8106deb9c135d4084d963cd0b7f84daa'
   FREEHSM_DIGEST: 'sha256:559127e1c3f73ded28f708518dd90d376951781863e4112a6185e1b646047197'
+  NSS_DIGEST: 'sha256:42e6095ac865cf6c183c20fda489e3bbe5ac2c6522685f4db8a95adb56017e01'
   CHECKER_VERSION: '0.2.3'
   PROXY_SOURCE_REVISION: 'a348a5f59b535b1ca309ea9f0a722e3bec692f72'
   PROXY_CARGO_LOCK_SHA256: '39ae3c64cff6fddd4f2d621f8e26139005936b22e6d7652b2ed14e4921fa5979'
@@ -133,10 +137,15 @@ env:
   # later skip->fail transition passed silently. Outcome-transition
   # detection is a known merger gap: baselined nodes never re-alert on
   # outcome transitions.
-  PROXY_BASELINES: '{"softhsm2":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_interface_negotiated","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_session_opens","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_get_interface_list","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV32::test_v32_interface_negotiated","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV32::test_v32_session_opens"],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestProperties::test_sha256_empty_data"],"full":[]},"haskoki":{"smoke":[],"full":[]},"freehsm":{"smoke":[],"full":[]}}'
+  # nss smoke: the 3 SHA-256 digest nodes skip identically through the
+  # daemon (trial 40503542391) and natively (direct baseline): softoken
+  # does not offer SHA-256 ("SHA256 not supported"). Token capability
+  # fact, not a transport change; the daemon reproduces native
+  # mechanism discovery exactly.
+  PROXY_BASELINES: '{"softhsm2":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_interface_negotiated","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_session_opens","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_get_interface_list","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV32::test_v32_interface_negotiated","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV32::test_v32_session_opens"],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestProperties::test_sha256_empty_data"],"full":[]},"haskoki":{"smoke":[],"full":[]},"freehsm":{"smoke":[],"full":[]},"nss":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestLengths::test_digest_length[SHA-256]","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestProperties::test_sha256_empty_data","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestCrossVerify::test_cross_verify[SHA-256]"],"full":[]}}'
   # Full-suite shard counts (smoke is always 1). Same hints as direct;
   # retune from proxy evidence (daemon + mTLS overhead differs).
-  PROXY_FULL_SHARDS: '{"softhsm2":2,"kryoptic":5,"bouncyhsm":8,"haskoki":2,"freehsm":4}'
+  PROXY_FULL_SHARDS: '{"softhsm2":2,"kryoptic":5,"bouncyhsm":8,"haskoki":2,"freehsm":4,"nss":2}'
 
 jobs:
   select:
@@ -165,7 +174,7 @@ jobs:
           P11LAB_BASE_REF: ${{ github.base_ref }}
         run: |
           set -eu
-          LANE_ENVS="softhsm2 kryoptic bouncyhsm haskoki freehsm"
+          LANE_ENVS="softhsm2 kryoptic bouncyhsm haskoki freehsm nss"
           if [ "$P11LAB_EVENT" = "pull_request" ]; then
             git fetch -q --depth 1 origin "$P11LAB_BASE_REF"
             changed="$(git diff --name-only "origin/$P11LAB_BASE_REF"...HEAD)"
