@@ -20,6 +20,9 @@ expected_marker() {
     printf '%s\n' 'schema=1' 'provider=nss' "artifact=$(cat /usr/share/p11lab/runtime-id)" 'token=P11Lab' 'backend=sql'
 }
 complete() {
+    # complete() spawns the stock certutil utility on reused state (compatible
+    # init and health); scalars must not reach any child environment here.
+    unset P11LAB_PIN P11LAB_SO_PIN
     [ ! -L "$owned" ] && [ ! -L "$owned/complete" ] || p11lab_die "partial or unsafe state"
     [ -f "$owned/complete" ] || p11lab_die "partial state: missing completion marker"
     [ "$(cat "$owned/complete")" = "$(expected_marker)" ] || p11lab_die "incompatible non-secret initialization configuration"
@@ -54,7 +57,7 @@ init_token() {
     p11lab_secret P11LAB_SO_PIN P11LAB_SO_PIN_FILE
     unset P11LAB_PIN P11LAB_SO_PIN credential
     mkdir "$state/.init-lock" || p11lab_die "state initialization is already in progress"
-    trap 'rmdir "$state/.init-lock" 2>/dev/null || :; rm -f "$control/marker.$$" "$control/init.$$" "$control/init-pw.$$"' EXIT HUP INT TERM
+    trap 'rmdir "$state/.init-lock" 2>/dev/null || :; rm -f "$control/marker.$$" "$control/init.$$" "$control/init-pw.$$" "$control/reset-pin.$$" "$control/reset-so-pin.$$"' EXIT HUP INT TERM
     mkdir -m 700 "$owned"
     printf '%s' "$user_credential" > "$control/init-pw.$$"
     unset user_credential
@@ -87,7 +90,24 @@ case "${1-}" in
         p11lab_writable_directory "$state"
         [ ! -L "$state/.init-lock" ] && [ ! -e "$state/.init-lock" ] || p11lab_die "state initialization is already in progress"
         p11lab_secret P11LAB_PIN P11LAB_PIN_FILE
+        reset_pin=$credential
         p11lab_secret P11LAB_SO_PIN P11LAB_SO_PIN_FILE
+        reset_so_pin=$credential
+        unset credential
+        # A credential FILE inside the reset tree passes validation and is
+        # then deleted; retain validated file bytes outside the wiped tree so
+        # the re-init below cannot fail for inputs that validated above.
+        # Scalar channels need no stash: the environment survives the rm.
+        trap 'rm -f "$control/reset-pin.$$" "$control/reset-so-pin.$$"' EXIT HUP INT TERM
+        if [ -n "${P11LAB_PIN_FILE+x}" ]; then
+            printf '%s' "$reset_pin" > "$control/reset-pin.$$"
+            export P11LAB_PIN_FILE="$control/reset-pin.$$"
+        fi
+        if [ -n "${P11LAB_SO_PIN_FILE+x}" ]; then
+            printf '%s' "$reset_so_pin" > "$control/reset-so-pin.$$"
+            export P11LAB_SO_PIN_FILE="$control/reset-so-pin.$$"
+        fi
+        unset reset_pin reset_so_pin
         configure
         p11lab_check_find empty "partial state: refusing to reset volume with unknown files" "$state" -mindepth 1 -maxdepth 1 ! -name nss -print -quit
         if [ -e "$owned" ]; then

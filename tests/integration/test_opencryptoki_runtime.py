@@ -482,3 +482,27 @@ def test_native_daemon_and_system_legacy_are_required(runtime):
                     'LD_PRELOAD=/usr/local/lib/p11lab/libnss_wrapper.so p11lab-native-probe', check=False)
     assert direct.returncode == 1 and 'C_Initialize: CK_RV=0x00000006' in direct.stderr
     assert snapshot(state) == before
+
+
+def test_reset_retains_credential_file_inside_owned_tree(runtime):
+    # A PIN file inside the owned tree passes reset validation and is then
+    # deleted with the tree: reset must retain the validated bytes outside
+    # the wiped tree (beside locks/, never inside it) so re-init succeeds.
+    channel, root, state, secrets, image, base, controls = runtime
+    control = root / 'control'
+    control.mkdir(mode=0o700)
+    owned_base = ['run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
+                  '--user', f'{os.getuid()}:{os.getgid()}',
+                  '--mount', f'type=bind,src={state},dst=/var/lib/p11lab',
+                  '--mount', f'type=bind,src={control},dst=/run/p11lab',
+                  '--mount', f'type=bind,src={secrets},dst=/run/secrets,readonly',
+                  '--tmpfs', '/tmp']
+    assert docker(*owned_base, *controls, image, 'init').returncode == 0
+    (state / 'opencryptoki' / 'tree-pin').write_bytes(b'1234')
+    tree_controls = ['-e', 'P11LAB_LABEL=acceptance',
+                     '-e', 'P11LAB_PIN_FILE=/var/lib/p11lab/opencryptoki/tree-pin',
+                     '-e', 'P11LAB_SO_PIN_FILE=/run/secrets/so']
+    assert docker(*owned_base, *tree_controls, image, 'reset').returncode == 0
+    assert docker(*owned_base, '-e', 'P11LAB_LABEL=acceptance', image, 'health').returncode == 0
+    assert list((control / 'opencryptoki').glob('reset-pin.*')) == []
+    assert list((control / 'opencryptoki').glob('reset-so-pin.*')) == []

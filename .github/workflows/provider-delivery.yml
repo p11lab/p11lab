@@ -50,11 +50,15 @@ jobs:
 
       - name: Check delivery readiness
         shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
-          case "${{ inputs.environment }}" in
+          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
+          case "$P11LAB_INPUT_ENVIRONMENT" in
             softhsm2|nss|opencryptoki) ;;
             *)
-              echo "delivery test is not yet authored for ${{ inputs.environment }}" >&2
+              echo "delivery test is not yet authored for $P11LAB_INPUT_ENVIRONMENT" >&2
               exit 1
               ;;
           esac
@@ -74,32 +78,47 @@ jobs:
 
       - name: Resolve and seal ${{ inputs.channel }} sources
         shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -eu
-          p11lab resolve "${{ inputs.environment }}" --channel ${{ inputs.channel }} --output-dir resolve-out
-          p11lab publish seal-sources "${{ inputs.environment }}" --channel ${{ inputs.channel }} \
+          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
+          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
+          p11lab resolve "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --output-dir resolve-out
+          p11lab publish seal-sources "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" \
             --resolved-dir resolve-out --output-dir seal-out
 
       - name: Build the exact runtime binary
         shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -eu
-          p11lab build "${{ inputs.environment }}" --channel ${{ inputs.channel }} --output-dir build-out
+          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
+          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
+          p11lab build "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --output-dir build-out
           python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])'
 
       - name: Test with the installed C consumer and OpenSSL oracle
         shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -eu
+          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
+          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
           PROVIDER_ID=$(python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])')
           docker tag "$PROVIDER_ID" p11lab-local-provider:consumer-parent
           test "$(docker image inspect --format '{{.Id}}' p11lab-local-provider:consumer-parent)" = "$PROVIDER_ID"
-          python examples/linux/prepare-consumer.py --channel ${{ inputs.channel }} --output-dir consumer-context
+          python examples/linux/prepare-consumer.py --channel "$P11LAB_INPUT_CHANNEL" --output-dir consumer-context
           docker build --platform linux/amd64 --provenance=false \
             --build-arg PROVIDER_IMAGE=p11lab-local-provider:consumer-parent \
             --iidfile consumer-id consumer-context
           CONSUMER_ID=$(cat consumer-id)
-          case "${{ inputs.environment }}" in
+          case "$P11LAB_INPUT_ENVIRONMENT" in
             softhsm2)
               SMOKE_MODULE=/usr/local/lib/p11lab/libsofthsm2.so
               SMOKE_LABEL=P11Lab
@@ -127,14 +146,14 @@ jobs:
           # that GID only when needed, after proving socket access survives.
           P11LAB_BIN="$(command -v p11lab)"
           RUN_SUDO=""
-          if [ "${{ inputs.environment }}" = "opencryptoki" ] && [ "$(id -g)" != 1001 ]; then
+          if [ "$P11LAB_INPUT_ENVIRONMENT" = "opencryptoki" ] && [ "$(id -g)" != 1001 ]; then
             sudo -n -g '#1001' true 2>/dev/null && sudo -n -g '#1001' docker info >/dev/null 2>&1 || {
               echo "opencryptoki delivery test needs primary GID 1001" >&2
               exit 1
             }
             RUN_SUDO="sudo -n -g #1001"
           fi
-          $RUN_SUDO "$P11LAB_BIN" run "${{ inputs.environment }}" --channel ${{ inputs.channel }} --artifact "$CONSUMER_ID" \
+          $RUN_SUDO "$P11LAB_BIN" run "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --artifact "$CONSUMER_ID" \
             --input "P11LAB_PIN_FILE=$PWD/pin" --input "P11LAB_SO_PIN_FILE=$PWD/so-pin" \
             --output-dir smoke-run -- \
             p11lab-smoke --module "$SMOKE_MODULE" \
@@ -223,13 +242,18 @@ jobs:
       - name: Verify the seal before publishing
         shell: bash
         working-directory: transport
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -eu
+          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
+          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
           python -c '
-          import json, sys
+          import json, os, sys
           from p11lab.publish import artifact_tag, verify_sealed_archive
           manifest = verify_sealed_archive("seal-out/sealed-source.tar.gz", "seal-check")
-          assert (manifest["environment"], manifest["channel"]) == ("${{ inputs.environment }}", "${{ inputs.channel }}"), manifest
+          assert (manifest["environment"], manifest["channel"]) == (os.environ["P11LAB_INPUT_ENVIRONMENT"], os.environ["P11LAB_INPUT_CHANNEL"]), manifest
           receipt = json.load(open("seal-out/sealed-source.json"))
           tag = artifact_tag("src", receipt["environment"], receipt["channel"], receipt["archive_sha256"])
           Path = __import__("pathlib").Path
@@ -410,16 +434,21 @@ jobs:
       - name: Run the delivery gate
         id: gate
         shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -eu -o pipefail
+          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
+          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
           BIN_SHA=$(python -c 'import json; print(json.load(open("build-transport/build-out/artifact.json"))["artifact"]["sha256"])')
           WHEEL_SHA=$(cut -d' ' -f1 build-transport/meta/wheel.sha256)
           SRC_MANIFEST_DIGEST=$(python -c 'import json; print(json.load(open("readback-transport/pushed-src.json"))["digest"].removeprefix("sha256:"))')
-          p11lab publish check-inputs "${{ inputs.environment }}" --channel ${{ inputs.channel }} \
+          p11lab publish check-inputs "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" \
             --sealed-manifest readback-transport/readback/extract/sealed.json \
             --build-receipt build-transport/build-out/artifact.json
           set +e
-          p11lab publish admit "${{ inputs.environment }}" --channel ${{ inputs.channel }} \
+          p11lab publish admit "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" \
             --sealed-receipt build-transport/seal-out/sealed-source.json \
             --sealed-manifest readback-transport/readback/extract/sealed.json \
             --readback-proof readback-transport/readback/readback-proof.json \
@@ -520,8 +549,13 @@ jobs:
       - name: Push the admitted binary and read it back anonymously
         id: push
         shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -eu
+          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
+          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
           cd build-transport
           (cd meta && sha256sum -c runtime-image.sha256)
           PROVIDER_ID=$(python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])')
@@ -531,19 +565,19 @@ jobs:
           # The tag alias is computed after the push fixes the index digest.
           # One reused staging alias per channel: the repository already
           # scopes the environment, so no tag accumulation.
-          STAGE_TAG="t13-staging-${{ inputs.channel }}"
+          STAGE_TAG="t13-staging-$P11LAB_INPUT_CHANNEL"
           docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$STAGE_TAG"
           docker push "$P11LAB_REGISTRY:$STAGE_TAG"
           docker buildx imagetools inspect "$P11LAB_REGISTRY:$STAGE_TAG" --raw > pushed-manifest.json
           INDEX_DIGEST="sha256:$(sha256sum pushed-manifest.json | cut -d' ' -f1)"
-          RT_TAG=$(python -c "from p11lab.publish import artifact_tag; print(artifact_tag('rt', '${{ inputs.environment }}', '${{ inputs.channel }}', '$INDEX_DIGEST'.removeprefix('sha256:')))")
+          RT_TAG=$(P11LAB_INDEX_DIGEST="$INDEX_DIGEST" python -c "import os; from p11lab.publish import artifact_tag; print(artifact_tag('rt', os.environ['P11LAB_INPUT_ENVIRONMENT'], os.environ['P11LAB_INPUT_CHANNEL'], os.environ['P11LAB_INDEX_DIGEST'].removeprefix('sha256:')))")
           docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$RT_TAG"
           docker push "$P11LAB_REGISTRY:$RT_TAG"
           docker buildx imagetools inspect "$P11LAB_REGISTRY:$RT_TAG" --raw > pushed-rt-manifest.json
           test "sha256:$(sha256sum pushed-rt-manifest.json | cut -d' ' -f1)" = "$INDEX_DIGEST"
           # Human-friendly aliases (version/floating tags) for the same bytes.
           # Each push is verified byte-identical to the canonical digest above.
-          ALIASES=$(python -c "from p11lab.publish import runtime_aliases; print(' '.join(runtime_aliases('${{ inputs.environment }}', '${{ inputs.channel }}')))")
+          ALIASES=$(python -c "import os; from p11lab.publish import runtime_aliases; print(' '.join(runtime_aliases(os.environ['P11LAB_INPUT_ENVIRONMENT'], os.environ['P11LAB_INPUT_CHANNEL'])))")
           for ALIAS in $ALIASES; do
             docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$ALIAS"
             docker push "$P11LAB_REGISTRY:$ALIAS"
@@ -669,8 +703,13 @@ jobs:
 
       - name: Write and publish the handoff
         shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -eu
+          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
+          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
           PUSHED_DIGEST="${{ needs['expose-binary'].outputs['pushed-digest'] }}"
           PUSHED_TAG="${{ needs['expose-binary'].outputs['pushed-tag'] }}"
           PUSHED_SIZE=$(python -c 'import json; print(json.load(open("exposure-transport/pulled-inspect.json"))[0]["Size"])')
@@ -680,7 +719,7 @@ jobs:
             --pulled-inspect exposure-transport/pulled-inspect.json \
             --registry "$P11LAB_REGISTRY" --output-dir handoff-out
           HANDOFF_SHA=$(sha256sum handoff-out/handoff.json | cut -d' ' -f1)
-          HANDOFF_TAG=$(python -c "from p11lab.publish import artifact_tag; print(artifact_tag('handoff', '${{ inputs.environment }}', '${{ inputs.channel }}', '$HANDOFF_SHA'))")
+          HANDOFF_TAG=$(P11LAB_HANDOFF_SHA="$HANDOFF_SHA" python -c "import os; from p11lab.publish import artifact_tag; print(artifact_tag('handoff', os.environ['P11LAB_INPUT_ENVIRONMENT'], os.environ['P11LAB_INPUT_CHANNEL'], os.environ['P11LAB_HANDOFF_SHA']))")
           echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
           cd handoff-out
           "$P11LAB_ORAS" push --artifact-type application/vnd.p11lab.handoff.v1 \

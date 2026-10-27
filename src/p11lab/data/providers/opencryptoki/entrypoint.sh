@@ -83,7 +83,7 @@ init_token() {
     p11lab_no_credential_conflict P11LAB_SO_PIN P11LAB_SO_PIN_FILE
     p11lab_writable_directory "$state"
     configure
-    if [ -e "$owned/complete" ]; then validate_static; exec "$tool" health; fi
+    if [ -e "$owned/complete" ]; then validate_static; unset P11LAB_PIN P11LAB_SO_PIN; exec "$tool" health; fi
     p11lab_check_find empty "partial state: refusing to initialize nonempty volume" "$state" -mindepth 1 -maxdepth 1 -print -quit
     p11lab_secret P11LAB_PIN P11LAB_PIN_FILE
     user_credential=$credential
@@ -93,7 +93,7 @@ init_token() {
     [ "$so_credential" != 87654321 ] || p11lab_die "SO credential must replace the native factory credential"
     unset P11LAB_PIN P11LAB_SO_PIN credential
     mkdir "$state/.init-lock" || p11lab_die "state initialization is already in progress"
-    trap 'rmdir "$state/.init-lock" 2>/dev/null || :' EXIT
+    trap 'rmdir "$state/.init-lock" 2>/dev/null || :; rm -f "$control/reset-pin.$$" "$control/reset-so-pin.$$"' EXIT
     init_locked
 }
 
@@ -152,7 +152,24 @@ case "${1-}" in
         so_credential=$credential
         [ "${#user_credential}" -ge 4 ] && [ "${#user_credential}" -le 8 ] && [ "${#so_credential}" -ge 4 ] && [ "${#so_credential}" -le 8 ] || p11lab_die "native SWToken PIN bounds are 4..8 bytes"
         [ "$so_credential" != 87654321 ] || p11lab_die "SO credential must replace the native factory credential"
+        reset_pin=$user_credential
+        reset_so_pin=$so_credential
         unset user_credential so_credential credential
+        # A credential FILE inside the reset tree passes validation and is
+        # then deleted; retain validated file bytes outside the wiped tree so
+        # the re-init below cannot fail for inputs that validated above.
+        # Scalar channels need no stash: the environment survives the rm.
+        # The stash sits beside locks/, never inside it: locks are wiped below.
+        trap 'rm -f "$control/reset-pin.$$" "$control/reset-so-pin.$$"' EXIT HUP INT TERM
+        if [ -n "${P11LAB_PIN_FILE+x}" ]; then
+            printf '%s' "$reset_pin" > "$control/reset-pin.$$"
+            export P11LAB_PIN_FILE="$control/reset-pin.$$"
+        fi
+        if [ -n "${P11LAB_SO_PIN_FILE+x}" ]; then
+            printf '%s' "$reset_so_pin" > "$control/reset-so-pin.$$"
+            export P11LAB_SO_PIN_FILE="$control/reset-so-pin.$$"
+        fi
+        unset reset_pin reset_so_pin
         p11lab_check_find empty "partial state: refusing to reset volume with unknown files" "$state" -mindepth 1 -maxdepth 1 ! -name opencryptoki -print -quit
         if [ -e "$owned" ]; then
             [ ! -L "$owned" ] || p11lab_die "refusing to reset unsafe state"
@@ -175,6 +192,7 @@ case "${1-}" in
         [ "$#" -eq 1 ] || p11lab_die "health takes no arguments"
         configure
         validate_static
+        unset P11LAB_PIN P11LAB_SO_PIN
         exec "$tool" health
         ;;
     exec)
