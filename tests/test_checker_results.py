@@ -450,8 +450,8 @@ def test_checker_private_api_resolves_pinned_version():
     import importlib.metadata
 
     pytest.importorskip("pkcs11_check.testcases")
-    if importlib.metadata.version("pkcs11-check") != "0.2.2":
-        pytest.skip("checker validation adapter pins pkcs11-check 0.2.2")
+    if importlib.metadata.version("pkcs11-check") != "0.2.3":
+        pytest.skip("checker validation adapter pins pkcs11-check 0.2.3")
     from p11lab.checker import _checker_private_api
 
     api = _checker_private_api()
@@ -468,7 +468,7 @@ def test_checker_private_api_rejects_other_versions(monkeypatch):
     from p11lab import checker
 
     monkeypatch.setattr(importlib.metadata, "version", lambda name: "9.9.9")
-    with pytest.raises(ValueError, match="requires pkcs11-check 0.2.2"):
+    with pytest.raises(ValueError, match="requires pkcs11-check 0.2.3"):
         checker._checker_private_api()
 
 

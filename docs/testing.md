@@ -13,7 +13,7 @@ failure suppression. This includes source contracts, lifecycle behavior,
 installed-wheel checks, and real checker planning/merge/adaptation tests.
 Python 3.12.14, uv 0.12.23, pytest 9.1.1, and the Linux Python dependency closure
 are version-pinned. The checker is installed from the immutable source revision
-in `src/p11lab/data/tools.json` and must identify as version 0.2.2. Its installed
+in `src/p11lab/data/tools.json` and must identify as version 0.2.3. Its installed
 source URL and commit are verified before testing; absence is an error rather
 than a reason to omit checker tests.
 

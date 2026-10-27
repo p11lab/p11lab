@@ -98,7 +98,7 @@ pin, so_pin = secret('P11LAB_PIN'), secret('P11LAB_SO_PIN')
     {'extra': {'checker': {'source_revision': SOURCE, 'wheel_sha256': WHEEL, 'runtime_lock_sha256': LOCK}}}, indent=2))
 env = dict(base_env)
 env.update(HOME=str(out), XDG_CONFIG_HOME=str(out), PYTEST_DISABLE_PLUGIN_AUTOLOAD='1', PYTEST_ADDOPTS='-v',
-           P11TEST_PIN=pin, P11TEST_SO_PIN=so_pin, PKCS11_CHECK_FRAMEWORK_VERSION='0.2.2',
+           P11TEST_PIN=pin, P11TEST_SO_PIN=so_pin, PKCS11_CHECK_FRAMEWORK_VERSION='0.2.3',
            PKCS11_CHECK_BUILD_PROVENANCE=str(out / 'build-provenance.json'))
 
 targets = [str(root / node) for node in nodes]

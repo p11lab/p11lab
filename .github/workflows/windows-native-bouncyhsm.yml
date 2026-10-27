@@ -241,16 +241,16 @@ jobs:
           # verification. Check out byte-exact.
           git -C checker-src config core.autocrlf false
           if ($LASTEXITCODE) { throw "checker autocrlf config failed" }
-          git -C checker-src fetch --depth 1 https://github.com/mingulov/pkcs11-check.git de4db3d2ee738a9f99d0654e4baf568cdbd4774a
+          git -C checker-src fetch --depth 1 https://github.com/mingulov/pkcs11-check.git 9df03bd8b811966fa7856394b19e3f57ffcd8a40
           if ($LASTEXITCODE) { throw "checker fetch failed" }
           git -C checker-src checkout FETCH_HEAD
           if ($LASTEXITCODE) { throw "checker checkout failed" }
           $chead = (git -C checker-src rev-parse HEAD).Trim()
-          if ($chead -ne "de4db3d2ee738a9f99d0654e4baf568cdbd4774a") { throw "checker HEAD mismatch: $chead" }
+          if ($chead -ne "9df03bd8b811966fa7856394b19e3f57ffcd8a40") { throw "checker HEAD mismatch: $chead" }
           $crlf = git -C checker-src ls-files --eol -- src/pkcs11_check/ | Select-String "w/crlf"
           if ($crlf) { throw "checker checkout is not LF-exact: $crlf" }
           python -m pip install ./checker-src
-          python -c "import importlib.metadata; v = importlib.metadata.version('pkcs11-check'); assert v == '0.2.2', v; print('pkcs11-check', v)"
+          python -c "import importlib.metadata; v = importlib.metadata.version('pkcs11-check'); assert v == '0.2.3', v; print('pkcs11-check', v)"
           python -m pip freeze | Sort-Object | Tee-Object -FilePath checker-pip-freeze.txt
           Get-Content checker-pip-freeze.txt
 
