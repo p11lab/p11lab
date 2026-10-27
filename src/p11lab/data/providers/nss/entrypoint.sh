@@ -131,7 +131,9 @@ case "${1-}" in
         shift
         [ "$#" -gt 0 ] || p11lab_die "exec requires an application"
         configure
-        complete
+        # Validate in a subshell: complete() scrubs scalar credentials from
+        # its own shell, and the application below must keep them.
+        ( complete )
         exec "$@"
         ;;
     *) p11lab_die "usage: p11lab-provider describe|init|reset|health|exec -- ARGV..." ;;

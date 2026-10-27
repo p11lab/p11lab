@@ -628,6 +628,44 @@ def test_nss_complete_scrubs_scalar_credentials_from_certutil_env(tmp_path):
     assert 'secret-so-pin' not in captured
 
 
+def test_nss_exec_preserves_scalar_credentials_for_application(tmp_path):
+    # The exec branch validates state through complete() (which scrubs its
+    # own shell) and then launches the application: the app must keep both
+    # original scalar values. Runs the real branch lines, not a copy.
+    entrypoint = package_data('providers/nss/entrypoint.sh').read_text()
+    branch = entrypoint.split('    exec)\n', 1)[1].split('\n        ;;\n', 1)[0]
+    assert '( complete )' in branch
+    state = tmp_path / 'state'
+    owned = state / 'nss'
+    owned.mkdir(parents=True)
+    (owned / 'complete').write_text('schema=1\n')
+    for name in ('cert9.db', 'key4.db', 'pkcs11.txt'):
+        (owned / name).write_bytes(b'x')
+    control = tmp_path / 'control'
+    control.mkdir()
+    dump = tmp_path / 'app-env.txt'
+    reached = tmp_path / 'certutil-reached'
+    app = tmp_path / 'fake-app.sh'
+    app.write_text(f"#!/bin/sh\nenv > '{dump}'\n")
+    app.chmod(0o755)
+    script = (package_data('runtime/common.sh').read_text()
+              + "\nexpected_marker() { printf '%s\\n' 'schema=1'; }\n"
+              + f"certutil() {{ : > '{reached}'; return 0; }}\n"
+              + _shell_function(entrypoint, 'configure')
+              + '\n' + _shell_function(entrypoint, 'complete') + '\n'
+              + f"state='{state}'\nowned='{owned}'\ncontrol='{control}'\n"
+              + f"params='{control}/params'\n"
+              + 'export P11LAB_PIN=secret-user-pin P11LAB_SO_PIN=secret-so-pin\n'
+              + f"set -- exec -- '{app}'\n"
+              + branch + '\n')
+    result = run_script(script, tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert reached.is_file(), 'validation did not reach certutil'
+    captured = dump.read_text()
+    assert 'P11LAB_PIN=secret-user-pin' in captured.splitlines()
+    assert 'P11LAB_SO_PIN=secret-so-pin' in captured.splitlines()
+
+
 def test_nss_init_certutil_spawn_follows_scalar_scrub():
     lines = package_data('providers/nss/entrypoint.sh').read_text().splitlines()
     spawns = [i for i, line in enumerate(lines) if 'certutil -d "sql:$owned" -N' in line]
