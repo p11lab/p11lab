@@ -4,7 +4,11 @@
 name: tmp-trial-per-provider-call
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
   call-direct:
