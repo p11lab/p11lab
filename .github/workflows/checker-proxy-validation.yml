@@ -1,0 +1,821 @@
+# SPDX-License-Identifier: Apache-2.0
+# Proxy-lane pkcs11-check runs: installed checker through the pinned mTLS
+# proxy (pkcs11-proxy-ng) against provider daemons.
+# Pipeline: proxy-bins (pinned proxy source -> daemon/CLI/shim bytes, built
+# once) -> daemon (provider runtime + proxy daemon, local-only, never pushed)
+# + consumer (installed checker image, same recipe as the direct lane) +
+# client-bundle (native shim/CLI bundle) -> plan (frozen shard plans, same
+# machinery as direct) -> shard matrix (run_checker with mode='proxy': one
+# logical mTLS client against a dedicated daemon per leg) -> merge (same
+# roster + baseline verdict machinery, separate proxy baselines).
+# Scope: softhsm2 first, kryoptic second. haskoki/freehsm/bouncyhsm are
+# EXCLUDED until each env's proxy constraints and lanes are reviewed
+# (docs/proxy.md qualifies SoftHSM only; only kryoptic's catalogue
+# contemplates proxy). One daemon per shard leg; no daemon sharing.
+# Baselines are a SEPARATE namespace from direct: transport facts (e.g.
+# negotiation skips) differ across lanes, so proxy findings must never be
+# judged against direct baselines. PROXY_BASELINES starts empty and grows
+# only from reviewed proxy evidence.
+# PROVENANCE NOTES (explicit temporary deviations, same class as the
+# direct lane's online checker build): (1) the proxy-bins cargo build
+# resolves crates.io unlocked (--locked pins versions, the frozen
+# vendor/offline acquisition path is not implemented yet), yet the seal
+# carries the frozen source/lock identities; (2) the checker install seal
+# observes the source revision (asserted from pip direct_url.json) but
+# declares wheel/dependency identities that only the frozen wheelhouse
+# (not implemented yet) can verify. protoc is NOT a deviation: the exact
+# 36.1 archive is fetched by pinned SHA-256 and version-matched exactly.
+name: checker-proxy-validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'smoke (PR-fast) or full (complete suite, sharded; needs frozen full-v1 profile).'
+        required: true
+        default: 'smoke'
+      channel:
+        description: 'Locked channel (release only until rolling digests are verified).'
+        required: true
+        default: 'release'
+  pull_request:
+    paths:
+      - '.github/workflows/checker-proxy-validation.yml'
+      - 'src/p11lab/**'
+      - 'pyproject.toml'
+
+permissions:
+  contents: read
+  actions: read # merge selects shard artifacts by name via gh (avoids GBs of image tarballs)
+
+concurrency:
+  group: checker-proxy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOFTHSM2_DIGEST: 'sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16'
+  KRYOPTIC_DIGEST: 'sha256:f7398f42e70141f2b321cfbd97f71ef5d7cf401c80ff26e2de9056a45bcb96c9'
+  CHECKER_VERSION: '0.2.2'
+  PROXY_SOURCE_REVISION: 'a348a5f59b535b1ca309ea9f0a722e3bec692f72'
+  PROXY_CARGO_LOCK_SHA256: '39ae3c64cff6fddd4f2d621f8e26139005936b22e6d7652b2ed14e4921fa5979'
+  # Expected-failures baselines per environment and suite (canonical node
+  # IDs), reviewed entries only. Proxy lane NEVER shares direct baselines.
+  PROXY_BASELINES: '{"softhsm2":{"smoke":[],"full":[]},"kryoptic":{"smoke":[],"full":[]}}'
+  # Full-suite shard counts (smoke is always 1). Same hints as direct;
+  # retune from proxy evidence (daemon + mTLS overhead differs).
+  PROXY_FULL_SHARDS: '{"softhsm2":2,"kryoptic":5}'
+
+jobs:
+  proxy-bins:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Fetch pinned proxy source
+        run: |
+          rm -rf proxy-src && mkdir proxy-src
+          cd proxy-src
+          git init -q
+          git remote add origin https://github.com/mingulov/pkcs11-proxy-ng
+          git fetch -q --depth 1 origin "$PROXY_SOURCE_REVISION"
+          git checkout -q "$PROXY_SOURCE_REVISION"
+          test "$(git rev-parse HEAD)" = "$PROXY_SOURCE_REVISION"
+          test "$(sha256sum Cargo.lock | cut -d' ' -f1)" = "$PROXY_CARGO_LOCK_SHA256"
+          git archive HEAD | sha256sum | cut -d' ' -f1 > "$RUNNER_TEMP/source-archive.sha256"
+          echo "proxy source $PROXY_SOURCE_REVISION verified"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: 1.98.1
+
+      - name: Install protoc 36.1 by pinned digest
+        env:
+          PROTOC_SHA256: 'c4bc672d9d49214dc8cafdceadf4df92182d6ca8e3ec65a56b2d7de5602669b4'
+        run: |
+          # No setup action: prefix-matching installers (36.10 beats 36.1)
+          # and checksum-less downloads are both refused here.
+          curl -fsSL -o "$RUNNER_TEMP/protoc.zip" \
+            'https://github.com/protocolbuffers/protobuf/releases/download/v36.1/protoc-36.1-linux-x86_64.zip'
+          echo "$PROTOC_SHA256  $RUNNER_TEMP/protoc.zip" | sha256sum -c -
+          rm -rf "$RUNNER_TEMP/protoc-dist" && mkdir -p "$RUNNER_TEMP/protoc-dist"
+          python3 -c 'import zipfile,os; zipfile.ZipFile(os.environ["RUNNER_TEMP"] + "/protoc.zip").extractall(os.environ["RUNNER_TEMP"] + "/protoc-dist")'
+          chmod +x "$RUNNER_TEMP/protoc-dist/bin/protoc"
+          test "$("$RUNNER_TEMP/protoc-dist/bin/protoc" --version)" = 'libprotoc 36.1'
+          echo "$RUNNER_TEMP/protoc-dist/bin" >> "$GITHUB_PATH"
+          echo "$PROTOC_SHA256" > "$RUNNER_TEMP/toolchain-protoc-sha256.txt"
+
+      - name: Build pinned proxy binaries
+        run: |
+          test "$(rustc --version)" = 'rustc 1.98.1 (48a229cea 2026-09-01)' || { rustc --version >&2; exit 1; }
+          test "$(protoc --version)" = 'libprotoc 36.1' || { protoc --version >&2; exit 1; }
+          cd proxy-src
+          # Online-build deviation (see header): --locked pins versions,
+          # crates.io provides the bytes; the seal records frozen identities.
+          cargo build --release --locked \
+            -p pkcs11-proxy-ng -p pkcs11-proxy-ng-cli -p pkcs11-proxy-ng-shim
+          test -x target/release/pkcs11-proxy-ng
+          test -x target/release/pkcs11-proxy-ng-cli
+          test -f target/release/libpkcs11_proxy_ng_shim.so
+          rustc --version > "$RUNNER_TEMP/toolchain-rustc.txt"
+          cargo --version > "$RUNNER_TEMP/toolchain-cargo.txt"
+          protoc --version > "$RUNNER_TEMP/toolchain-protoc.txt"
+
+      - name: Stage sealed proxy-bins context
+        run: |
+          rm -rf bins-stage && mkdir -p bins-stage/proxy-bins bins-stage/licenses bins-stage/client
+          cp proxy-src/target/release/pkcs11-proxy-ng \
+            proxy-src/target/release/pkcs11-proxy-ng-cli \
+            bins-stage/proxy-bins/
+          cp src/p11lab/data/runtime/proxy-entrypoint.sh bins-stage/proxy-bins/
+          # The shim cdylib is NOT part of the daemon seal (daemons never
+          # load it); it travels to the client bundler outside proxy-bins/.
+          cp proxy-src/target/release/libpkcs11_proxy_ng_shim.so bins-stage/client/
+          cp proxy-src/LICENSE-APACHE proxy-src/LICENSE-MIT bins-stage/licenses/
+          (cd bins-stage/proxy-bins && sha256sum pkcs11-proxy-ng pkcs11-proxy-ng-cli proxy-entrypoint.sh) \
+            > bins-stage/proxy-bins.sha256
+          sha256sum bins-stage/proxy-bins.sha256 | cut -d' ' -f1 > bins-stage/proxy-bins-manifest.sha256
+          cp "$RUNNER_TEMP/source-archive.sha256" bins-stage/source-archive.sha256
+          python3 -c 'import json; json.dump({"rustc": open("'"$RUNNER_TEMP"'/toolchain-rustc.txt").read().strip(), "cargo": open("'"$RUNNER_TEMP"'/toolchain-cargo.txt").read().strip(), "protoc": open("'"$RUNNER_TEMP"'/toolchain-protoc.txt").read().strip(), "protoc_sha256": open("'"$RUNNER_TEMP"'/toolchain-protoc-sha256.txt").read().strip()}, open("bins-stage/toolchain.json", "w"), indent=2)'
+          find bins-stage -type f | sort
+
+      - name: Upload proxy binaries
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-proxy-bins-${{ github.run_id }}
+          path: bins-stage/
+          retention-days: 1
+          if-no-files-found: error
+
+  daemon:
+    needs: proxy-bins
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [softhsm2, kryoptic]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Download proxy binaries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-proxy-bins-${{ github.run_id }}
+          path: incoming-bins/
+
+      - name: Pull runtime by digest and verify identity
+        run: |
+          digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
+          digest="${!digest_var}"
+          test -n "$digest" || { echo 'no digest pin' >&2; exit 1; }
+          ref="ghcr.io/p11lab/${{ matrix.environment }}@$digest"
+          docker pull "$ref"
+          actual="$(docker inspect --format '{{index .RepoDigests 0}}' "$ref" | cut -d@ -f2)"
+          test "$actual" = "$digest" || { echo "digest drift: $actual" >&2; exit 1; }
+
+      - name: Build local daemon derivative (never pushed)
+        run: |
+          # Cross-check the bins seal against this checkout's pins before
+          # building: a stale bins artifact must fail here, not at runtime.
+          test "$(cat incoming-bins/proxy-bins-manifest.sha256)" = \
+            "$(sha256sum incoming-bins/proxy-bins.sha256 | cut -d' ' -f1)"
+          (cd incoming-bins/proxy-bins && sha256sum -c ../proxy-bins.sha256)
+          PYTHONPATH=src python3 - <<'PY'
+          import os
+          from p11lab.tls import PROXY_CARGO_LOCK_SHA256, PROXY_SOURCE_REVISION
+          assert PROXY_SOURCE_REVISION == os.environ['PROXY_SOURCE_REVISION'], 'source pin drift vs tls.py'
+          assert PROXY_CARGO_LOCK_SHA256 == os.environ['PROXY_CARGO_LOCK_SHA256'], 'lock pin drift vs tls.py'
+          print('pins agree with tls.py')
+          PY
+          rm -rf daemon-ctx && mkdir -p daemon-ctx/proxy-notices
+          cp -r incoming-bins/proxy-bins daemon-ctx/proxy-bins
+          cp incoming-bins/proxy-bins.sha256 daemon-ctx/proxy-bins.sha256
+          cp incoming-bins/licenses/LICENSE-APACHE incoming-bins/licenses/LICENSE-MIT daemon-ctx/proxy-notices/
+          digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
+          docker build --no-cache -f src/p11lab/data/runtime/proxy.Dockerfile \
+            --build-arg "PROVIDER_IMAGE=ghcr.io/p11lab/${{ matrix.environment }}@${!digest_var}" \
+            --build-arg "PROXY_BINS_MANIFEST_SHA256=$(cat incoming-bins/proxy-bins-manifest.sha256)" \
+            --build-arg "PROXY_SOURCE_REVISION=$PROXY_SOURCE_REVISION" \
+            --build-arg "PROXY_CARGO_LOCK_SHA256=$PROXY_CARGO_LOCK_SHA256" \
+            -t "p11lab-ci/proxy-daemon-${{ matrix.environment }}:local" daemon-ctx
+
+      - name: Smoke-test daemon identity
+        run: |
+          docker run --rm --network none "p11lab-ci/proxy-daemon-${{ matrix.environment }}:local" \
+            proxy-build > daemon-build.json
+          python3 - <<'PY'
+          import json
+          import os
+          build = json.load(open('daemon-build.json'))
+          assert build['schema_version'] == 1
+          assert build['source_revision'] == os.environ['PROXY_SOURCE_REVISION']
+          assert build['cargo_lock_sha256'] == os.environ['PROXY_CARGO_LOCK_SHA256']
+          assert set(build['binaries']) == {'pkcs11-proxy-ng', 'pkcs11-proxy-ng-cli', 'proxy-entrypoint.sh'}
+          print('daemon identity OK:', build['binaries']['pkcs11-proxy-ng-cli'][:12])
+          PY
+
+      - name: Save daemon image
+        run: |
+          docker save "p11lab-ci/proxy-daemon-${{ matrix.environment }}:local" \
+            | gzip -1 > "daemon-${{ matrix.environment }}.tar.gz"
+          ls -la daemon-*.tar.gz
+
+      - name: Upload daemon image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-proxy-daemon-${{ matrix.environment }}-${{ github.run_id }}
+          path: daemon-${{ matrix.environment }}.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  consumer:
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [softhsm2, kryoptic]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Pull runtime by digest and verify identity
+        run: |
+          digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
+          digest="${!digest_var}"
+          test -n "$digest" || { echo 'no digest pin' >&2; exit 1; }
+          ref="ghcr.io/p11lab/${{ matrix.environment }}@$digest"
+          docker pull "$ref"
+          actual="$(docker inspect --format '{{index .RepoDigests 0}}' "$ref" | cut -d@ -f2)"
+          test "$actual" = "$digest" || { echo "digest drift: $actual" >&2; exit 1; }
+
+      - name: Build local checker consumer (never pushed)
+        run: |
+          # Same recipe as the direct lane: the consumer is the installed
+          # checker derivative unchanged (shim + TLS are mounted at runtime,
+          # nothing proxy-specific is baked in).
+          rev="$(python3 -c 'import json; print(json.load(open("src/p11lab/data/tools.json"))["tools"]["checker"]["source"]["revision"])')"
+          url="$(python3 -c 'import json; print(json.load(open("src/p11lab/data/tools.json"))["tools"]["checker"]["source"]["url"])')"
+          digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
+          cat > "$RUNNER_TEMP/Dockerfile.checker" <<EOF
+          FROM ghcr.io/p11lab/${{ matrix.environment }}@${!digest_var}
+          RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv git \
+            && rm -rf /var/lib/apt/lists/* \
+            && python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version"
+          RUN python3 -m venv /opt/p11lab-checker
+          RUN /opt/p11lab-checker/bin/pip install --no-cache-dir "pkcs11-check @ git+$url@$rev"
+          COPY src/p11lab /opt/p11lab-code/p11lab/
+          RUN chmod -R a+rX /opt/p11lab-code \
+            && /opt/p11lab-checker/bin/python -c 'import sysconfig; open(sysconfig.get_paths()["purelib"] + "/p11lab.pth", "w").write("/opt/p11lab-code\n")' \
+            && /opt/p11lab-checker/bin/python -c "import importlib.metadata as m; assert m.version('pkcs11-check') == '$CHECKER_VERSION', m.version('pkcs11-check')" \
+            && /opt/p11lab-checker/bin/python -c 'import glob,json,sysconfig; p=glob.glob(sysconfig.get_paths()["purelib"]+"/pkcs11_check*/direct_url.json"); assert len(p)==1, p; u=json.load(open(p[0])); assert u.get("vcs_info",{}).get("commit_id")=="$rev", u' \
+            && mkdir -p /usr/share/p11lab \
+            && /opt/p11lab-checker/bin/python -c 'import json; from p11lab.checker import SOURCE,WHEEL,LOCK; open("/usr/share/p11lab/checker-install.json","w").write(json.dumps({"source_revision":SOURCE,"wheel_sha256":WHEEL,"runtime_lock_sha256":LOCK}))' \
+            && /opt/p11lab-checker/bin/python -c 'from p11lab.checker import installed_identity,source_inventory,load_profile; from pathlib import Path; i=installed_identity(); source_inventory(Path(i["installed_root"]),load_profile()["nodes"])'
+          EOF
+          docker build --no-cache -f "$RUNNER_TEMP/Dockerfile.checker" \
+            -t "p11lab-ci/checker-${{ matrix.environment }}:local" .
+
+      - name: Save consumer image
+        run: |
+          docker save "p11lab-ci/checker-${{ matrix.environment }}:local" \
+            | gzip -1 > "consumer-${{ matrix.environment }}.tar.gz"
+          ls -la consumer-*.tar.gz
+
+      - name: Upload consumer image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-proxy-consumer-${{ matrix.environment }}-${{ github.run_id }}
+          path: consumer-${{ matrix.environment }}.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  client-bundle:
+    needs: proxy-bins
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [softhsm2, kryoptic]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+
+      - name: Install p11lab CLI
+        run: |
+          python -m pip install --disable-pip-version-check .
+
+      - name: Download proxy binaries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-proxy-bins-${{ github.run_id }}
+          path: incoming-bins/
+
+      - name: Build native client bundle (packaging only)
+        run: |
+          (cd incoming-bins/proxy-bins && sha256sum -c ../proxy-bins.sha256)
+          test -f incoming-bins/client/libpkcs11_proxy_ng_shim.so
+          python3 - '${{ matrix.environment }}' <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          from p11lab.native import build_native_client_bundle
+
+          env = sys.argv[1]
+          bins = Path('incoming-bins')
+          shim = bins / 'client' / 'libpkcs11_proxy_ng_shim.so'
+          cli = bins / 'proxy-bins' / 'pkcs11-proxy-ng-cli'
+          proxy = {
+              'source_revision': os.environ['PROXY_SOURCE_REVISION'],
+              'cargo_lock_sha256': os.environ['PROXY_CARGO_LOCK_SHA256'],
+              'source_archive_sha256': (bins / 'source-archive.sha256').read_text().strip(),
+              'shim_sha256': hashlib.sha256(shim.read_bytes()).hexdigest(),
+              'cli_sha256': hashlib.sha256(cli.read_bytes()).hexdigest(),
+              'toolchain': json.loads((bins / 'toolchain.json').read_text()),
+          }
+          ref = build_native_client_bundle(
+              proxy=proxy, shim=shim, cli=cli,
+              licenses={'share/licenses/proxy-ng/LICENSE-APACHE': str(bins / 'licenses' / 'LICENSE-APACHE'),
+                        'share/licenses/proxy-ng/LICENSE-MIT': str(bins / 'licenses' / 'LICENSE-MIT')},
+              output_dir=Path('client-out'), environment=env, channel='release')
+          print('bundle:', ref.reference, ref.sha256)
+          PY
+
+      - name: Upload client bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-proxy-client-${{ matrix.environment }}-${{ github.run_id }}
+          path: client-out/
+          retention-days: 1
+          if-no-files-found: error
+
+  plan:
+    needs: consumer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      matrix: ${{ steps.freeze.outputs.matrix }}
+      suite: ${{ steps.freeze.outputs.suite }}
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+
+      - name: Install p11lab CLI and validate catalogue
+        run: |
+          python -m pip install --disable-pip-version-check .
+          p11lab validate
+          docker version --format '{{.Server.Version}}'
+
+      - name: Download one consumer image (shared layout)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          # Any single consumer: both share the identical
+          # /opt/p11lab-checker layout the roster validation compares.
+          name: checker-proxy-consumer-softhsm2-${{ github.run_id }}
+          path: incoming-consumer/
+
+      - name: Freeze shard plans (inside consumer container)
+        id: freeze
+        env:
+          INPUT_SUITE: ${{ inputs.suite }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
+        run: |
+          # Dispatch inputs arrive via env, never interpolated into shell
+          # source (a crafted input must not execute).
+          if [ '${{ github.event_name }}' = 'pull_request' ]; then suite='smoke'; else suite="$INPUT_SUITE"; fi
+          case "$suite" in smoke|full) ;; *) echo "unknown suite $suite" >&2; exit 1 ;; esac
+          channel="${INPUT_CHANNEL:-release}"
+          test "$channel" = 'release' || { echo "channel $channel is not verified for checker-proxy" >&2; exit 1; }
+          if [ "$suite" = 'full' ] && [ ! -f 'src/p11lab/data/profiles/full-v1.json' ]; then
+            echo 'full suite needs a frozen full-v1 profile (run_checker rejects non-frozen selections); smoke-v1 is the only frozen profile' >&2
+            exit 1
+          fi
+          gzip -dc 'incoming-consumer/consumer-softhsm2.tar.gz' | docker load
+          mkdir -p planwork/plan
+          cat > planwork/planner.py <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          import pkcs11_check.testcases as tests
+          from p11lab.checker import load_profile
+          from p11lab.shards import plan_shards
+
+          suite = sys.argv[1]
+          root = Path(tests.__file__).resolve().parent
+          counts = json.loads(os.environ['PROXY_FULL_SHARDS'])
+          if suite == 'smoke':
+              rosters = {env: load_profile()['nodes'] for env in counts}
+              counts = {env: 1 for env in counts}
+              frozen = load_profile()
+          else:
+              profile_name = '/opt/p11lab-code/p11lab/data/profiles/full-v1.json'
+              frozen = json.loads(Path(profile_name).read_text())
+              rosters = {env: frozen['nodes'] for env in counts}
+          matrix = []
+          for env, roster in sorted(rosters.items()):
+              plan_dir = Path('/work/plan') / env
+              plan = plan_shards(root, roster, counts[env], plan_dir)
+              for shard in plan['shards']:
+                  # Full frozen identity + shard nodes: load_profile(path)
+                  # rejects nodes-only files.
+                  profile = dict(frozen, nodes=shard['nodes'])
+                  (plan_dir / ('shard-%d.json' % shard['shard_id'])).write_text(json.dumps(profile, indent=2))
+                  matrix.append({'environment': env, 'shard': shard['shard_id'],
+                                 'nodes': len(shard['nodes'])})
+          print('MATRIX=' + json.dumps({'include': matrix}))
+          print('suite=%s shards=%d' % (suite, len(matrix)), file=sys.stderr)
+          PY
+          docker run --rm --network none --entrypoint /opt/p11lab-checker/bin/python \
+            -e PROXY_FULL_SHARDS -v "$PWD/planwork:/work" 'p11lab-ci/checker-softhsm2:local' \
+            /work/planner.py "$suite" > planwork/planner.log 2>&1
+          grep '^MATRIX=' planwork/planner.log | head -n 1 | sed 's/^MATRIX=/matrix=/' > planwork/matrix.out
+          test -s planwork/matrix.out || { echo 'planner produced no matrix' >&2; tail -n 20 planwork/planner.log >&2; exit 1; }
+          cat planwork/matrix.out >> "$GITHUB_OUTPUT"
+          printf 'suite=%s\n' "$suite" >> "$GITHUB_OUTPUT"
+          mv planwork/plan ./plan
+
+      - name: Upload shard plans
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-proxy-plan-${{ github.run_id }}
+          path: plan/
+          retention-days: 30
+          if-no-files-found: error
+
+  shard:
+    needs: [plan, daemon, consumer, client-bundle]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+
+      - name: Install p11lab CLI
+        run: |
+          python -m pip install --disable-pip-version-check .
+          docker version --format '{{.Server.Version}}'
+
+      - name: Download shard plan
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-proxy-plan-${{ github.run_id }}
+          path: incoming-plan/
+
+      - name: Download own daemon image
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-proxy-daemon-${{ matrix.environment }}-${{ github.run_id }}
+          path: incoming-daemon/
+
+      - name: Download own consumer image
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-proxy-consumer-${{ matrix.environment }}-${{ github.run_id }}
+          path: incoming-consumer/
+
+      - name: Download own client bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-proxy-client-${{ matrix.environment }}-${{ github.run_id }}
+          path: incoming-client/
+
+      - name: Load images and shard profile
+        id: inputs
+        run: |
+          gzip -dc "incoming-daemon/daemon-${{ matrix.environment }}.tar.gz" | docker load
+          gzip -dc "incoming-consumer/consumer-${{ matrix.environment }}.tar.gz" | docker load
+          printf 'daemon_id=%s\n' "$(docker inspect --format '{{.Id}}' 'p11lab-ci/proxy-daemon-${{ matrix.environment }}:local')" >> "$GITHUB_OUTPUT"
+          printf 'consumer_id=%s\n' "$(docker inspect --format '{{.Id}}' 'p11lab-ci/checker-${{ matrix.environment }}:local')" >> "$GITHUB_OUTPUT"
+          docker run --rm --network none "p11lab-ci/proxy-daemon-${{ matrix.environment }}:local" \
+            proxy-build > daemon-build.json
+          test -f incoming-client/proxy-client-native.tar.gz
+          test -f incoming-client/artifact.json
+          mkdir -p run-cwd
+          cp "incoming-plan/${{ matrix.environment }}/shard-${{ matrix.shard }}.json" \
+            run-cwd/shard-profile.json
+
+      - name: Run checker shard (proxy lane)
+        id: checker
+        timeout-minutes: 200
+        run: |
+          pin='1234'; so_pin='12345678'
+          echo "::add-mask::$pin"
+          echo "::add-mask::$so_pin"
+          # NOTE: shard-out must NOT be pre-created: run_application
+          # requires output_dir to be absent (fresh attempt directory).
+          mkdir -p run-cwd/secrets
+          printf '%s' "$pin" > run-cwd/secrets/pin
+          printf '%s' "$so_pin" > run-cwd/secrets/so-pin
+          chmod 600 run-cwd/secrets/pin run-cwd/secrets/so-pin
+          set +e
+          python - '${{ matrix.environment }}' '${{ matrix.shard }}' \
+            '${{ steps.inputs.outputs.daemon_id }}' \
+            '${{ steps.inputs.outputs.consumer_id }}' <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from p11lab.catalog import load_environment
+          from p11lab.checker import run_checker
+          from p11lab.models import ArtifactRef, RunSpec
+
+          env, shard, daemon_id, consumer_id = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
+          profile = Path('run-cwd/shard-profile.json').resolve()
+          # Gate LABEL on the descriptor allowlist (both proxy envs take
+          # it today; the gate keeps the driver correct if that changes).
+          inputs = {}
+          if 'P11LAB_LABEL' in load_environment(env, 'release')['inputs']:
+              inputs['P11LAB_LABEL'] = 'P11Lab'
+          inputs['P11LAB_PIN_FILE'] = str(Path('run-cwd/secrets/pin').resolve())
+          inputs['P11LAB_SO_PIN_FILE'] = str(Path('run-cwd/secrets/so-pin').resolve())
+          bundle = Path('incoming-client/proxy-client-native.tar.gz').resolve()
+          receipt = json.loads(Path('incoming-client/artifact.json').read_text())
+          spec = RunSpec(environment=env, channel='release', mode='proxy',
+                         artifact=ArtifactRef('docker-local', daemon_id, daemon_id.removeprefix('sha256:'),
+                                              'linux/amd64'),
+                         execution_location='container',
+                         consumer_artifact=ArtifactRef('docker-local', consumer_id,
+                                                       consumer_id.removeprefix('sha256:'), 'linux/amd64'),
+                         client_artifact=ArtifactRef('bundle', str(bundle), receipt['artifact']['sha256'],
+                                                     'linux/amd64'),
+                         argv=(), inputs=inputs, output_dir=Path('shard-out').resolve(),
+                         cwd=Path('run-cwd').resolve(), timeout_seconds=3600)
+          result = run_checker(spec, str(profile))
+          checker_receipt = json.loads((spec.output_dir / 'checker/checker-receipt.json').read_text())
+          # Project the 3-key seal: validate_shard_roster compares
+          # attempt['checker'] against plan['checker'] exactly.
+          seal = {k: checker_receipt['checker'][k] for k in
+                  ('source_revision', 'wheel_sha256', 'runtime_lock_sha256')}
+          daemon_build = json.loads(Path('daemon-build.json').read_text())
+          attempt = {'shard_id': shard, 'attempt_id': checker_receipt['attempt_id'],
+                     'directory': str(spec.output_dir / 'checker'), 'nodes': checker_receipt['nodes'],
+                     'sources': checker_receipt['sources'], 'checker': seal, 'selected': True,
+                     'exit_code': result.exit_code, 'app_returncode': result.app_returncode,
+                     'lifecycle_errors': list(result.lifecycle_errors),
+                     'cleanup_errors': list(result.cleanup_errors),
+                     'evidence_complete': checker_receipt['evidence']['complete'] is True,
+                     'lane': 'proxy', 'daemon': daemon_build,
+                     'client': {'sha256': receipt['artifact']['sha256'],
+                                'build_key': receipt['build_key']}}
+          Path('attempt.json').write_text(json.dumps(attempt, indent=2))
+          print('shard %d exit=%s app=%s lifecycle=%s' % (
+              shard, result.exit_code, result.app_returncode, result.lifecycle_errors))
+          PY
+          status=$?
+          set -e
+          printf 'run_status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          echo "shard driver exit: $status (verdict decided by merge below)"
+
+      - name: Upload shard evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-proxy-shard-${{ matrix.environment }}-${{ matrix.shard }}-${{ github.run_id }}
+          path: |
+            shard-out/
+            attempt.json
+          retention-days: 30
+          if-no-files-found: error
+          # Roster validation requires the hidden per-target report caches.
+          include-hidden-files: true
+
+  merge:
+    needs: [plan, shard]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Download plans and shards (by name, skips image tarballs)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p evidence
+          gh run download '${{ github.run_id }}' --name 'checker-proxy-plan-${{ github.run_id }}' --dir evidence-plan
+          python3 - '${{ needs.plan.outputs.matrix }}' <<'PY'
+          import json
+          import subprocess
+          import sys
+          for leg in json.loads(sys.argv[1])['include']:
+              name = 'checker-proxy-shard-%s-%d-%s' % (
+                  leg['environment'], leg['shard'], '${{ github.run_id }}')
+              subprocess.run(['gh', 'run', 'download', '${{ github.run_id }}', '--name', name,
+                              '--dir', 'evidence/' + name], check=True)
+          PY
+          mv evidence-plan evidence/checker-proxy-plan-${{ github.run_id }}
+
+      - name: Download one consumer image (shared layout)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-proxy-consumer-softhsm2-${{ github.run_id }}
+          path: incoming-consumer/
+
+      - name: Validate rosters, merge, verdict (inside consumer container)
+        id: verdict
+        run: |
+          gzip -dc 'incoming-consumer/consumer-softhsm2.tar.gz' | docker load
+          mkdir -p mergework/merged
+          cat > mergework/merger.py <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          from p11lab.checker import canonical_node
+          from p11lab.shards import merge_shards, validate_shard_roster
+
+          suite = sys.argv[1]
+          run_id = os.environ['CI_RUN_ID']
+          baselines = json.loads(os.environ['PROXY_BASELINES'])
+          problems, failures = [], []
+
+          for env, expected in sorted(baselines.items()):
+              plan = json.loads((Path('/work/evidence/checker-proxy-plan-%s' % run_id) / env / 'plan.json').read_text())
+              attempts = []
+              for shard_dir in sorted(Path('/work/evidence').glob('checker-proxy-shard-%s-*' % env)):
+                  record = json.loads((shard_dir / 'attempt.json').read_text())
+                  # Re-anchor the worker-local directory to the merged copy.
+                  record['directory'] = str(shard_dir / 'shard-out/checker')
+                  attempts.append(record)
+                  # Runner outcomes are infra evidence, independent of the
+                  # provider baseline: lifecycle/cleanup failures fail here.
+                  # (app_returncode alone does not: checker test failures
+                  # are baseline-gated below, not infra.)
+                  for key in ('lifecycle_errors', 'cleanup_errors'):
+                      for err in record.get(key) or []:
+                          problems.append('%s shard %s %s: %s' % (env, record.get('shard_id'), key, err))
+                  # The shard's own evidence verdict is authoritative: merged
+                  # completeness recomputes test-data rules but cannot see
+                  # per-shard supervision/receipt judgments (exit codes stay
+                  # informational: nonzero app returns with complete evidence
+                  # are provider findings, baseline-gated below).
+                  if record.get('evidence_complete') is not True:
+                      problems.append('%s shard %s incomplete shard evidence' % (env, record.get('shard_id')))
+              roster = validate_shard_roster(plan, attempts)
+              if not roster.get('complete'):
+                  problems.append('%s: incomplete shard roster: %s' % (env, roster.get('errors')))
+                  continue
+              merged = merge_shards(plan, attempts, Path('/work/merged') / env)
+              if not merged.get('complete'):
+                  problems.append('%s: merge incomplete: %s' % (env, merged.get('errors')))
+                  continue
+              summary = merged.get('summary', {}) or {}
+              # Completeness follows the source's own rules (merge_shards
+              # applies run_is_incomplete + membership + raw-equality): a
+              # completed crash/error/finding is a provider finding for
+              # baseline policy below, never infra. Only the checker's own
+              # incomplete flag is infra, and only if it ever disagrees
+              # with the merged verdict above (defense in depth).
+              if summary.get('incomplete'):
+                  problems.append('%s: merged summary marked incomplete' % env)
+              root = Path(plan['installed_root'])
+              reports = [json.loads(line) for line in
+                         (Path('/work/merged') / env / 'merged/report.jsonl').read_text().splitlines() if line.strip()]
+              seen = set()
+              for report in reports:
+                  outcome = str(report.get('outcome', report.get('status', ''))).lower()
+                  # Pass-like and outcome-less metadata records carry no
+                  # verdict. NOTE: 'skipped' is deliberately NOT pass-like:
+                  # skipped tests are missing runtime evidence and must be
+                  # explicitly baselined.
+                  if not outcome or outcome in {'passed', 'pass', 'ok', 'success'}:
+                      continue
+                  rtype = report.get('$report_type', '?')
+                  if 'nodeid' in report:
+                      try:
+                          node_id = canonical_node(report['nodeid'], root)
+                      except ValueError:
+                          problems.append('%s: unrecognized report node %r' % (env, report.get('nodeid')))
+                          continue
+                  else:
+                      # Teardown/synthetic records without a node: baselinable
+                      # synthetic id, never silently dropped.
+                      node_id = '<%s:%s>' % (env, rtype)
+                  if node_id not in expected[suite] and node_id not in seen:
+                      seen.add(node_id)
+                      failures.append('%s: %s (%s)' % (env, node_id, outcome or 'unknown'))
+              # Grouped classifications close the raw-only bypass: a crash
+              # before the first pytest report leaves complete process
+              # evidence with no top-level raw outcome; the finding exists
+              # only as a synthetic grouped entry. Same baseline policy
+              # and the same `seen` dedupe as the raw loop above.
+              grouped = json.loads((Path('/work/merged') / env / 'merged/results.json').read_text())
+              for unit in grouped.get('units', []) or []:
+                  for case in unit.get('tests', []) or []:
+                      outcome = str(case.get('outcome', '')).lower()
+                      if not outcome or outcome in {'passed', 'pass', 'ok', 'success'}:
+                          continue
+                      nodeid = case.get('nodeid', '')
+                      if nodeid == 'C_Finalize::teardown' and case.get('lifecycle') == 'session-teardown':
+                          node_id = '<%s:TeardownFinalize>' % env
+                      elif not nodeid:
+                          problems.append('%s: grouped test without node identity' % env)
+                          continue
+                      else:
+                          try:
+                              node_id = canonical_node(nodeid, root)
+                          except ValueError:
+                              problems.append('%s: unrecognized grouped node %r' % (env, nodeid))
+                              continue
+                      if node_id not in expected[suite] and node_id not in seen:
+                          seen.add(node_id)
+                          failures.append('%s: %s (%s)' % (env, node_id, outcome or 'unknown'))
+
+          verdict = 'pass' if not problems and not failures else 'fail'
+          lines = ['## Checker proxy (%s suite)' % suite,
+                   'infra problems: %d; new failures vs baseline: %d' % (len(problems), len(failures))]
+          lines += ['- infra: ' + p for p in problems]
+          lines += ['- NEW failure: ' + f for f in failures[:100]]
+          if len(failures) > 100:
+              lines.append('- ... and %d more' % (len(failures) - 100))
+          Path('/work/merged/summary.md').write_text('\n'.join(lines) + '\n')
+          Path('/work/merged/verdict.json').write_text(json.dumps({'verdict': verdict}))
+          print('\n'.join(lines))
+          sys.exit(0 if verdict == 'pass' else 1)
+          PY
+          set +e
+          docker run --rm --network none --entrypoint /opt/p11lab-checker/bin/python \
+            -e PROXY_BASELINES -e CI_RUN_ID='${{ github.run_id }}' \
+            -v "$PWD/evidence:/work/evidence:ro" -v "$PWD/mergework:/work" \
+            'p11lab-ci/checker-softhsm2:local' /work/merger.py '${{ needs.plan.outputs.suite }}'
+          status=$?
+          set -e
+          printf 'verdict_status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          mv mergework/merged ./merged
+
+      - name: Publish verdict
+        if: always()
+        run: |
+          if [ -f merged/summary.md ]; then cat merged/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+          test '${{ steps.verdict.outputs.verdict_status }}' = '0' || { echo 'merge verdict: FAIL (see summary)' >&2; exit 1; }
+          test -f merged/verdict.json && python3 -c 'import json; assert json.load(open("merged/verdict.json"))["verdict"] == "pass"'
+
+      - name: Upload merged evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-proxy-merged-${{ github.run_id }}
+          path: merged/
+          retention-days: 30
+          if-no-files-found: warn
+          include-hidden-files: true
