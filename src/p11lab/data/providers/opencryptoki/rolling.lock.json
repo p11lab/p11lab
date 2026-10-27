@@ -4798,7 +4798,7 @@
     {
       "role": "adapter",
       "path": "entrypoint.sh",
-      "sha256": "84f2e2562659ec57dfd82f8e2d9c13907b6be732ad148e85ea0c052227221868"
+      "sha256": "d6005666aa115ec9f644c3a73d874546aa13f598771d3946f57422f8965c44c8"
     },
     {
       "role": "build-helper",
