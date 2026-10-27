@@ -480,7 +480,7 @@ def test_installed_checker_lane_preserves_its_platform_block(channel):
     assert attempt['returncode'] != 0
     assert not (out / 'image-id').exists()
     assert 'dpkg: not found' in (out / 'build.log').read_text()
-    assert attempt['runtime_lock_sha256'] == 'fe8bce22bb409a005977449cadb64f70ea19dd0a0ce9d685d78ac11447926372'
+    assert attempt['runtime_lock_sha256'] == '98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab'
     # A compatible shared recipe must obtain a new complete installed smoke
     # run; no glibc wheels, fabricated observations or unpinned replacement.
     pytest.xfail('owning checker recipe requires Debian dpkg/CPython 3.13 and a glibc wheel lock; no installed observations')

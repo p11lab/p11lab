@@ -563,7 +563,7 @@ def test_installed_checker_so_gap_blocks_observations(channel, tmp_path):
     from p11lab.checker import run_checker
     attempt, out = component_attempt(CHECKER_ATTEMPTS, channel, 'checker')
     assert attempt['returncode'] == 0 and (out / 'image-id').read_text().strip() == CHECKERS[channel]
-    assert attempt['runtime_lock_sha256'] == 'fe8bce22bb409a005977449cadb64f70ea19dd0a0ce9d685d78ac11447926372'
+    assert attempt['runtime_lock_sha256'] == '98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab'
     root = Path(os.environ.get('P11LAB_SIGULDRY_EVIDENCE', str(tmp_path))) / 'direct-checker' / channel
     root.mkdir(parents=True)
     state, caller = root / 'state', root / 'caller'

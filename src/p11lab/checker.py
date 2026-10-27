@@ -28,9 +28,9 @@ from .tls import (
     build_consumer_env,
 )
 
-SOURCE = 'de4db3d2ee738a9f99d0654e4baf568cdbd4774a'
-WHEEL = '812c57e94fb967bc5ba939f0519bba67c58d5e755705b84c8442bbc2774d96f9'
-LOCK = 'fe8bce22bb409a005977449cadb64f70ea19dd0a0ce9d685d78ac11447926372'
+SOURCE = '9df03bd8b811966fa7856394b19e3f57ffcd8a40'
+WHEEL = '58ac3451ae0dba207a48affa460309e4024c2ec7aefb04ef73062f420fdcffec'
+LOCK = '98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab'
 
 
 def load_profile(profile: str = 'smoke-v1') -> dict:
@@ -107,7 +107,7 @@ def installed_identity() -> dict:
     if not root.is_relative_to(Path(sys.prefix).resolve()):
         raise ValueError('checker test root is outside the installed environment')
     version = importlib.metadata.version('pkcs11-check')
-    if version != '0.2.2':
+    if version != '0.2.3':
         raise ValueError('unsupported installed checker version')
     # Build seal is supplied only after offline hash-locked wheel installation.
     seal = json.loads(Path('/usr/share/p11lab/checker-install.json').read_text())
@@ -244,7 +244,7 @@ def checker_environment(output: Path, pin: str, so_pin: str, *, provider_descrip
     env.update(HOME=str(output), XDG_CONFIG_HOME=str(output), PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',
                PYTEST_ADDOPTS='-v',
                P11TEST_PIN=pin, P11TEST_SO_PIN=so_pin,
-               PKCS11_CHECK_FRAMEWORK_VERSION='0.2.2',
+               PKCS11_CHECK_FRAMEWORK_VERSION='0.2.3',
                PKCS11_CHECK_BUILD_PROVENANCE=str(provenance_file))
     if os.name == 'nt':
         # ntpath.expanduser ignores HOME: without USERPROFILE the checker's
@@ -344,8 +344,8 @@ def _checker_private_api() -> dict:
     instead of scattering ImportErrors through validation. Negotiating a
     public validation entry point stays an owning-repo follow-up.
     """
-    if importlib.metadata.version('pkcs11-check') != '0.2.2':
-        raise ValueError('checker validation adapter requires pkcs11-check 0.2.2')
+    if importlib.metadata.version('pkcs11-check') != '0.2.3':
+        raise ValueError('checker validation adapter requires pkcs11-check 0.2.3')
     from pkcs11_check.core.file_runner import _completion_verified_for_attempt
     from pkcs11_check.core._report_records import _build_detail_from_report_records
     from pkcs11_check.core._report_writers import _build_isolated_json_payload

@@ -225,7 +225,7 @@ def step_checker_driver(args, extra):
         raise ValueError("installed checker tests are not importable") from error
     installed_root = Path(tests.__file__).resolve().parent
     version = importlib.metadata.version("pkcs11-check")
-    if version != "0.2.2":
+    if version != "0.2.3":
         raise ValueError(f"checker version mismatch: {version!r}")
     checkout = args.get("checker_src")
     if checkout:  # Windows host binding: installed tree equals the pinned checkout.

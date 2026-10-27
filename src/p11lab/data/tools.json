@@ -6,7 +6,7 @@
       "source": {
         "kind": "git",
         "url": "https://github.com/mingulov/pkcs11-check.git",
-        "revision": "de4db3d2ee738a9f99d0654e4baf568cdbd4774a",
+        "revision": "9df03bd8b811966fa7856394b19e3f57ffcd8a40",
         "license_status": "unreviewed"
       },
       "artifacts": [],
