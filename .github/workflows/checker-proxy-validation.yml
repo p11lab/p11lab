@@ -21,9 +21,12 @@
 # freehsm fifth (trial 40501649480: 23/23 smoke nodes pass with an empty
 # baseline), nss sixth (admitted on reviewed smoke evidence: 3 SHA-256
 # digest skips identical through the daemon and natively; see the nss
-# baseline note below). New envs stay EXCLUDED until their proxy
-# constraints and lanes are reviewed (docs/proxy.md documents the
-# SoftHSM topology only). One daemon per shard leg; no daemon sharing.
+# baseline note below), opencryptoki seventh (trial 40506694245: 23/23
+# smoke nodes pass with an empty baseline; the daemon topology bypasses
+# the direct lane's checker-child environment block). New envs stay
+# EXCLUDED until their proxy constraints and lanes are reviewed
+# (docs/proxy.md documents the SoftHSM topology only). One daemon per
+# shard leg; no daemon sharing.
 # Baselines are a SEPARATE namespace from direct: transport facts (e.g.
 # negotiation skips) differ across lanes, so proxy findings must never be
 # judged against direct baselines. PROXY_BASELINES starts empty and grows
