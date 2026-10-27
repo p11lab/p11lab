@@ -635,7 +635,7 @@ jobs:
 
   validate-proxy:
     needs: expose-binary
-    if: contains(fromJSON('["softhsm2", "kryoptic"]'), inputs.environment)
+    if: contains(fromJSON('["softhsm2", "kryoptic", "bouncyhsm"]'), inputs.environment)
     uses: ./.github/workflows/checker-proxy-validation.yml
     with:
       environment: ${{ inputs.environment }}
