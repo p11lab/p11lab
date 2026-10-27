@@ -27,7 +27,7 @@ needs_linux = pytest.mark.skipif(
 
 def test_hook_template_compiles_and_carries_version():
     compile(HOOK_SOURCE, 'sitecustomize.py', 'exec')
-    assert HOOK_VERSION == '1'
+    assert HOOK_VERSION == '2'
     assert HOOK_DIRNAME == 'p11lab-proxy-hook'
     assert CKR_OK == 0
     assert CKR_CRYPTOKI_NOT_INITIALIZED == 0x190
@@ -82,6 +82,8 @@ def test_hook_gate_matches_preflight_argv_only(tmp_path):
     evidence = list(Path(installed['dir']).glob('finalize-evidence-*.json'))
     assert len(evidence) == 1
     record = json.loads(evidence[0].read_text())
+    assert record['role'] == 'preflight'
+    assert record['target'] is None
     assert record['attempted'] is False
     assert record['failure_class'] == 'not-loaded'
     assert record['module_argv'] == '/nonexistent/libx.so'
@@ -130,7 +132,7 @@ def test_install_hook_writes_verified_files(tmp_path):
         assert stat.S_IMODE(root.stat().st_mode) == 0o700
     meta = json.loads((root / 'finalize-hook.json').read_text())
     assert meta == {'version': HOOK_VERSION, 'sha256': installed['sha256'],
-                    'scope': 'preflight'}
+                    'scope': 'preflight+unit'}
     assert sorted(p.name for p in root.iterdir()) == ['finalize-hook.json', 'sitecustomize.py']
     with pytest.raises(FileExistsError):
         install_hook(tmp_path / HOOK_DIRNAME)
@@ -289,7 +291,7 @@ def test_checker_environment_proxy_installs_hook_channel(tmp_path, monkeypatch):
     assert provenance['extra']['proxy_finalize'] == {
         'version': HOOK_VERSION,
         'sha256': hashlib.sha256(HOOK_SOURCE.encode()).hexdigest(),
-        'scope': 'preflight', 'module': str(module),
+        'scope': 'preflight+unit', 'module': str(module),
     }
     assert 'checker' in provenance['extra']
 
@@ -333,8 +335,8 @@ MODULE_PATH = '/run/p11lab-client/libpkcs11_proxy_ng_shim.so'
 
 
 def clean_record(**overrides):
-    record = {'hook_version': HOOK_VERSION, 'pid': 1234,
-              'module_env': MODULE_PATH, 'module_argv': MODULE_PATH,
+    record = {'hook_version': HOOK_VERSION, 'pid': 1234, 'role': 'preflight',
+              'target': None, 'module_env': MODULE_PATH, 'module_argv': MODULE_PATH,
               'attempted': True, 'rv': 0, 'failure_class': 'none'}
     record.update(overrides)
     return record
@@ -358,6 +360,8 @@ def test_reconcile_accepts_clean_evidence(tmp_path):
     write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
     write_evidence(hook_dir, 'finalize-evidence-1235.json',
                    clean_record(pid=1235, rv=CKR_CRYPTOKI_NOT_INITIALIZED))
+    write_evidence(hook_dir, 'finalize-evidence-1236.json',
+                   clean_record(pid=1236, role='unit', target='/t/u.py::T::t'))
     assert reconcile(installed, hook_dir) == []
 
 
@@ -371,7 +375,8 @@ def test_reconcile_flags_bad_outcomes(tmp_path):
     hook_dir, installed = installed_hook(tmp_path)
     write_evidence(hook_dir, 'finalize-evidence-1234.json',
                    clean_record(attempted=False, rv=None, failure_class='not-loaded'))
-    write_evidence(hook_dir, 'finalize-evidence-1235.json', clean_record(pid=1235, rv=5))
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit', target='/t/u.py::T::t', rv=5))
     (hook_dir / 'finalize-evidence-1236.json').write_text('not json')
     errors = reconcile(installed, hook_dir)
     assert len(errors) == 3
@@ -382,7 +387,8 @@ def test_reconcile_rejects_type_confusion(tmp_path):
     assert True == 1
     hook_dir, installed = installed_hook(tmp_path)
     write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record(rv=False))
-    write_evidence(hook_dir, 'finalize-evidence-1.json', clean_record(pid=True))
+    write_evidence(hook_dir, 'finalize-evidence-1.json',
+                   clean_record(pid=True, role='unit', target='/t/u.py::T::t'))
     assert len(reconcile(installed, hook_dir)) == 2
 
 
@@ -391,7 +397,7 @@ def test_reconcile_rejects_identity_mismatch(tmp_path):
     write_evidence(hook_dir, 'finalize-evidence-1234.json',
                    clean_record(hook_version='9'))
     write_evidence(hook_dir, 'finalize-evidence-1235.json',
-                   clean_record(pid=1235, module_env='/other/lib.so'))
+                   clean_record(pid=1235, role='unit', target='/t/u.py::T::t', module_env='/other/lib.so'))
     write_evidence(hook_dir, 'finalize-evidence-1236.json',
                    clean_record(pid=9999))
     write_evidence(hook_dir, 'finalize-evidence-1237.json', {'attempted': True})
@@ -520,6 +526,8 @@ def test_hook_gate_parser_matrix(monkeypatch, tmp_path):
         assert (len(recorded) == 1) is registers, argv
         if registers:
             assert recorded[0][1][2] == module_argv, argv
+            assert recorded[0][1][4] == 'preflight', argv
+            assert recorded[0][1][5] is None, argv
         found = list(case_dir.glob('finalize-evidence-*.json'))
         if evidence_class is None:
             assert found == [], argv
@@ -528,12 +536,16 @@ def test_hook_gate_parser_matrix(monkeypatch, tmp_path):
             record = json.loads(found[0].read_text())
             assert record['attempted'] is False, argv
             assert record['failure_class'] == evidence_class, argv
+            assert record['role'] == 'preflight', argv
 
 
 def test_hook_template_matches_module_identity():
-    from p11lab.proxy_finalize import HOOK_SOURCE, HOOK_VERSION, PREFLIGHT_MODULE
+    from p11lab.proxy_finalize import (HOOK_SOURCE, HOOK_VERSION, PREFLIGHT_MODULE,
+                                       UNIT_CHILD_ENV as MODULE_UNIT_CHILD_ENV)
     assert "'%s'" % HOOK_VERSION in HOOK_SOURCE
     assert PREFLIGHT_MODULE in HOOK_SOURCE
+    assert MODULE_UNIT_CHILD_ENV == UNIT_CHILD_ENV
+    assert MODULE_UNIT_CHILD_ENV in HOOK_SOURCE
 
 
 def write_provenance(output, finalize=None):
@@ -550,12 +562,98 @@ def test_durable_finalize_errors_cover_proxy_runs(tmp_path):
     output.mkdir()
     installed = install_hook(output / HOOK_DIRNAME)
     finalize = {'version': installed['version'], 'sha256': installed['sha256'],
-                'scope': 'preflight', 'module': MODULE_PATH}
+                'scope': 'preflight+unit', 'module': MODULE_PATH}
     write_provenance(output, finalize)
     assert 'missing' in durable_finalize_errors(output)[0]
     hook_dir = Path(installed['dir'])
     write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    assert 'unit' in durable_finalize_errors(output)[0]
+    assert durable_finalize_errors(output, expect_units=False) == []
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit', target='/t/u.py::T::t'))
     assert durable_finalize_errors(output) == []
+
+
+def test_durable_finalize_errors_reject_scope_skew(tmp_path):
+    from p11lab.checker import durable_finalize_errors
+    output = tmp_path / 'run'
+    output.mkdir()
+    installed = install_hook(output / HOOK_DIRNAME)
+    hook_dir = Path(installed['dir'])
+    write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit'))
+    skewed = {'version': installed['version'], 'sha256': installed['sha256'],
+              'scope': 'preflight', 'module': MODULE_PATH}
+    write_provenance(output, skewed)
+    errors = durable_finalize_errors(output)
+    assert len(errors) == 1 and 'scope' in errors[0]
+    scoped_out = {'version': installed['version'], 'sha256': installed['sha256'],
+                  'module': MODULE_PATH}
+    write_provenance(output, scoped_out)
+    errors = durable_finalize_errors(output)
+    assert len(errors) == 1 and 'scope' in errors[0]
+
+
+def test_durable_finalize_errors_reject_unhashable_version(tmp_path):
+    from p11lab.checker import durable_finalize_errors
+    output = tmp_path / 'run'
+    output.mkdir()
+    installed = install_hook(output / HOOK_DIRNAME)
+    write_provenance(output, {'version': ['2'], 'sha256': installed['sha256'],
+                              'scope': 'preflight+unit', 'module': MODULE_PATH})
+    errors = durable_finalize_errors(output)
+    assert len(errors) == 1 and 'scope' in errors[0]
+
+
+def test_reconcile_rejects_unhashable_version(tmp_path):
+    from p11lab.proxy_finalize import reconcile_evidence
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    errors = reconcile_evidence(hook_dir, module_path=MODULE_PATH,
+                                hook_version=['2'],
+                                hook_sha256=installed['sha256'])
+    assert len(errors) == 1 and 'identity mismatch' in errors[0]
+
+
+def test_durable_finalize_errors_check_unit_coverage(tmp_path):
+    from p11lab.checker import durable_finalize_errors
+    output = tmp_path / 'run'
+    output.mkdir()
+    installed = install_hook(output / HOOK_DIRNAME)
+    finalize = {'version': installed['version'], 'sha256': installed['sha256'],
+                'scope': 'preflight+unit', 'module': MODULE_PATH}
+    write_provenance(output, finalize)
+    hook_dir = Path(installed['dir'])
+    write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit', target='/t/a.py::T::t1'))
+    (output / 'results.json').write_text(json.dumps({'units': [
+        {'executions': [{'target': '/t/a.py::T::t1', 'role': 'unit'},
+                        {'target': '/t/a.py::T::t2', 'role': 'unit'}]}]}))
+    errors = durable_finalize_errors(output)
+    assert len(errors) == 1 and 't2' in errors[0]
+    write_evidence(hook_dir, 'finalize-evidence-1236.json',
+                   clean_record(pid=1236, role='unit', target='/t/a.py::T::t2'))
+    assert durable_finalize_errors(output) == []
+    (output / 'results.json').write_text(json.dumps({'units': [
+        {'executions': [{'target': '/t/a.py::T::t1', 'role': 'unit'},
+                        {'target': '/t/a.py::T::t1', 'role': 'unit'}]},
+        {'executions': [{'target': '/t/a.py::T::tx', 'role': 'preflight'},
+                        {'target': '/t/a.py::T::t2', 'role': 'unit'}]}]}))
+    assert durable_finalize_errors(output) == []
+    (output / 'results.json').write_text('not json')
+    assert durable_finalize_errors(output) == []
+    for malformed in ('[1, 2]', '{"units": {}}', '{"units": ["x"]}',
+                      '{"units": [{"executions": {}}]}',
+                      '{"units": [{}]}',
+                      '{"units": [{"executions": ["x"]}]}',
+                      '{"units": [{"executions": [{"target": 7, "role": "unit"}]}]}',
+                      '{"units": [{"executions": [{"target": "", "role": "unit"}]}]}',
+                      '{"units": [{"executions": [{"role": "unit"}]}]}'):
+        (output / 'results.json').write_text(malformed)
+        errors = durable_finalize_errors(output)
+        assert len(errors) == 1 and 'roster malformed' in errors[0], malformed
 
 
 def test_durable_finalize_errors_reject_malformed_declarations(tmp_path):
@@ -568,6 +666,405 @@ def test_durable_finalize_errors_reject_malformed_declarations(tmp_path):
         (output / 'build-provenance.json').write_text(json.dumps({'extra': extra}))
         errors = durable_finalize_errors(output)
         assert len(errors) == 1 and 'malformed' in errors[0], malformed
+
+
+UNIT_CHILD_ENV = 'PKCS11_CHECK_UNIT_CHILD'
+
+
+def write_stub_pytest(stub_dir):
+    package = stub_dir / 'pytest'
+    package.mkdir(parents=True)
+    (package / '__init__.py').write_text('')
+    (package / '__main__.py').write_text('print("stub-pytest")\n')
+
+
+def write_initializing_pytest_stub(stub_dir):
+    package = stub_dir / 'pytest'
+    package.mkdir(parents=True)
+    (package / '__init__.py').write_text('')
+    (package / '__main__.py').write_text(textwrap.dedent(STUB_INIT_AND_EXIT))
+
+
+@needs_linux
+def test_hook_gate_matches_unit_worker_argv(tmp_path):
+    installed = install_hook(tmp_path / HOOK_DIRNAME)
+    write_stub_pytest(tmp_path / 'stub')
+    hook_path = os.pathsep.join([installed['dir'], str(tmp_path / 'stub')])
+    completed = run_child(
+        ['-m', 'pytest', '/t/test_x.py::T::t', '--p11-module', '/nonexistent/libx.so',
+         '--report-log', '/tmp/pkcs11-check-jsonl-abc.jsonl'],
+        hook_path,
+        {'P11LAB_MODULE': '/nonexistent/libx.so',
+         'P11LAB_PROXY_FINALIZE_DIR': installed['dir'],
+         UNIT_CHILD_ENV: '1'},
+    )
+    assert completed.returncode == 0, completed.stderr
+    evidence = list(Path(installed['dir']).glob('finalize-evidence-*.json'))
+    assert len(evidence) == 1
+    record = json.loads(evidence[0].read_text())
+    assert record['role'] == 'unit'
+    assert record['target'] == '/t/test_x.py::T::t'
+    assert record['attempted'] is False
+    assert record['failure_class'] == 'not-loaded'
+    assert record['module_argv'] == '/nonexistent/libx.so'
+    assert record['hook_version'] == HOOK_VERSION
+
+
+@needs_linux
+def test_hook_gate_ignores_pytest_without_unit_marker(tmp_path):
+    installed = install_hook(tmp_path / HOOK_DIRNAME)
+    write_stub_pytest(tmp_path / 'stub')
+    hook_path = os.pathsep.join([installed['dir'], str(tmp_path / 'stub')])
+    completed = run_child(
+        ['-m', 'pytest', '/t/test_x.py::T::t', '--p11-module', '/m.so'],
+        hook_path,
+        {'P11LAB_MODULE': '/m.so',
+         'P11LAB_PROXY_FINALIZE_DIR': installed['dir']},
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert list(Path(installed['dir']).glob('finalize-evidence-*.json')) == []
+
+
+@needs_linux
+def test_hook_gate_unit_missing_module_arg_is_loud(tmp_path):
+    installed = install_hook(tmp_path / HOOK_DIRNAME)
+    write_stub_pytest(tmp_path / 'stub')
+    hook_path = os.pathsep.join([installed['dir'], str(tmp_path / 'stub')])
+    completed = run_child(
+        ['-m', 'pytest', '/t/test_x.py::T::t'],
+        hook_path,
+        {'P11LAB_MODULE': '/m.so',
+         'P11LAB_PROXY_FINALIZE_DIR': installed['dir'],
+         UNIT_CHILD_ENV: '1'},
+    )
+    assert completed.returncode == 0, completed.stderr
+    evidence = list(Path(installed['dir']).glob('finalize-evidence-*.json'))
+    assert len(evidence) == 1
+    record = json.loads(evidence[0].read_text())
+    assert record['role'] == 'unit'
+    assert record['target'] == '/t/test_x.py::T::t'
+    assert record['attempted'] is False
+    assert record['failure_class'] == 'no-module-arg'
+
+
+@needs_linux
+def test_hook_gate_unit_module_mismatch_is_loud(tmp_path):
+    installed = install_hook(tmp_path / HOOK_DIRNAME)
+    write_stub_pytest(tmp_path / 'stub')
+    hook_path = os.pathsep.join([installed['dir'], str(tmp_path / 'stub')])
+    completed = run_child(
+        ['-m', 'pytest', '/t/test_x.py::T::t', '--p11-module', '/other/lib.so'],
+        hook_path,
+        {'P11LAB_MODULE': '/expected/lib.so',
+         'P11LAB_PROXY_FINALIZE_DIR': installed['dir'],
+         UNIT_CHILD_ENV: '1'},
+    )
+    assert completed.returncode == 0, completed.stderr
+    evidence = list(Path(installed['dir']).glob('finalize-evidence-*.json'))
+    assert len(evidence) == 1
+    record = json.loads(evidence[0].read_text())
+    assert record['role'] == 'unit'
+    assert record['target'] == '/t/test_x.py::T::t'
+    assert record['attempted'] is False
+    assert record['failure_class'] == 'module-mismatch'
+
+
+def test_hook_gate_unit_parser_matrix(monkeypatch, tmp_path):
+    import p11lab.proxy_finalize as finalized
+    import atexit as std_atexit
+
+    exact = ['py', '-m', 'pytest', '/t/test_x.py::T::t', '--p11-module', '/m.so',
+             '--report-log', '/tmp/pkcs11-check-jsonl-a.jsonl']
+    cases = [
+        # (argv, unit_child, registers, module_argv, evidence_class)
+        (exact, '1', True, '/m.so', None),
+        (['py', '-m', 'pytest', '/t/test_x.py', '--p11-module', '/m.so'],
+         '1', True, '/m.so', None),
+        (['py', '-m', 'pytest', '/t/t.py::T::t', '--p11-module', '/a.so',
+          '--p11-module', '/m.so'], '1', True, '/m.so', None),
+        (exact, None, False, None, None),
+        (exact, '0', False, None, None),
+        (['py', '-m', 'pytest'], '1', False, None, None),
+        (['py', '-m'], '1', False, None, None),
+        (['py', '-m', 'pytest', '/t/t.py::T::t', '--p11-module', '/a.so'],
+         '1', False, None, 'module-mismatch'),
+        (['py', '-m', 'pytest', '/t/t.py::T::t'], '1', False, None, 'no-module-arg'),
+        (['py', '-m', 'pytest', '/t/t.py::T::t', '--p11-module=/m.so'],
+         '1', False, None, 'no-module-arg'),
+        (['py', '-W', 'ignore', '-m', 'pytest', '/t/t.py::T::t',
+          '--p11-module', '/m.so'], '1', False, None, None),
+        (['py', '-c', 'code', '-m', 'pytest', '/t/t.py::T::t'], '1', False, None, None),
+    ]
+    for index, (argv, child, registers, module_argv, evidence_class) in enumerate(cases):
+        case_dir = tmp_path / ('ucase%d' % index)
+        case_dir.mkdir()
+        recorded = []
+        monkeypatch.setattr(std_atexit, 'register',
+                            lambda fn, *a: recorded.append((fn, a)))
+        monkeypatch.setattr('sys.orig_argv', argv)
+        monkeypatch.setattr('sys.platform', 'linux')
+        monkeypatch.setenv('P11LAB_MODULE', '/m.so')
+        monkeypatch.setenv('P11LAB_PROXY_FINALIZE_DIR', str(case_dir))
+        if child is None:
+            monkeypatch.delenv(UNIT_CHILD_ENV, raising=False)
+        else:
+            monkeypatch.setenv(UNIT_CHILD_ENV, child)
+        namespace = {'__name__': 'sitecustomize-probe'}
+        exec(compile(finalized.HOOK_SOURCE, 'sitecustomize.py', 'exec'), namespace)
+        assert (len(recorded) == 1) is registers, argv
+        if registers:
+            assert recorded[0][1][2] == module_argv, argv
+            assert recorded[0][1][4] == 'unit', argv
+            assert recorded[0][1][5] == argv[3], argv
+        found = list(case_dir.glob('finalize-evidence-*.json'))
+        if evidence_class is None:
+            assert found == [], argv
+        else:
+            assert len(found) == 1, argv
+            record = json.loads(found[0].read_text())
+            assert record['attempted'] is False, argv
+            assert record['failure_class'] == evidence_class, argv
+            assert record['role'] == 'unit', argv
+
+
+@needs_linux
+@needs_cc
+def test_hook_unit_finalize_releases_module_at_exit(tmp_path):
+    if sys.platform != 'linux':
+        pytest.skip('native finalize hook is linux-scoped')
+    installed = install_hook(tmp_path / HOOK_DIRNAME)
+    write_initializing_pytest_stub(tmp_path / 'stub')
+    hook_path = os.pathsep.join([installed['dir'], str(tmp_path / 'stub')])
+    library = build_fake_module(tmp_path)
+    log = tmp_path / 'native.log'
+    completed = run_child(
+        ['-m', 'pytest', '/t/test_x.py::T::t', '--p11-module', str(library)],
+        hook_path,
+        {'P11LAB_MODULE': str(library),
+         'P11LAB_PROXY_FINALIZE_DIR': installed['dir'],
+         UNIT_CHILD_ENV: '1',
+         'FAKE_P11_LOG': str(log)},
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert 'stub-initialized' in completed.stdout
+    evidence = list(Path(installed['dir']).glob('finalize-evidence-*.json'))
+    assert len(evidence) == 1
+    record = json.loads(evidence[0].read_text())
+    assert record['role'] == 'unit'
+    assert record['target'] == '/t/test_x.py::T::t'
+    assert record['attempted'] is True
+    assert record['failure_class'] == 'none'
+    assert record['rv'] == 0
+    assert log.read_text().splitlines() == ['init-call', 'init-effect',
+                                            'fin-call', 'fin-effect']
+
+
+@needs_linux
+def test_hook_two_workers_share_hook_dir(tmp_path):
+    installed = install_hook(tmp_path / HOOK_DIRNAME)
+    write_stub_pytest(tmp_path / 'stub')
+    hook_path = os.pathsep.join([installed['dir'], str(tmp_path / 'stub')])
+    module = '/nonexistent/libx.so'
+    for target in ('/t/a.py::T::t1', '/t/a.py::T::t2'):
+        completed = run_child(
+            ['-m', 'pytest', target, '--p11-module', module],
+            hook_path,
+            {'P11LAB_MODULE': module,
+             'P11LAB_PROXY_FINALIZE_DIR': installed['dir'],
+             UNIT_CHILD_ENV: '1'},
+        )
+        assert completed.returncode == 0, completed.stderr
+    evidence = sorted(Path(installed['dir']).glob('finalize-evidence-*.json'))
+    assert len(evidence) == 2
+    pids = set()
+    targets = set()
+    for path in evidence:
+        record = json.loads(path.read_text())
+        assert record['role'] == 'unit'
+        assert record['failure_class'] == 'not-loaded'
+        pids.add(record['pid'])
+        targets.add(record['target'])
+    assert len(pids) == 2
+    assert targets == {'/t/a.py::T::t1', '/t/a.py::T::t2'}
+
+
+def test_reconcile_accepts_unit_not_loaded(tmp_path):
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit', target='/t/u.py::T::t', attempted=False, rv=None,
+                                failure_class='not-loaded'))
+    assert reconcile(installed, hook_dir) == []
+
+
+def test_reconcile_rejects_malformed_not_loaded(tmp_path):
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1230.json', clean_record(pid=1230))
+    write_evidence(hook_dir, 'finalize-evidence-1231.json',
+                   clean_record(pid=1231, role='unit', target='/t/u.py::T::t'))
+    variants = [
+        {'attempted': None},
+        {'attempted': 'no'},
+        {'attempted': 0},
+        {'rv': 5},
+        {'rv': False},
+        {'rv': 0},
+        {'failure_class': 'no-module-arg'},
+        {'failure_class': 'none'},
+    ]
+    for index, override in enumerate(variants):
+        record = clean_record(pid=1240 + index, role='unit',
+                              target='/t/u.py::T::t%d' % index,
+                              attempted=False, rv=None,
+                              failure_class='not-loaded')
+        record.update(override)
+        write_evidence(hook_dir, 'finalize-evidence-%d.json' % (1240 + index), record)
+    missing = clean_record(pid=1250, role='unit', target='/t/u.py::T::tm',
+                           attempted=False, failure_class='not-loaded')
+    del missing['rv']
+    write_evidence(hook_dir, 'finalize-evidence-1250.json', missing)
+    absent = clean_record(pid=1251, role='unit', target='/t/u.py::T::ta',
+                          rv=None, failure_class='not-loaded')
+    del absent['attempted']
+    write_evidence(hook_dir, 'finalize-evidence-1251.json', absent)
+    errors = reconcile(installed, hook_dir)
+    assert len(errors) == 10
+
+
+def test_reconcile_requires_unit_target(tmp_path):
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json',
+                   clean_record(target='/t/u.py::T::t'))
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit'))
+    write_evidence(hook_dir, 'finalize-evidence-1236.json',
+                   clean_record(pid=1236, role='unit', target=''))
+    write_evidence(hook_dir, 'finalize-evidence-1237.json',
+                   clean_record(pid=1237, role='unit', target=123))
+    errors = reconcile(installed, hook_dir)
+    assert len(errors) == 4
+
+
+def test_reconcile_requires_unit_target_coverage(tmp_path):
+    from p11lab.proxy_finalize import reconcile_evidence
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit', target='/t/a.py::T::t1'))
+    kwargs = dict(module_path=MODULE_PATH, hook_version=installed['version'],
+                  hook_sha256=installed['sha256'])
+    errors = reconcile_evidence(hook_dir, executed_targets=['/t/a.py::T::t1',
+                                                             '/t/a.py::T::t2'],
+                                **kwargs)
+    assert len(errors) == 1 and 't2' in errors[0]
+    assert reconcile_evidence(hook_dir, executed_targets=['/t/a.py::T::t1'],
+                              **kwargs) == []
+    assert reconcile_evidence(hook_dir, executed_targets=None, **kwargs) == []
+    assert reconcile_evidence(hook_dir, executed_targets=['/t/a.py::T::t1',
+                                                           '/t/a.py::T::t2'],
+                              expect_units=False, **kwargs) == []
+    crowded = ['/t/a.py::T::t1'] + ['/t/missing%d' % index for index in range(7)]
+    errors = reconcile_evidence(hook_dir, executed_targets=crowded, **kwargs)
+    assert len(errors) == 1 and '(2 more)' in errors[0]
+
+
+def test_reconcile_v1_skips_coverage(tmp_path):
+    from p11lab.proxy_finalize import reconcile_evidence
+    root = tmp_path / HOOK_DIRNAME
+    root.mkdir(mode=0o700)
+    marker = b'v1-hook-bytes'
+    (root / 'sitecustomize.py').write_bytes(marker)
+    digest = hashlib.sha256(marker).hexdigest()
+    (root / 'finalize-hook.json').write_text(json.dumps(
+        {'version': '1', 'sha256': digest, 'scope': 'preflight'}))
+    record = {'hook_version': '1', 'pid': 1234,
+              'module_env': MODULE_PATH, 'module_argv': MODULE_PATH,
+              'attempted': True, 'rv': 0, 'failure_class': 'none'}
+    write_evidence(root, 'finalize-evidence-1234.json', record)
+    assert reconcile_evidence(root, module_path=MODULE_PATH,
+                              hook_version='1', hook_sha256=digest,
+                              executed_targets=['/t/a.py::T::t1']) == []
+
+
+def test_reconcile_accepts_unit_already_finalized(tmp_path):
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit', target='/t/u.py::T::t',
+                                rv=CKR_CRYPTOKI_NOT_INITIALIZED))
+    assert reconcile(installed, hook_dir) == []
+
+
+def test_reconcile_rejects_preflight_not_loaded(tmp_path):
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json',
+                   clean_record(role='preflight', attempted=False, rv=None,
+                                failure_class='not-loaded'))
+    write_evidence(hook_dir, 'finalize-evidence-1235.json',
+                   clean_record(pid=1235, role='unit', target='/t/u.py::T::t'))
+    errors = reconcile(installed, hook_dir)
+    assert len(errors) == 1 and 'not attempted' in errors[0]
+
+
+def test_reconcile_requires_preflight_record(tmp_path):
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json',
+                   clean_record(role='unit', target='/t/u.py::T::t'))
+    errors = reconcile(installed, hook_dir)
+    assert len(errors) == 1 and 'preflight' in errors[0]
+
+
+def test_reconcile_requires_unit_records_when_expected(tmp_path):
+    from p11lab.proxy_finalize import reconcile_evidence
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    errors = reconcile(installed, hook_dir)
+    assert len(errors) == 1 and 'unit' in errors[0]
+    assert reconcile_evidence(hook_dir, module_path=MODULE_PATH,
+                              hook_version=installed['version'],
+                              hook_sha256=installed['sha256'],
+                              expect_units=False) == []
+
+
+def test_reconcile_rejects_unknown_role(tmp_path):
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1230.json', clean_record(pid=1230))
+    write_evidence(hook_dir, 'finalize-evidence-1231.json',
+                   clean_record(pid=1231, role='unit', target='/t/u.py::T::t'))
+    write_evidence(hook_dir, 'finalize-evidence-1234.json',
+                   clean_record(role='driver'))
+    bare = clean_record(pid=1235)
+    bare.pop('role', None)
+    write_evidence(hook_dir, 'finalize-evidence-1235.json', bare)
+    errors = reconcile(installed, hook_dir)
+    assert len(errors) == 2
+
+
+def test_reconcile_accepts_v1_history(tmp_path):
+    from p11lab.proxy_finalize import reconcile_evidence
+    root = tmp_path / HOOK_DIRNAME
+    root.mkdir(mode=0o700)
+    marker = b'v1-hook-bytes'
+    (root / 'sitecustomize.py').write_bytes(marker)
+    digest = hashlib.sha256(marker).hexdigest()
+    (root / 'finalize-hook.json').write_text(json.dumps(
+        {'version': '1', 'sha256': digest, 'scope': 'preflight'}))
+    record = {'hook_version': '1', 'pid': 1234,
+              'module_env': MODULE_PATH, 'module_argv': MODULE_PATH,
+              'attempted': True, 'rv': 0, 'failure_class': 'none'}
+    write_evidence(root, 'finalize-evidence-1234.json', record)
+    assert reconcile_evidence(root, module_path=MODULE_PATH,
+                              hook_version='1', hook_sha256=digest) == []
+
+
+def test_reconcile_rejects_scope_version_skew(tmp_path):
+    from p11lab.proxy_finalize import reconcile_evidence
+    hook_dir, installed = installed_hook(tmp_path)
+    write_evidence(hook_dir, 'finalize-evidence-1234.json', clean_record())
+    errors = reconcile_evidence(hook_dir, module_path=MODULE_PATH,
+                                hook_version='1',
+                                hook_sha256=installed['sha256'])
+    assert len(errors) == 1 and 'identity mismatch' in errors[0]
 
 
 def test_durable_finalize_errors_skip_direct_runs(tmp_path):

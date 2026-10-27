@@ -17,7 +17,8 @@ from uuid import uuid4
 
 from .models import RunResult, RunSpec
 from .process import supervised_exec, write_process_logs
-from .proxy_finalize import HOOK_DIRNAME, install_hook, reconcile_evidence
+from .proxy_finalize import (HOOK_DIRNAME, HOOK_SCOPE, VERSION_SCOPES,
+                             install_hook, reconcile_evidence)
 from .receipts import write_receipt
 from .tls import (
     CLIENT_ENV_VARS,
@@ -232,7 +233,7 @@ def checker_environment(output: Path, pin: str, so_pin: str, *, provider_descrip
                    P11LAB_MODULE=str(module_path),
                    P11LAB_PROXY_FINALIZE_DIR=hook_dir)
         hook_identity = {'version': installed['version'], 'sha256': installed['sha256'],
-                         'scope': 'preflight', 'module': str(module_path)}
+                         'scope': HOOK_SCOPE, 'module': str(module_path)}
     provenance_file = output.resolve() / 'build-provenance.json'
     provenance_extra = {'checker': {'source_revision': SOURCE, 'wheel_sha256': WHEEL,
                                     'runtime_lock_sha256': LOCK}}
@@ -355,12 +356,13 @@ def _checker_private_api() -> dict:
             'FileRunResult': FileRunResult, 'FileRunState': FileRunState}
 
 
-def durable_finalize_errors(directory):
+def durable_finalize_errors(directory, *, expect_units=True):
     """Proxy finalize verification for durable (re)validation.
 
     Pure provenance + evidence reads (no checker import), so execute_checker
     and shard merges share one verdict. [] when inapplicable: direct runs,
     grandfathered runs without the hook record, and foreign directories.
+    expect_units is false only for runs that legitimately ran no units.
     """
     try:
         provenance = json.loads((Path(directory) / 'build-provenance.json').read_text())
@@ -376,12 +378,62 @@ def durable_finalize_errors(directory):
     expected = extra['proxy_finalize']
     if not isinstance(expected, dict) or not expected:
         return ['proxy finalize provenance malformed']
+    version = expected.get('version')
+    if not isinstance(version, str) or VERSION_SCOPES.get(version) != expected.get('scope'):
+        return ['proxy finalize provenance scope mismatch']
+    try:
+        executed = _executed_unit_targets(directory)
+    except _RosterMalformed:
+        return ['proxy finalize executed roster malformed']
     return reconcile_evidence(
         Path(directory) / HOOK_DIRNAME,
         module_path=expected.get('module'),
         hook_version=expected.get('version'),
         hook_sha256=expected.get('sha256'),
+        expect_units=expect_units,
+        executed_targets=executed,
     )
+
+
+class _RosterMalformed(Exception):
+    """results.json parses but its grouped execution roster is misshapen."""
+
+
+def _executed_unit_targets(directory):
+    """Ordered unique unit targets from the durable grouped executions.
+
+    None only when results.json is missing or is not JSON; validation
+    fails loud on that file itself, so coverage simply does not apply
+    then. A parseable file with a misshapen roster raises
+    _RosterMalformed instead of silently disabling coverage: the main
+    validator tolerates some omissions (absent executions read as
+    empty), so skipping here would let a reshaped roster hide missing
+    finalize evidence.
+    """
+    try:
+        payload = json.loads((Path(directory) / 'results.json').read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get('units'), list):
+        raise _RosterMalformed
+    targets = []
+    for unit in payload['units']:
+        if not isinstance(unit, dict) or 'executions' not in unit:
+            raise _RosterMalformed
+        executions = unit['executions']
+        if not isinstance(executions, list):
+            raise _RosterMalformed
+        for entry in executions:
+            if not isinstance(entry, dict):
+                raise _RosterMalformed
+            if entry.get('role') != 'unit':
+                continue
+            target = entry.get('target')
+            if not isinstance(target, str) or not target:
+                raise _RosterMalformed
+            if target not in targets:
+                targets.append(target)
+    return targets
 
 
 def validate_results(directory: Path, nodes: list[str], installed_root: Path) -> dict:
@@ -401,7 +453,7 @@ def validate_results(directory: Path, nodes: list[str], installed_root: Path) ->
     def phase(entry):
         return (canonical_node(entry['nodeid'], root), entry.get('when'), entry.get('outcome'))
     try:
-        errors.extend(durable_finalize_errors(directory))
+        errors.extend(durable_finalize_errors(directory, expect_units=bool(nodes)))
         source_inventory(root, nodes)
         payload = json.loads((directory / 'results.json').read_text())
         state = json.loads((directory / 'state.json').read_text())

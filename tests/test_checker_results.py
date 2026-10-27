@@ -114,6 +114,42 @@ def test_reject_unsupported_completion(tmp_path, mutation):
     assert not validate_results(directory, nodes, root)['complete']
 
 
+def test_validate_results_rejects_roster_hiding_missing_finalize(tmp_path):
+    from p11lab.proxy_finalize import HOOK_DIRNAME, install_hook
+    profile = load_profile()
+    nodes = [profile['nodes'][0], profile['nodes'][13]]
+    directory = tmp_path / 'run'
+    root = write_evidence(directory, nodes, 'passed')
+    targets = [str(root / node) for node in nodes]
+    assert targets[0].split('::', 1)[0] != targets[1].split('::', 1)[0]
+    installed = install_hook(directory / HOOK_DIRNAME)
+    module = '/run/p11lab-client/libpkcs11_proxy_ng_shim.so'
+    (directory / 'build-provenance.json').write_text(json.dumps({'extra': {
+        'proxy_finalize': {'version': installed['version'],
+                           'sha256': installed['sha256'],
+                           'scope': 'preflight+unit', 'module': module}}}))
+    hook_dir = directory / HOOK_DIRNAME
+    (hook_dir / 'finalize-evidence-100.json').write_text(json.dumps(
+        {'hook_version': installed['version'], 'pid': 100, 'role': 'preflight',
+         'target': None, 'module_env': module, 'module_argv': module,
+         'attempted': True, 'rv': 0, 'failure_class': 'none'}))
+    (hook_dir / 'finalize-evidence-101.json').write_text(json.dumps(
+        {'hook_version': installed['version'], 'pid': 101, 'role': 'unit',
+         'target': targets[0], 'module_env': module, 'module_argv': module,
+         'attempted': True, 'rv': 0, 'failure_class': 'none'}))
+    result = validate_results(directory, nodes, root)
+    assert result['complete'] is False, result
+    assert any('missing unit targets' in error for error in result['errors']), result
+    payload = json.loads((directory / 'results.json').read_text())
+    assert len(payload['units']) == 2
+    payload['units'][1]['executions'].extend(payload['units'][0]['executions'])
+    del payload['units'][0]['executions']
+    (directory / 'results.json').write_text(json.dumps(payload))
+    result = validate_results(directory, nodes, root)
+    assert result['complete'] is False, result
+    assert any('roster malformed' in error for error in result['errors']), result
+
+
 def test_exact_profile_and_source_identity(tmp_path):
     profile = load_profile()
     assert len(profile['nodes']) == len(set(profile['nodes'])) == 23
