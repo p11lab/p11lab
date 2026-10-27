@@ -128,6 +128,7 @@ RUN set -eu; SO=$(cat /tmp/so-path); CTL=$(cat /tmp/ctl-path); \
  ldd "$SO" | awk '/libHS.*=>/ {print $3}' | sort -u | while read -r lib; do cp "$lib" /runtime/usr/local/lib/p11lab/; done; \
  bundled=$(ls /runtime/usr/local/lib/p11lab/libHS*.so | wc -l); \
  [ "$bundled" = 24 ] || { echo "bundled GHC closure count drift: $bundled"; exit 1; }; \
+ strip --strip-unneeded /runtime/usr/local/lib/p11lab/libHS*.so /runtime/usr/local/lib/p11lab/libhaskoki.so /runtime/usr/local/bin/haskoki-ctl /runtime/usr/local/bin/haskoki-provision; \
  ldd "$SO" | awk '{print $1}' | grep '\.so' | grep -v '^libHS' | sort -u > /runtime/usr/share/p11lab/build/host-deps.txt; \
  if grep -v -E '^(/lib64/ld-linux-x86-64\.so\.2|libc\.so|libffi\.so|libgmp\.so|libm\.so|linux-vdso)' /runtime/usr/share/p11lab/build/host-deps.txt | grep -q .; then echo 'unexpected host dep outside {ld-linux,libc,libffi,libgmp,libm,vdso}'; exit 1; fi; \
  for f in /runtime/usr/local/lib/p11lab/*.so /runtime/usr/local/lib/p11lab/ossl-modules/*.so /runtime/usr/local/bin/haskoki-ctl; do objdump -T "$f" 2>/dev/null | grep -o 'GLIBC_[0-9.]*'; done | sort -uV > /runtime/usr/share/p11lab/build/glibc-refs.txt; \

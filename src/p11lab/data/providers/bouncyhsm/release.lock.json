@@ -2617,7 +2617,7 @@
     {
       "role": "recipe",
       "path": "Dockerfile",
-      "sha256": "e6089bdcd877e1b8a0adb5d5c4a8503a52d6e6d004eec079525f51c440eba381"
+      "sha256": "9ed8c9dea064094389e40f4ac883a46ba800c71a964303c97898f94eed174da2"
     },
     {
       "role": "adapter",

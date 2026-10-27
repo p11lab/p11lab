@@ -26,6 +26,7 @@ RUN cd /var/lib/apt/lists && sha256sum -c /tmp/signed-index-inputs.sha256
 RUN mkdir -p /runtime/usr/local/lib/p11lab /runtime/usr/local/bin /runtime/usr/share/p11lab/build /runtime/usr/share/licenses/freehsm \
  && cp /build/freehsm/libfreehsm.so /runtime/usr/local/lib/p11lab/ \
  && cp /build/freehsm/tools/fhsm-token /runtime/usr/local/bin/fhsm-token \
+ && strip --strip-unneeded /runtime/usr/local/lib/p11lab/libfreehsm.so /runtime/usr/local/bin/fhsm-token \
  && cp /build/freehsm/LICENSE /build/freehsm/NOTICE /runtime/usr/share/licenses/freehsm/ \
  && cp /tmp/FILE-NOTICES.txt /runtime/usr/share/licenses/freehsm/FILE-NOTICES.txt \
  && cp /tmp/actual-base.tsv /tmp/actual-builder.tsv /runtime/usr/share/p11lab/build/ \
