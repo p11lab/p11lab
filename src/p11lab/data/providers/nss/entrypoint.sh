@@ -52,10 +52,12 @@ init_token() {
     # The SO credential is validated for interface uniformity with the
     # shared checker protocol; softoken has no SO role and never sees it.
     p11lab_secret P11LAB_SO_PIN P11LAB_SO_PIN_FILE
+    unset P11LAB_PIN P11LAB_SO_PIN credential
     mkdir "$state/.init-lock" || p11lab_die "state initialization is already in progress"
     trap 'rmdir "$state/.init-lock" 2>/dev/null || :; rm -f "$control/marker.$$" "$control/init.$$" "$control/init-pw.$$"' EXIT HUP INT TERM
     mkdir -m 700 "$owned"
     printf '%s' "$user_credential" > "$control/init-pw.$$"
+    unset user_credential
     # certutil -N on an existing database would silently change the key
     # password, so it runs only here, on a directory this init created.
     if certutil -d "sql:$owned" -N -f "$control/init-pw.$$" > "$control/init.$$" 2>&1; then
@@ -83,10 +85,11 @@ case "${1-}" in
         p11lab_no_credential_conflict P11LAB_PIN P11LAB_PIN_FILE
         p11lab_no_credential_conflict P11LAB_SO_PIN P11LAB_SO_PIN_FILE
         p11lab_writable_directory "$state"
-        [ ! -e "$state/.init-lock" ] || p11lab_die "state initialization is already in progress"
+        [ ! -L "$state/.init-lock" ] && [ ! -e "$state/.init-lock" ] || p11lab_die "state initialization is already in progress"
         p11lab_secret P11LAB_PIN P11LAB_PIN_FILE
         p11lab_secret P11LAB_SO_PIN P11LAB_SO_PIN_FILE
         configure
+        p11lab_check_find empty "partial state: refusing to reset volume with unknown files" "$state" -mindepth 1 -maxdepth 1 ! -name nss -print -quit
         if [ -e "$owned" ]; then
             [ ! -L "$owned" ] || p11lab_die "refusing to reset unsafe state"
             rm -rf -- "$owned"

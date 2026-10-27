@@ -145,7 +145,7 @@ case "${1-}" in
         p11lab_no_credential_conflict P11LAB_SO_PIN P11LAB_SO_PIN_FILE
         p11lab_writable_directory "$state"
         configure
-        [ ! -e "$state/.init-lock" ] || p11lab_die "state initialization is already in progress"
+        [ ! -L "$state/.init-lock" ] && [ ! -e "$state/.init-lock" ] || p11lab_die "state initialization is already in progress"
         p11lab_secret P11LAB_PIN P11LAB_PIN_FILE
         user_credential=$credential
         p11lab_secret P11LAB_SO_PIN P11LAB_SO_PIN_FILE
@@ -153,6 +153,7 @@ case "${1-}" in
         [ "${#user_credential}" -ge 4 ] && [ "${#user_credential}" -le 8 ] && [ "${#so_credential}" -ge 4 ] && [ "${#so_credential}" -le 8 ] || p11lab_die "native SWToken PIN bounds are 4..8 bytes"
         [ "$so_credential" != 87654321 ] || p11lab_die "SO credential must replace the native factory credential"
         unset user_credential so_credential credential
+        p11lab_check_find empty "partial state: refusing to reset volume with unknown files" "$state" -mindepth 1 -maxdepth 1 ! -name opencryptoki -print -quit
         if [ -e "$owned" ]; then
             [ ! -L "$owned" ] || p11lab_die "refusing to reset unsafe state"
             rm -rf -- "$owned"
@@ -160,7 +161,8 @@ case "${1-}" in
         else
             printf '%s\n' "p11lab: reset found no state at $owned"
         fi
-        if [ -n "$(find "$control/locks" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+        locks_entries=$(find "$control/locks" -mindepth 1 -print -quit) || p11lab_die "cannot enumerate $control/locks"
+        if [ -n "$locks_entries" ]; then
             rm -rf -- "$control/locks"
             printf '%s\n' "p11lab: reset cleared $control/locks"
         fi

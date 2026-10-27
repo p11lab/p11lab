@@ -9,7 +9,7 @@ import pytest
 from p11lab.catalog import package_data
 
 
-PROVIDERS = ('softhsm2', 'bouncyhsm', 'nss', 'freehsm', 'haskoki')
+PROVIDERS = ('softhsm2', 'bouncyhsm', 'nss', 'freehsm', 'haskoki', 'opencryptoki')
 
 
 def run_script(text, directory, **env):
