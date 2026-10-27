@@ -17,11 +17,11 @@
 # Scope: softhsm2 first, kryoptic second, bouncyhsm third (admitted on
 # reviewed smoke evidence: the daemon faithfully reproduces native digest
 # behavior; see the bouncyhsm baseline note below), haskoki fourth
-# (admitted on trial 40500120170: 23/23 smoke nodes pass through the
-# daemon with an empty baseline). freehsm is EXCLUDED until its proxy
-# constraints and lanes are reviewed (docs/proxy.md qualifies SoftHSM
-# only; only kryoptic's catalogue contemplates proxy). One daemon per
-# shard leg; no daemon sharing.
+# (trial 40500120170: 23/23 smoke nodes pass with an empty baseline),
+# freehsm fifth (trial 40501649480: 23/23 smoke nodes pass with an empty
+# baseline). New envs stay EXCLUDED until their proxy constraints and
+# lanes are reviewed (docs/proxy.md documents the SoftHSM topology
+# only). One daemon per shard leg; no daemon sharing.
 # Baselines are a SEPARATE namespace from direct: transport facts (e.g.
 # negotiation skips) differ across lanes, so proxy findings must never be
 # judged against direct baselines. PROXY_BASELINES starts empty and grows
@@ -772,8 +772,8 @@ jobs:
 
           env, shard, daemon_id, consumer_id = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
           profile = Path('run-cwd/shard-profile.json').resolve()
-          # Gate LABEL on the descriptor allowlist (all proxy envs take
-          # it today; the gate keeps the driver correct if that changes).
+          # Gate LABEL on the descriptor allowlist: freehsm fixes its
+          # label in-adapter and rejects P11LAB_LABEL as unknown input.
           # Per-env values mirror the direct lane: haskoki serves only
           # haskoki-demo on slot 0 and refuses any other label.
           inputs = {}
