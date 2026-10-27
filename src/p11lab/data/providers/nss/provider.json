@@ -16,6 +16,12 @@
   ],
   "state_mode": "persistent",
   "module_path": "/usr/local/lib/p11lab/libsoftokn3.so",
+  "lifecycle": {
+    "verbs": ["describe", "init", "reset", "health", "exec"],
+    "reset_wipes": ["/var/lib/p11lab/nss"],
+    "health_checks": ["markers", "db-files", "certutil-listing"],
+    "default_state": "fresh-volume-initializes-on-first-start"
+  },
   "inputs": {
     "P11LAB_PIN_FILE": {
       "secret": true,

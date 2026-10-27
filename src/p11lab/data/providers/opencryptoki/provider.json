@@ -16,6 +16,13 @@
   ],
   "state_mode": "persistent",
   "module_path": "/usr/local/lib/p11lab/libopencryptoki.so",
+  "lifecycle": {
+    "verbs": ["describe", "init", "reset", "health", "exec"],
+    "reset_wipes": ["/var/lib/p11lab/opencryptoki"],
+    "reset_clears_control": ["/run/p11lab/opencryptoki/locks"],
+    "health_checks": ["markers", "static-validation", "tool-health"],
+    "default_state": "fresh-volume-initializes-on-first-start"
+  },
   "inputs": {
     "P11LAB_PIN_FILE": {
       "secret": true,

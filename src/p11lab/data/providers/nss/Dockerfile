@@ -73,9 +73,9 @@ RUN mkdir -p /runtime/usr/local/lib/p11lab /runtime/usr/local/bin /runtime/etc/n
  && dpkg-query -W -f='${Package} ${Version} ${source:Package} ${source:Version}\n' libsqlite3-0 zlib1g > /runtime/usr/share/p11lab/build/system-crypto.txt
 FROM ${BASE_IMAGE} AS runtime
 COPY --from=builder /runtime/ /
-COPY entrypoint.sh /usr/local/bin/p11lab-provider
 COPY THIRD-PARTY-NOTICES.txt SOURCE-ACCESS.md /usr/share/p11lab/
 COPY common.sh LICENSE provider.json runtime-id build-inputs.json /usr/share/p11lab/
+COPY entrypoint.sh /usr/local/bin/p11lab-provider
 RUN chmod 755 /usr/local/bin/p11lab-provider /usr/local/bin/certutil \
  && find /usr/share/p11lab /usr/share/licenses -type f -exec chmod 644 {} + \
  && chmod 644 /etc/nss/params.config /etc/ld.so.conf.d/p11lab-nss.conf \

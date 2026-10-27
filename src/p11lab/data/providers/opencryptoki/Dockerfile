@@ -65,8 +65,8 @@ RUN mkdir -p /runtime/usr/local/lib/p11lab /runtime/usr/local/bin /runtime/usr/l
       > /runtime/usr/share/p11lab/build/options.txt
 FROM ${BASE_IMAGE} AS runtime
 COPY --from=builder /runtime/ /
-COPY entrypoint.sh /usr/local/bin/p11lab-provider
 COPY THIRD-PARTY-NOTICES.txt SOURCE-ACCESS.md common.sh LICENSE provider.json runtime-id build-inputs.json /usr/share/p11lab/
+COPY entrypoint.sh /usr/local/bin/p11lab-provider
 RUN printf '%s\n' '/usr/local/lib/p11lab' > /etc/ld.so.conf.d/p11lab-opencryptoki.conf \
  && ldconfig \
  && chmod 755 /usr/local/bin/p11lab-provider /usr/local/bin/p11lab-opencryptoki /usr/local/sbin/pkcsslotd \
@@ -74,6 +74,8 @@ RUN printf '%s\n' '/usr/local/lib/p11lab' > /etc/ld.so.conf.d/p11lab-opencryptok
  && chown 0:1001 /usr/share/p11lab/opencryptoki/strength.conf \
  && chmod 640 /usr/share/p11lab/opencryptoki/strength.conf \
  && mkdir -p /var/lib/p11lab /run/p11lab \
+ && chgrp 1001 /var/lib/p11lab /run/p11lab \
+ && chmod 2770 /var/lib/p11lab /run/p11lab \
  && dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\t${source:Package}\t${source:Version}\n' | sort > /usr/share/p11lab/build/actual-runtime.tsv \
  && diff -u /usr/share/p11lab/build/actual-base.tsv /usr/share/p11lab/build/actual-runtime.tsv \
  && ldd /usr/local/lib/p11lab/libopencryptoki.so /usr/local/lib/p11lab/libpkcs11_sw.so /usr/local/sbin/pkcsslotd /usr/local/bin/p11lab-opencryptoki /usr/local/lib/p11lab/libnss_wrapper.so > /usr/share/p11lab/build/runtime-linked-dependencies.txt \
