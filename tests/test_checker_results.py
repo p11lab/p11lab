@@ -496,7 +496,8 @@ def test_checker_environment_preserves_complete_proxy_transport(tmp_path, monkey
     from p11lab.checker import checker_environment
     monkeypatch.setenv('PKCS11_PROXY_ENDPOINT', 'https://ambient.example:1')
     env = checker_environment(tmp_path, 'p', 's', provider_descriptor={},
-                              proxy_env=dict(PROXY_TRANSPORT))
+                              proxy_env=dict(PROXY_TRANSPORT),
+                              module_path='/run/p11lab-client/libpkcs11_proxy_ng_shim.so')
     for name, value in PROXY_TRANSPORT.items():
         assert env[name] == value
 

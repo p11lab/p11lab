@@ -17,6 +17,7 @@ from uuid import uuid4
 
 from .models import RunResult, RunSpec
 from .process import supervised_exec, write_process_logs
+from .proxy_finalize import HOOK_DIRNAME, install_hook, reconcile_evidence
 from .receipts import write_receipt
 from .tls import (
     CLIENT_ENV_VARS,
@@ -201,7 +202,7 @@ def _install_proxy_transport(action: str) -> dict | None:
 
 
 def checker_environment(output: Path, pin: str, so_pin: str, *, provider_descriptor=None,
-                        proxy_env=None) -> dict:
+                        proxy_env=None, module_path=None) -> dict:
     # Inherited P11TEST_*, pytest options, TOML search locations and plugins must
     # not change selection. Keep only provider configuration and OS essentials.
     allowed = {'PATH', 'LD_LIBRARY_PATH', 'SYSTEMROOT', 'WINDIR', 'SOFTHSM2_CONF'}
@@ -210,15 +211,35 @@ def checker_environment(output: Path, pin: str, so_pin: str, *, provider_descrip
     # for the same names are ignored so adapter/descriptor drift cannot silently
     # change the checked configuration.
     env.update(_declared_fixed_env(provider_descriptor))
+    hook_identity = None
     if proxy_env is not None:
         # Transport names are declaration-ineligible (reserved PKCS11_
         # prefix), so this explicit mapping is their only channel; values
         # re-validate exactly as the runner emitted them (no partials).
-        env.update(_validated_proxy_transport(proxy_env))
+        # Transport validates before the hook installs anything.
+        validated = _validated_proxy_transport(proxy_env)
+        if not module_path:
+            raise ValueError('proxy finalize requires the module path')
+        installed = install_hook(output.resolve() / HOOK_DIRNAME)
+        hook_dir = installed['dir']
+        env.update(validated)
+        # Separate explicit channel alongside (never inside) the five
+        # transport vars: the exit-finalize hook for proxy checker
+        # children, incl. the Popen'd preflight helper. The checker CLI
+        # takes --module and never reads P11LAB_MODULE, so this addition
+        # cannot change checked behavior; direct runs stay scrubbed.
+        env.update(PYTHONPATH=hook_dir, PYTHONDONTWRITEBYTECODE='1',
+                   P11LAB_MODULE=str(module_path),
+                   P11LAB_PROXY_FINALIZE_DIR=hook_dir)
+        hook_identity = {'version': installed['version'], 'sha256': installed['sha256'],
+                         'scope': 'preflight', 'module': str(module_path)}
     provenance_file = output.resolve() / 'build-provenance.json'
+    provenance_extra = {'checker': {'source_revision': SOURCE, 'wheel_sha256': WHEEL,
+                                    'runtime_lock_sha256': LOCK}}
+    if hook_identity is not None:
+        provenance_extra['proxy_finalize'] = hook_identity
     with os.fdopen(os.open(provenance_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as stream:
-        json.dump({'extra': {'checker': {'source_revision': SOURCE, 'wheel_sha256': WHEEL,
-                                         'runtime_lock_sha256': LOCK}}}, stream, indent=2)
+        json.dump({'extra': provenance_extra}, stream, indent=2)
     env.update(HOME=str(output), XDG_CONFIG_HOME=str(output), PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',
                PYTEST_ADDOPTS='-v',
                P11TEST_PIN=pin, P11TEST_SO_PIN=so_pin,
@@ -258,7 +279,8 @@ def execute_checker(*, installed_root: Path, module: Path, slot: int,
     output_dir.mkdir(parents=True, exist_ok=False)
     output_dir.chmod(0o700)
     targets = [str(installed_root.resolve() / node) for node in nodes]
-    env = checker_environment(output_dir, pin, so_pin, proxy_env=proxy_env)
+    env = checker_environment(output_dir, pin, so_pin, proxy_env=proxy_env,
+                             module_path=str(module))
     prefix = [sys.executable, '-m', 'pkcs11_check']
     collect = subprocess.run([*prefix, 'list-tests', '--include-disabled', *targets],
                              cwd=output_dir, env=env, capture_output=True, text=True, timeout=180)
@@ -333,6 +355,35 @@ def _checker_private_api() -> dict:
             'FileRunResult': FileRunResult, 'FileRunState': FileRunState}
 
 
+def durable_finalize_errors(directory):
+    """Proxy finalize verification for durable (re)validation.
+
+    Pure provenance + evidence reads (no checker import), so execute_checker
+    and shard merges share one verdict. [] when inapplicable: direct runs,
+    grandfathered runs without the hook record, and foreign directories.
+    """
+    try:
+        provenance = json.loads((Path(directory) / 'build-provenance.json').read_text())
+    except (OSError, ValueError):
+        return []
+    if not isinstance(provenance, dict):
+        return []
+    extra = provenance.get('extra')
+    if not isinstance(extra, dict):
+        return []
+    if 'proxy_finalize' not in extra:
+        return []
+    expected = extra['proxy_finalize']
+    if not isinstance(expected, dict) or not expected:
+        return ['proxy finalize provenance malformed']
+    return reconcile_evidence(
+        Path(directory) / HOOK_DIRNAME,
+        module_path=expected.get('module'),
+        hook_version=expected.get('version'),
+        hook_sha256=expected.get('sha256'),
+    )
+
+
 def validate_results(directory: Path, nodes: list[str], installed_root: Path) -> dict:
     """Reconcile native state, grouped JSON and raw isolated attempt evidence.
 
@@ -350,6 +401,7 @@ def validate_results(directory: Path, nodes: list[str], installed_root: Path) ->
     def phase(entry):
         return (canonical_node(entry['nodeid'], root), entry.get('when'), entry.get('outcome'))
     try:
+        errors.extend(durable_finalize_errors(directory))
         source_inventory(root, nodes)
         payload = json.loads((directory / 'results.json').read_text())
         state = json.loads((directory / 'state.json').read_text())
