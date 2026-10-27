@@ -98,7 +98,10 @@ permissions:
   actions: read # merge selects shard artifacts by name via gh (avoids GBs of image tarballs)
 
 concurrency:
-  group: checker-proxy-${{ github.event.pull_request.number || github.ref }}
+  # Per-env groups outside PRs: concurrent single-env validations (two
+  # deliveries, a delivery plus a manual retry) must never cancel each
+  # other; PR churn still cancels within the PR.
+  group: checker-proxy-${{ github.event.pull_request.number || github.ref }}-${{ inputs.environment }}
   cancel-in-progress: true
 
 env:
