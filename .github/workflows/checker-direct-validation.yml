@@ -116,7 +116,7 @@ env:
   # contracts; the proxy lane (adapter-supervised daemon) is its path.
   # Published digest for that work:
   # opencryptoki v3.27.0 = sha256:b4bc9b9a3afc617bf6c956cac3c34fbcbaa391fdd6d386b1e53ec3bfbe65f924
-  CHECKER_VERSION: '0.2.2'
+  CHECKER_VERSION: '0.2.3'
   # Expected-failures baselines per environment and suite (canonical node
   # IDs), reviewed entries only. Empty = unqualified. Extract to files
   # once non-empty.

@@ -68,6 +68,12 @@ def test_tools_registry_checker_revision_matches_module():
     assert tools['tools']['checker']['source']['revision'] == checker.SOURCE
 
 
+def test_lane_workflows_pin_023_checker():
+    for name in ("checker-direct-validation.yml", "checker-proxy-validation.yml"):
+        text = (REPO / ".github" / "workflows" / name).read_text()
+        assert f"CHECKER_VERSION: '{VERSION}'" in text, name
+
+
 def test_checker_environment_advertises_023_framework(tmp_path):
     pytest.importorskip('pkcs11_check')
     out = tmp_path / 'out'
