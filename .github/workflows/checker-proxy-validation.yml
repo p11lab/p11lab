@@ -1,13 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # Proxy-lane pkcs11-check runs: installed checker through the pinned mTLS
 # proxy (pkcs11-proxy-ng) against provider daemons.
-# Pipeline: proxy-bins (pinned proxy source -> daemon/CLI/shim bytes, built
-# once) -> daemon (provider runtime + proxy daemon, local-only, never pushed)
-# + consumer (installed checker image, same recipe as the direct lane) +
-# client-bundle (native shim/CLI bundle) -> plan (frozen shard plans, same
-# machinery as direct) -> shard matrix (run_checker with mode='proxy': one
-# logical mTLS client against a dedicated daemon per leg) -> merge (same
-# roster + baseline verdict machinery, separate proxy baselines).
+# Pipeline: select (resolve env list: explicit single env, PR-changed
+# provider dirs, or full lane roster) -> proxy-bins (pinned proxy source
+# -> daemon/CLI/shim bytes, built once) -> daemon (provider runtime +
+# proxy daemon, local-only, never pushed) + consumer (installed checker
+# image, same recipe as the direct lane) + client-bundle (native shim/CLI
+# bundle) -> plan (frozen shard plans, same machinery as direct) ->
+# shard matrix (run_checker with mode='proxy': one logical mTLS client
+# against a dedicated daemon per leg) -> merge (same roster + baseline
+# verdict machinery, separate proxy baselines).
+# Reusable (workflow_call): single environment + optional exact digest +
+# advisory flag (findings record but do not fail; infra always fails).
+# A digest override replaces the pin in pull verification, daemon build
+# args, and consumer FROM so the validated bytes are exactly the override.
 # Scope: softhsm2 first, kryoptic second. haskoki/freehsm/bouncyhsm are
 # EXCLUDED until each env's proxy constraints and lanes are reviewed
 # (docs/proxy.md qualifies SoftHSM only; only kryoptic's catalogue
@@ -38,6 +44,39 @@ on:
         description: 'Locked channel (release only until rolling digests are verified).'
         required: true
         default: 'release'
+      environment:
+        description: "Single environment to validate, or 'all' for the full matrix."
+        required: false
+        default: 'all'
+      digest:
+        description: "Exact digest (sha256:...) to validate instead of the pin; applies to single-env runs."
+        required: false
+        default: ''
+      advisory:
+        description: "When 'true', provider findings record but do not fail; infra failures still fail."
+        required: false
+        default: 'false'
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Single environment to validate.'
+        required: true
+        type: string
+      digest:
+        description: 'Exact digest (sha256:...) to validate instead of the pin.'
+        required: false
+        type: string
+        default: ''
+      suite:
+        description: 'smoke or full.'
+        required: false
+        type: string
+        default: 'smoke'
+      advisory:
+        description: "When 'true', provider findings record but do not fail; infra failures still fail."
+        required: false
+        type: string
+        default: 'false'
   pull_request:
     paths:
       - '.github/workflows/checker-proxy-validation.yml'
@@ -66,6 +105,66 @@ env:
   PROXY_FULL_SHARDS: '{"softhsm2":2,"kryoptic":5}'
 
 jobs:
+  select:
+    # Resolve the environment list for this run: an explicit single env
+    # (dispatch/call), PR-changed provider dirs, or the full lane roster.
+    # Envs outside this lane resolve to an empty list: downstream matrices
+    # run zero legs and the run succeeds having validated nothing. The
+    # selection is recorded loudly in the step summary either way.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      envs: ${{ steps.resolve.outputs.envs }}
+      first: ${{ steps.resolve.outputs.first }}
+    steps:
+      - name: Checkout P11Lab
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Resolve selected environments
+        id: resolve
+        env:
+          P11LAB_EVENT: ${{ github.event_name }}
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -eu
+          LANE_ENVS="softhsm2 kryoptic"
+          if [ "$P11LAB_EVENT" = "pull_request" ]; then
+            git fetch -q --depth 1 origin "$P11LAB_BASE_REF"
+            changed="$(git diff --name-only "origin/$P11LAB_BASE_REF"...HEAD)"
+            envs="$(printf '%s\n' "$changed" | grep -oE '^src/p11lab/data/providers/[a-z0-9-]+/' | cut -d/ -f5 | sort -u | tr '\n' ' ' || true)"
+            if printf '%s\n' "$changed" | grep -Eqv '^src/p11lab/data/providers/[a-z0-9-]+/'; then
+              envs="$LANE_ENVS"  # shared code or workflow itself: full lane
+            fi
+            # Intersect with this lane; unknown providers select nothing here.
+            selected=""
+            for env in $envs; do
+              case " $LANE_ENVS " in *" $env "*) selected="$selected $env";; esac
+            done
+            envs="$selected"
+          elif [ -n "$P11LAB_INPUT_ENVIRONMENT" ] && [ "$P11LAB_INPUT_ENVIRONMENT" != "all" ]; then
+            case " $LANE_ENVS " in
+              *" $P11LAB_INPUT_ENVIRONMENT "*) envs="$P11LAB_INPUT_ENVIRONMENT" ;;
+              *) envs="" ;;
+            esac
+          else
+            envs="$LANE_ENVS"
+          fi
+          envs_json="$(python3 -c 'import json,sys; print(json.dumps(sorted(sys.argv[1:])))' $envs)"
+          first="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])[0] if json.loads(sys.argv[1]) else "")' "$envs_json")"
+          printf 'envs=%s\n' "$envs_json" >> "$GITHUB_OUTPUT"
+          printf 'first=%s\n' "$first" >> "$GITHUB_OUTPUT"
+          {
+            echo "## proxy lane selection"
+            echo ""
+            echo "event: $P11LAB_EVENT"
+            echo "envs: $envs_json"
+            if [ -z "$first" ]; then echo "no lane env selected; downstream legs run zero times"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
   proxy-bins:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -155,11 +254,11 @@ jobs:
           if-no-files-found: error
 
   daemon:
-    needs: proxy-bins
+    needs: [select, proxy-bins]
     strategy:
       fail-fast: false
       matrix:
-        environment: [softhsm2, kryoptic]
+        environment: ${{ fromJSON(needs.select.outputs.envs) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -178,16 +277,29 @@ jobs:
           path: incoming-bins/
 
       - name: Pull runtime by digest and verify identity
+        env:
+          P11LAB_DIGEST_OVERRIDE: ${{ inputs.digest }}
         run: |
           digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
           digest="${!digest_var}"
           test -n "$digest" || { echo 'no digest pin' >&2; exit 1; }
+          if [ -n "$P11LAB_DIGEST_OVERRIDE" ]; then
+            case "$P11LAB_DIGEST_OVERRIDE" in
+              sha256:[0-9a-f]*)
+                test "${#P11LAB_DIGEST_OVERRIDE}" -eq 71 || { echo 'bad digest override' >&2; exit 1; }
+                digest="$P11LAB_DIGEST_OVERRIDE"
+                echo "validating override digest $digest instead of the pin" ;;
+              *) echo 'bad digest override' >&2; exit 1 ;;
+            esac
+          fi
           ref="ghcr.io/p11lab/${{ matrix.environment }}@$digest"
           docker pull "$ref"
           actual="$(docker inspect --format '{{index .RepoDigests 0}}' "$ref" | cut -d@ -f2)"
           test "$actual" = "$digest" || { echo "digest drift: $actual" >&2; exit 1; }
 
       - name: Build local daemon derivative (never pushed)
+        env:
+          P11LAB_DIGEST_OVERRIDE: ${{ inputs.digest }}
         run: |
           # Cross-check the bins seal against this checkout's pins before
           # building: a stale bins artifact must fail here, not at runtime.
@@ -206,8 +318,17 @@ jobs:
           cp incoming-bins/proxy-bins.sha256 daemon-ctx/proxy-bins.sha256
           cp incoming-bins/licenses/LICENSE-APACHE incoming-bins/licenses/LICENSE-MIT daemon-ctx/proxy-notices/
           digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
+          digest="${!digest_var}"
+          if [ -n "$P11LAB_DIGEST_OVERRIDE" ]; then
+            case "$P11LAB_DIGEST_OVERRIDE" in
+              sha256:[0-9a-f]*)
+                test "${#P11LAB_DIGEST_OVERRIDE}" -eq 71 || { echo 'bad digest override' >&2; exit 1; }
+                digest="$P11LAB_DIGEST_OVERRIDE" ;;
+              *) echo 'bad digest override' >&2; exit 1 ;;
+            esac
+          fi
           docker build --no-cache -f src/p11lab/data/runtime/proxy.Dockerfile \
-            --build-arg "PROVIDER_IMAGE=ghcr.io/p11lab/${{ matrix.environment }}@${!digest_var}" \
+            --build-arg "PROVIDER_IMAGE=ghcr.io/p11lab/${{ matrix.environment }}@$digest" \
             --build-arg "PROXY_BINS_MANIFEST_SHA256=$(cat incoming-bins/proxy-bins-manifest.sha256)" \
             --build-arg "PROXY_SOURCE_REVISION=$PROXY_SOURCE_REVISION" \
             --build-arg "PROXY_CARGO_LOCK_SHA256=$PROXY_CARGO_LOCK_SHA256" \
@@ -243,10 +364,11 @@ jobs:
           if-no-files-found: error
 
   consumer:
+    needs: select
     strategy:
       fail-fast: false
       matrix:
-        environment: [softhsm2, kryoptic]
+        environment: ${{ fromJSON(needs.select.outputs.envs) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -259,16 +381,29 @@ jobs:
           persist-credentials: false
 
       - name: Pull runtime by digest and verify identity
+        env:
+          P11LAB_DIGEST_OVERRIDE: ${{ inputs.digest }}
         run: |
           digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
           digest="${!digest_var}"
           test -n "$digest" || { echo 'no digest pin' >&2; exit 1; }
+          if [ -n "$P11LAB_DIGEST_OVERRIDE" ]; then
+            case "$P11LAB_DIGEST_OVERRIDE" in
+              sha256:[0-9a-f]*)
+                test "${#P11LAB_DIGEST_OVERRIDE}" -eq 71 || { echo 'bad digest override' >&2; exit 1; }
+                digest="$P11LAB_DIGEST_OVERRIDE"
+                echo "validating override digest $digest instead of the pin" ;;
+              *) echo 'bad digest override' >&2; exit 1 ;;
+            esac
+          fi
           ref="ghcr.io/p11lab/${{ matrix.environment }}@$digest"
           docker pull "$ref"
           actual="$(docker inspect --format '{{index .RepoDigests 0}}' "$ref" | cut -d@ -f2)"
           test "$actual" = "$digest" || { echo "digest drift: $actual" >&2; exit 1; }
 
       - name: Build local checker consumer (never pushed)
+        env:
+          P11LAB_DIGEST_OVERRIDE: ${{ inputs.digest }}
         run: |
           # Same recipe as the direct lane: the consumer is the installed
           # checker derivative unchanged (shim + TLS are mounted at runtime,
@@ -276,8 +411,17 @@ jobs:
           rev="$(python3 -c 'import json; print(json.load(open("src/p11lab/data/tools.json"))["tools"]["checker"]["source"]["revision"])')"
           url="$(python3 -c 'import json; print(json.load(open("src/p11lab/data/tools.json"))["tools"]["checker"]["source"]["url"])')"
           digest_var="$(echo '${{ matrix.environment }}' | tr '[:lower:]' '[:upper:]')_DIGEST"
+          digest="${!digest_var}"
+          if [ -n "$P11LAB_DIGEST_OVERRIDE" ]; then
+            case "$P11LAB_DIGEST_OVERRIDE" in
+              sha256:[0-9a-f]*)
+                test "${#P11LAB_DIGEST_OVERRIDE}" -eq 71 || { echo 'bad digest override' >&2; exit 1; }
+                digest="$P11LAB_DIGEST_OVERRIDE" ;;
+              *) echo 'bad digest override' >&2; exit 1 ;;
+            esac
+          fi
           cat > "$RUNNER_TEMP/Dockerfile.checker" <<EOF
-          FROM ghcr.io/p11lab/${{ matrix.environment }}@${!digest_var}
+          FROM ghcr.io/p11lab/${{ matrix.environment }}@$digest
           RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv git \
             && rm -rf /var/lib/apt/lists/* \
             && python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version"
@@ -310,11 +454,11 @@ jobs:
           if-no-files-found: error
 
   client-bundle:
-    needs: proxy-bins
+    needs: [select, proxy-bins]
     strategy:
       fail-fast: false
       matrix:
-        environment: [softhsm2, kryoptic]
+        environment: ${{ fromJSON(needs.select.outputs.envs) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -382,7 +526,8 @@ jobs:
           if-no-files-found: error
 
   plan:
-    needs: consumer
+    needs: [select, consumer]
+    if: needs.select.outputs.envs != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -391,6 +536,8 @@ jobs:
     outputs:
       matrix: ${{ steps.freeze.outputs.matrix }}
       suite: ${{ steps.freeze.outputs.suite }}
+      envs: ${{ needs.select.outputs.envs }}
+      first: ${{ needs.select.outputs.first }}
     steps:
       - name: Checkout P11Lab
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -411,9 +558,9 @@ jobs:
       - name: Download one consumer image (shared layout)
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          # Any single consumer: both share the identical
+          # Any single consumer: all lane images share the identical
           # /opt/p11lab-checker layout the roster validation compares.
-          name: checker-proxy-consumer-softhsm2-${{ github.run_id }}
+          name: checker-proxy-consumer-${{ needs.select.outputs.first }}-${{ github.run_id }}
           path: incoming-consumer/
 
       - name: Freeze shard plans (inside consumer container)
@@ -421,6 +568,8 @@ jobs:
         env:
           INPUT_SUITE: ${{ inputs.suite }}
           INPUT_CHANNEL: ${{ inputs.channel }}
+          P11LAB_SELECTED_ENVS: ${{ needs.select.outputs.envs }}
+          P11LAB_FIRST_ENV: ${{ needs.select.outputs.first }}
         run: |
           # Dispatch inputs arrive via env, never interpolated into shell
           # source (a crafted input must not execute).
@@ -428,11 +577,16 @@ jobs:
           case "$suite" in smoke|full) ;; *) echo "unknown suite $suite" >&2; exit 1 ;; esac
           channel="${INPUT_CHANNEL:-release}"
           test "$channel" = 'release' || { echo "channel $channel is not verified for checker-proxy" >&2; exit 1; }
+          test -n "$P11LAB_FIRST_ENV" || { echo 'no environment selected' >&2; exit 1; }
           if [ "$suite" = 'full' ] && [ ! -f 'src/p11lab/data/profiles/full-v1.json' ]; then
             echo 'full suite needs a frozen full-v1 profile (run_checker rejects non-frozen selections); smoke-v1 is the only frozen profile' >&2
             exit 1
           fi
-          gzip -dc 'incoming-consumer/consumer-softhsm2.tar.gz' | docker load
+          # The planner rosters every PROXY_FULL_SHARDS key: restrict the
+          # counts to the selected envs so unselected legs plan zero shards.
+          PROXY_FULL_SHARDS_SELECTED="$(python3 -c 'import json,os; print(json.dumps({e: json.loads(os.environ["PROXY_FULL_SHARDS"])[e] for e in json.loads(os.environ["P11LAB_SELECTED_ENVS"])}))')"
+          export PROXY_FULL_SHARDS_SELECTED
+          gzip -dc "incoming-consumer/consumer-$P11LAB_FIRST_ENV.tar.gz" | docker load
           mkdir -p planwork/plan
           cat > planwork/planner.py <<'PY'
           import json
@@ -469,7 +623,7 @@ jobs:
           print('suite=%s shards=%d' % (suite, len(matrix)), file=sys.stderr)
           PY
           docker run --rm --network none --entrypoint /opt/p11lab-checker/bin/python \
-            -e PROXY_FULL_SHARDS -v "$PWD/planwork:/work" 'p11lab-ci/checker-softhsm2:local' \
+            -e "PROXY_FULL_SHARDS=$PROXY_FULL_SHARDS_SELECTED" -v "$PWD/planwork:/work" "p11lab-ci/checker-$P11LAB_FIRST_ENV:local" \
             /work/planner.py "$suite" > planwork/planner.log 2>&1
           grep '^MATRIX=' planwork/planner.log | head -n 1 | sed 's/^MATRIX=/matrix=/' > planwork/matrix.out
           test -s planwork/matrix.out || { echo 'planner produced no matrix' >&2; tail -n 20 planwork/planner.log >&2; exit 1; }
@@ -639,7 +793,7 @@ jobs:
 
   merge:
     needs: [plan, shard]
-    if: always()
+    if: always() && needs.plan.outputs.envs != '[]' && needs.plan.outputs.envs != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
@@ -668,13 +822,17 @@ jobs:
       - name: Download one consumer image (shared layout)
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: checker-proxy-consumer-softhsm2-${{ github.run_id }}
+          name: checker-proxy-consumer-${{ needs.plan.outputs.first }}-${{ github.run_id }}
           path: incoming-consumer/
 
       - name: Validate rosters, merge, verdict (inside consumer container)
         id: verdict
+        env:
+          P11LAB_ADVISORY: ${{ inputs.advisory }}
+          P11LAB_SELECTED_ENVS: ${{ needs.plan.outputs.envs }}
+          P11LAB_FIRST_ENV: ${{ needs.plan.outputs.first }}
         run: |
-          gzip -dc 'incoming-consumer/consumer-softhsm2.tar.gz' | docker load
+          gzip -dc "incoming-consumer/consumer-$P11LAB_FIRST_ENV.tar.gz" | docker load
           mkdir -p mergework/merged
           cat > mergework/merger.py <<'PY'
           import json
@@ -687,9 +845,13 @@ jobs:
           suite = sys.argv[1]
           run_id = os.environ['CI_RUN_ID']
           baselines = json.loads(os.environ['PROXY_BASELINES'])
+          selected = set(json.loads(os.environ['SELECTED_ENVS']))
+          advisory = os.environ.get('ADVISORY') == 'true'
           problems, failures = [], []
 
           for env, expected in sorted(baselines.items()):
+              if env not in selected:
+                  continue
               plan = json.loads((Path('/work/evidence/checker-proxy-plan-%s' % run_id) / env / 'plan.json').read_text())
               attempts = []
               for shard_dir in sorted(Path('/work/evidence').glob('checker-proxy-shard-%s-*' % env)):
@@ -789,15 +951,19 @@ jobs:
           if len(failures) > 100:
               lines.append('- ... and %d more' % (len(failures) - 100))
           Path('/work/merged/summary.md').write_text('\n'.join(lines) + '\n')
-          Path('/work/merged/verdict.json').write_text(json.dumps({'verdict': verdict}))
+          Path('/work/merged/verdict.json').write_text(json.dumps(
+              {'verdict': verdict, 'problems': len(problems), 'failures': len(failures)}))
           print('\n'.join(lines))
-          sys.exit(0 if verdict == 'pass' else 1)
+          # Advisory callers (per-delivery validation): findings record but
+          # do not fail; infra/incomplete evidence always fails.
+          sys.exit(0 if verdict == 'pass' or (advisory and not problems) else 1)
           PY
           set +e
           docker run --rm --network none --entrypoint /opt/p11lab-checker/bin/python \
             -e PROXY_BASELINES -e CI_RUN_ID='${{ github.run_id }}' \
+            -e SELECTED_ENVS="$P11LAB_SELECTED_ENVS" -e ADVISORY="$P11LAB_ADVISORY" \
             -v "$PWD/evidence:/work/evidence:ro" -v "$PWD/mergework:/work" \
-            'p11lab-ci/checker-softhsm2:local' /work/merger.py '${{ needs.plan.outputs.suite }}'
+            "p11lab-ci/checker-$P11LAB_FIRST_ENV:local" /work/merger.py '${{ needs.plan.outputs.suite }}'
           status=$?
           set -e
           printf 'verdict_status=%s\n' "$status" >> "$GITHUB_OUTPUT"
@@ -805,10 +971,16 @@ jobs:
 
       - name: Publish verdict
         if: always()
+        env:
+          P11LAB_ADVISORY: ${{ inputs.advisory }}
         run: |
           if [ -f merged/summary.md ]; then cat merged/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
           test '${{ steps.verdict.outputs.verdict_status }}' = '0' || { echo 'merge verdict: FAIL (see summary)' >&2; exit 1; }
-          test -f merged/verdict.json && python3 -c 'import json; assert json.load(open("merged/verdict.json"))["verdict"] == "pass"'
+          test -f merged/verdict.json && P11LAB_ADVISORY="$P11LAB_ADVISORY" python3 -c '
+          import json, os
+          verdict = json.load(open("merged/verdict.json"))
+          advisory = os.environ.get("P11LAB_ADVISORY") == "true"
+          assert verdict["verdict"] == "pass" or (advisory and verdict.get("problems", 1) == 0), verdict'
 
       - name: Upload merged evidence
         if: always()

@@ -548,6 +548,28 @@ jobs:
           retention-days: 1
           path: transport-exposure.tar.gz
 
+  # Per-delivery checker validation: exactly the pushed bytes, this env
+  # only, both lanes. Advisory: provider findings record but do not fail
+  # the delivery; infra/incomplete evidence fails it. Envs outside a
+  # lane's coverage resolve to zero legs and succeed with a loud note.
+  validate-direct:
+    needs: expose-binary
+    uses: ./.github/workflows/checker-direct-validation.yml
+    with:
+      environment: ${{ inputs.environment }}
+      digest: ${{ needs.expose-binary.outputs.pushed-digest }}
+      suite: smoke
+      advisory: 'true'
+
+  validate-proxy:
+    needs: expose-binary
+    uses: ./.github/workflows/checker-proxy-validation.yml
+    with:
+      environment: ${{ inputs.environment }}
+      digest: ${{ needs.expose-binary.outputs.pushed-digest }}
+      suite: smoke
+      advisory: 'true'
+
   finalize-handoff:
     needs: [admit, expose-binary]
     # Defense in depth: the admit job already exits nonzero on a blocked
