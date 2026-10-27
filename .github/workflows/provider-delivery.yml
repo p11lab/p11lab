@@ -550,10 +550,12 @@ jobs:
 
   # Per-delivery checker validation: exactly the pushed bytes, this env
   # only, both lanes. Advisory: provider findings record but do not fail
-  # the delivery; infra/incomplete evidence fails it. Envs outside a
-  # lane's coverage resolve to zero legs and succeed with a loud note.
+  # the delivery; infra/incomplete evidence fails it. Each call is gated
+  # on explicit lane coverage (kept in sync with the lane select lists by
+  # tests/test_checker_workflows.py); uncovered envs skip the call.
   validate-direct:
     needs: expose-binary
+    if: contains(fromJSON('["haskoki", "freehsm", "kryoptic", "bouncyhsm", "softhsm2"]'), inputs.environment)
     uses: ./.github/workflows/checker-direct-validation.yml
     with:
       environment: ${{ inputs.environment }}
@@ -563,6 +565,7 @@ jobs:
 
   validate-proxy:
     needs: expose-binary
+    if: contains(fromJSON('["softhsm2", "kryoptic"]'), inputs.environment)
     uses: ./.github/workflows/checker-proxy-validation.yml
     with:
       environment: ${{ inputs.environment }}

@@ -80,7 +80,17 @@ on:
   pull_request:
     paths:
       - '.github/workflows/checker-proxy-validation.yml'
-      - 'src/p11lab/**'
+      - 'src/p11lab/data/providers/softhsm2/**'
+      - 'src/p11lab/data/providers/kryoptic/**'
+      - 'src/p11lab/data/tools.json'
+      - 'src/p11lab/data/profiles/smoke-v1.json'
+      - 'src/p11lab/data/runtime/**'
+      - 'src/p11lab/checker.py'
+      - 'src/p11lab/shards.py'
+      - 'src/p11lab/run.py'
+      - 'src/p11lab/models.py'
+      - 'src/p11lab/tls.py'
+      - 'src/p11lab/native.py'
       - 'pyproject.toml'
 
 permissions:
@@ -108,9 +118,9 @@ jobs:
   select:
     # Resolve the environment list for this run: an explicit single env
     # (dispatch/call), PR-changed provider dirs, or the full lane roster.
-    # Envs outside this lane resolve to an empty list: downstream matrices
-    # run zero legs and the run succeeds having validated nothing. The
-    # selection is recorded loudly in the step summary either way.
+    # An explicit env outside this lane FAILS (a typo must never silently
+    # validate nothing); callers gate on lane coverage instead. The
+    # selection is recorded in the step summary either way.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -139,22 +149,24 @@ jobs:
             if printf '%s\n' "$changed" | grep -Eqv '^src/p11lab/data/providers/[a-z0-9-]+/'; then
               envs="$LANE_ENVS"  # shared code or workflow itself: full lane
             fi
-            # Intersect with this lane; unknown providers select nothing here.
+            # Intersect with this lane; the lane-scoped paths filter keeps
+            # this non-empty (only lane provider dirs trigger by path).
             selected=""
             for env in $envs; do
               case " $LANE_ENVS " in *" $env "*) selected="$selected $env";; esac
             done
             envs="$selected"
+            test -n "$envs" || { echo 'no lane env selected; check the paths filter' >&2; exit 1; }
           elif [ -n "$P11LAB_INPUT_ENVIRONMENT" ] && [ "$P11LAB_INPUT_ENVIRONMENT" != "all" ]; then
             case " $LANE_ENVS " in
               *" $P11LAB_INPUT_ENVIRONMENT "*) envs="$P11LAB_INPUT_ENVIRONMENT" ;;
-              *) envs="" ;;
+              *) echo "environment $P11LAB_INPUT_ENVIRONMENT is not covered by the proxy lane" >&2; exit 1 ;;
             esac
           else
             envs="$LANE_ENVS"
           fi
           envs_json="$(python3 -c 'import json,sys; print(json.dumps(sorted(sys.argv[1:])))' $envs)"
-          first="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])[0] if json.loads(sys.argv[1]) else "")' "$envs_json")"
+          first="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])[0])' "$envs_json")"
           printf 'envs=%s\n' "$envs_json" >> "$GITHUB_OUTPUT"
           printf 'first=%s\n' "$first" >> "$GITHUB_OUTPUT"
           {
@@ -162,7 +174,6 @@ jobs:
             echo ""
             echo "event: $P11LAB_EVENT"
             echo "envs: $envs_json"
-            if [ -z "$first" ]; then echo "no lane env selected; downstream legs run zero times"; fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   proxy-bins:
@@ -527,7 +538,6 @@ jobs:
 
   plan:
     needs: [select, consumer]
-    if: needs.select.outputs.envs != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -793,7 +803,7 @@ jobs:
 
   merge:
     needs: [plan, shard]
-    if: always() && needs.plan.outputs.envs != '[]' && needs.plan.outputs.envs != ''
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
