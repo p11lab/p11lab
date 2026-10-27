@@ -85,6 +85,7 @@ on:
       - 'src/p11lab/data/providers/softhsm2/**'
       - 'src/p11lab/data/providers/kryoptic/**'
       - 'src/p11lab/data/providers/bouncyhsm/**'
+      - 'src/p11lab/data/providers/haskoki/**'
       - 'src/p11lab/data/tools.json'
       - 'src/p11lab/data/profiles/smoke-v1.json'
       - 'src/p11lab/data/runtime/**'
@@ -111,6 +112,7 @@ env:
   SOFTHSM2_DIGEST: 'sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16'
   KRYOPTIC_DIGEST: 'sha256:f7398f42e70141f2b321cfbd97f71ef5d7cf401c80ff26e2de9056a45bcb96c9'
   BOUNCYHSM_DIGEST: 'sha256:809ab1985931c7356f53e3675d26632870c06aedaf961987e7e92b1c5496c08e'
+  HASKOKI_DIGEST: 'sha256:dc7086e2b831f47223460d9ac3afd8cd8106deb9c135d4084d963cd0b7f84daa'
   CHECKER_VERSION: '0.2.3'
   PROXY_SOURCE_REVISION: 'a348a5f59b535b1ca309ea9f0a722e3bec692f72'
   PROXY_CARGO_LOCK_SHA256: '39ae3c64cff6fddd4f2d621f8e26139005936b22e6d7652b2ed14e4921fa5979'
@@ -127,10 +129,10 @@ env:
   # later skip->fail transition passed silently. Outcome-transition
   # detection is a known merger gap: baselined nodes never re-alert on
   # outcome transitions.
-  PROXY_BASELINES: '{"softhsm2":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_interface_negotiated","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_session_opens","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_get_interface_list","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV32::test_v32_interface_negotiated","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV32::test_v32_session_opens"],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestProperties::test_sha256_empty_data"],"full":[]}}'
+  PROXY_BASELINES: '{"softhsm2":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_interface_negotiated","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_session_opens","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_get_interface_list","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV32::test_v32_interface_negotiated","/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV32::test_v32_session_opens"],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestProperties::test_sha256_empty_data"],"full":[]},"haskoki":{"smoke":[],"full":[]}}'
   # Full-suite shard counts (smoke is always 1). Same hints as direct;
   # retune from proxy evidence (daemon + mTLS overhead differs).
-  PROXY_FULL_SHARDS: '{"softhsm2":2,"kryoptic":5,"bouncyhsm":8}'
+  PROXY_FULL_SHARDS: '{"softhsm2":2,"kryoptic":5,"bouncyhsm":8,"haskoki":2}'
 
 jobs:
   select:
@@ -159,7 +161,7 @@ jobs:
           P11LAB_BASE_REF: ${{ github.base_ref }}
         run: |
           set -eu
-          LANE_ENVS="softhsm2 kryoptic bouncyhsm"
+          LANE_ENVS="softhsm2 kryoptic bouncyhsm haskoki"
           if [ "$P11LAB_EVENT" = "pull_request" ]; then
             git fetch -q --depth 1 origin "$P11LAB_BASE_REF"
             changed="$(git diff --name-only "origin/$P11LAB_BASE_REF"...HEAD)"
