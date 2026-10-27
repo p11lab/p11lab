@@ -3004,12 +3004,12 @@
     {
       "role": "recipe",
       "path": "Dockerfile",
-      "sha256": "be56d11a8cb298fc3b5807711ffafa85bdb35b6aa88d94898ac7ac0877a38c13"
+      "sha256": "568a4021e6de9382da5f5f3b690e0de60c8aa6b941b2aace4e9cbd07ab9007f2"
     },
     {
       "role": "adapter",
       "path": "entrypoint.sh",
-      "sha256": "ce6be8e4f789d7376d1ad4de9548f563fda93c150c9ed5fbab55733a613adc8d"
+      "sha256": "75109fc524f57ecd09d830c12a98a278400b5e7d8fb4d2b662b1936d7a8d7d93"
     },
     {
       "role": "adapter",

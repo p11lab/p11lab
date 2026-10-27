@@ -1813,7 +1813,7 @@ def test_delivery_workflows_resolve_registry_per_environment():
 def test_provider_delivery_pushes_runtime_aliases():
     text = (ROOT / ".github" / "workflows" / "provider-delivery.yml").read_text()
     assert "runtime_aliases" in text
-    assert 'STAGE_TAG="t13-staging-${{ inputs.channel }}"' in text
+    assert 'STAGE_TAG="t13-staging-$P11LAB_INPUT_CHANNEL"' in text
 
 
 def test_require_repository_accepts_strict_paths_only():

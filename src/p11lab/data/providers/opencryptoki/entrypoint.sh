@@ -78,28 +78,26 @@ validate_static() {
     cmp -s -- "$control/expected-config" "$owned/opencryptoki.conf" || p11lab_die "incompatible non-secret initialization configuration"
 }
 
-case "${1-}" in
-    describe)
-        [ "$#" -eq 1 ] || p11lab_die "describe takes no arguments"
-        cat /usr/share/p11lab/provider.json
-        ;;
-    init)
-        [ "$#" -eq 1 ] || p11lab_die "init takes no arguments"
-        p11lab_no_credential_conflict P11LAB_PIN P11LAB_PIN_FILE
-        p11lab_no_credential_conflict P11LAB_SO_PIN P11LAB_SO_PIN_FILE
-        p11lab_writable_directory "$state"
-        configure
-        if [ -e "$owned/complete" ]; then validate_static; exec "$tool" health; fi
-        p11lab_check_find empty "partial state: refusing to initialize nonempty volume" "$state" -mindepth 1 -maxdepth 1 -print -quit
-        p11lab_secret P11LAB_PIN P11LAB_PIN_FILE
-        user_credential=$credential
-        p11lab_secret P11LAB_SO_PIN P11LAB_SO_PIN_FILE
-        so_credential=$credential
-        [ "${#user_credential}" -ge 4 ] && [ "${#user_credential}" -le 8 ] && [ "${#so_credential}" -ge 4 ] && [ "${#so_credential}" -le 8 ] || p11lab_die "native SWToken PIN bounds are 4..8 bytes"
-        [ "$so_credential" != 87654321 ] || p11lab_die "SO credential must replace the native factory credential"
-        unset P11LAB_PIN P11LAB_SO_PIN credential
-        mkdir "$state/.init-lock" || p11lab_die "state initialization is already in progress"
-        trap 'rmdir "$state/.init-lock" 2>/dev/null || :' EXIT
+init_token() {
+    p11lab_no_credential_conflict P11LAB_PIN P11LAB_PIN_FILE
+    p11lab_no_credential_conflict P11LAB_SO_PIN P11LAB_SO_PIN_FILE
+    p11lab_writable_directory "$state"
+    configure
+    if [ -e "$owned/complete" ]; then validate_static; unset P11LAB_PIN P11LAB_SO_PIN; exec "$tool" health; fi
+    p11lab_check_find empty "partial state: refusing to initialize nonempty volume" "$state" -mindepth 1 -maxdepth 1 -print -quit
+    p11lab_secret P11LAB_PIN P11LAB_PIN_FILE
+    user_credential=$credential
+    p11lab_secret P11LAB_SO_PIN P11LAB_SO_PIN_FILE
+    so_credential=$credential
+    [ "${#user_credential}" -ge 4 ] && [ "${#user_credential}" -le 8 ] && [ "${#so_credential}" -ge 4 ] && [ "${#so_credential}" -le 8 ] || p11lab_die "native SWToken PIN bounds are 4..8 bytes"
+    [ "$so_credential" != 87654321 ] || p11lab_die "SO credential must replace the native factory credential"
+    unset P11LAB_PIN P11LAB_SO_PIN credential
+    mkdir "$state/.init-lock" || p11lab_die "state initialization is already in progress"
+    trap 'rmdir "$state/.init-lock" 2>/dev/null || :; rm -f "$control/reset-pin.$$" "$control/reset-so-pin.$$"' EXIT
+    init_locked
+}
+
+init_locked() {
         mkdir -m 700 "$owned"
         # A caller volume may inherit a setgid parent. Native token/lock files
         # must belong to the declared PKCS#11 group, not that parent group.
@@ -131,11 +129,70 @@ case "${1-}" in
             printf '%s\n' 'p11lab: native initialization failed; partial state retained' >&2
             exit "$status"
         fi
+}
+case "${1-}" in
+    describe)
+        [ "$#" -eq 1 ] || p11lab_die "describe takes no arguments"
+        cat /usr/share/p11lab/provider.json
+        ;;
+    init)
+        [ "$#" -eq 1 ] || p11lab_die "init takes no arguments"
+        init_token
+        ;;
+    reset)
+        [ "$#" -eq 1 ] || p11lab_die "reset takes no arguments"
+        p11lab_no_credential_conflict P11LAB_PIN P11LAB_PIN_FILE
+        p11lab_no_credential_conflict P11LAB_SO_PIN P11LAB_SO_PIN_FILE
+        p11lab_writable_directory "$state"
+        configure
+        [ ! -L "$state/.init-lock" ] && [ ! -e "$state/.init-lock" ] || p11lab_die "state initialization is already in progress"
+        p11lab_secret P11LAB_PIN P11LAB_PIN_FILE
+        user_credential=$credential
+        p11lab_secret P11LAB_SO_PIN P11LAB_SO_PIN_FILE
+        so_credential=$credential
+        [ "${#user_credential}" -ge 4 ] && [ "${#user_credential}" -le 8 ] && [ "${#so_credential}" -ge 4 ] && [ "${#so_credential}" -le 8 ] || p11lab_die "native SWToken PIN bounds are 4..8 bytes"
+        [ "$so_credential" != 87654321 ] || p11lab_die "SO credential must replace the native factory credential"
+        reset_pin=$user_credential
+        reset_so_pin=$so_credential
+        unset user_credential so_credential credential
+        # A credential FILE inside the reset tree passes validation and is
+        # then deleted; retain validated file bytes outside the wiped tree so
+        # the re-init below cannot fail for inputs that validated above.
+        # Scalar channels need no stash: the environment survives the rm.
+        # The stash sits beside locks/, never inside it: locks are wiped below.
+        trap 'rm -f "$control/reset-pin.$$" "$control/reset-so-pin.$$"' EXIT HUP INT TERM
+        if [ -n "${P11LAB_PIN_FILE+x}" ]; then
+            printf '%s' "$reset_pin" > "$control/reset-pin.$$"
+            export P11LAB_PIN_FILE="$control/reset-pin.$$"
+        fi
+        if [ -n "${P11LAB_SO_PIN_FILE+x}" ]; then
+            printf '%s' "$reset_so_pin" > "$control/reset-so-pin.$$"
+            export P11LAB_SO_PIN_FILE="$control/reset-so-pin.$$"
+        fi
+        unset reset_pin reset_so_pin
+        p11lab_check_find empty "partial state: refusing to reset volume with unknown files" "$state" -mindepth 1 -maxdepth 1 ! -name opencryptoki -print -quit
+        if [ -e "$owned" ]; then
+            [ ! -L "$owned" ] || p11lab_die "refusing to reset unsafe state"
+            rm -rf -- "$owned"
+            printf '%s\n' "p11lab: reset removed $owned"
+        else
+            printf '%s\n' "p11lab: reset found no state at $owned"
+        fi
+        locks_entries=$(find "$control/locks" -mindepth 1 -print -quit) || p11lab_die "cannot enumerate $control/locks"
+        if [ -n "$locks_entries" ]; then
+            rm -rf -- "$control/locks"
+            printf '%s\n' "p11lab: reset cleared $control/locks"
+        fi
+        # configure() exports the NSS wrapper for its caller; drop it so the
+        # re-init below validates pristine inputs like a fresh invocation.
+        unset LD_PRELOAD NSS_WRAPPER_PASSWD NSS_WRAPPER_GROUP
+        init_token
         ;;
     health)
         [ "$#" -eq 1 ] || p11lab_die "health takes no arguments"
         configure
         validate_static
+        unset P11LAB_PIN P11LAB_SO_PIN
         exec "$tool" health
         ;;
     exec)
@@ -147,5 +204,5 @@ case "${1-}" in
         validate_static
         exec "$tool" exec "$@"
         ;;
-    *) p11lab_die "usage: p11lab-provider describe|init|health|exec -- ARGV..." ;;
+    *) p11lab_die "usage: p11lab-provider describe|init|reset|health|exec -- ARGV..." ;;
 esac

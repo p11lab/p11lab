@@ -409,3 +409,33 @@ def test_proxy_crypto_host(tmp_path):
     result = run_application(spec)
     assert result.exit_code == 0, (result.lifecycle_errors, result.cleanup_errors)
     oracle(output / 'crypto')
+
+
+@pytest.mark.parametrize('channel', CHANNELS)
+def test_reset_retains_credential_file_inside_owned_tree(channel, tmp_path):
+    # A PIN file inside the owned tree passes reset validation and is then
+    # deleted with the tree: reset must retain the validated bytes outside
+    # the wiped tree so the re-init succeeds (no destroy-then-fail).
+    if channel not in IMAGES:
+        pytest.skip('P11LAB_TEST_NSS_IMAGES lacks ' + channel)
+    image = IMAGES[channel]
+    state, secrets, control = tmp_path / 'state', tmp_path / 'secrets', tmp_path / 'control'
+    state.mkdir()
+    secrets.mkdir()
+    control.mkdir()
+    (secrets / 'pin').write_text('1234')
+    (secrets / 'so-pin').write_text('12345678')
+    base = ['run', '--rm', '--network', 'none',
+            '--user', f'{os.getuid()}:{os.getgid()}',
+            '--mount', f'type=bind,src={state},dst=/var/lib/p11lab',
+            '--mount', f'type=bind,src={control},dst=/run/p11lab',
+            '--mount', f'type=bind,src={secrets},dst=/run/secrets,readonly']
+    file_controls = ['-e', 'P11LAB_PIN_FILE=/run/secrets/pin', '-e', 'P11LAB_SO_PIN_FILE=/run/secrets/so-pin']
+    assert docker(*base, *file_controls, image, 'init').returncode == 0
+    (state / 'nss' / 'tree-pin').write_bytes(b'1234')
+    tree_controls = ['-e', 'P11LAB_PIN_FILE=/var/lib/p11lab/nss/tree-pin',
+                     '-e', 'P11LAB_SO_PIN_FILE=/run/secrets/so-pin']
+    assert docker(*base, *tree_controls, image, 'reset').returncode == 0
+    assert docker(*base, image, 'health').returncode == 0
+    assert list(control.glob('reset-pin.*')) == []
+    assert list(control.glob('reset-so-pin.*')) == []
