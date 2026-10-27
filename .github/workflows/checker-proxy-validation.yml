@@ -741,7 +741,12 @@ jobs:
         id: checker
         timeout-minutes: 200
         run: |
-          pin='1234'; so_pin='12345678'
+          # Per-env PINs mirror the direct lane: haskoki provisions only
+          # the upstream-fixed user 1234 / SO 5678 and refuses the rest.
+          case '${{ matrix.environment }}' in
+            haskoki) pin='1234'; so_pin='5678' ;;
+            *) pin='1234'; so_pin='12345678' ;;
+          esac
           echo "::add-mask::$pin"
           echo "::add-mask::$so_pin"
           # NOTE: shard-out must NOT be pre-created: run_application
@@ -763,11 +768,13 @@ jobs:
 
           env, shard, daemon_id, consumer_id = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
           profile = Path('run-cwd/shard-profile.json').resolve()
-          # Gate LABEL on the descriptor allowlist (both proxy envs take
+          # Gate LABEL on the descriptor allowlist (all proxy envs take
           # it today; the gate keeps the driver correct if that changes).
+          # Per-env values mirror the direct lane: haskoki serves only
+          # haskoki-demo on slot 0 and refuses any other label.
           inputs = {}
           if 'P11LAB_LABEL' in load_environment(env, 'release')['inputs']:
-              inputs['P11LAB_LABEL'] = 'P11Lab'
+              inputs['P11LAB_LABEL'] = {'haskoki': 'haskoki-demo'}.get(env, 'P11Lab')
           inputs['P11LAB_PIN_FILE'] = str(Path('run-cwd/secrets/pin').resolve())
           inputs['P11LAB_SO_PIN_FILE'] = str(Path('run-cwd/secrets/so-pin').resolve())
           bundle = Path('incoming-client/proxy-client-native.tar.gz').resolve()
