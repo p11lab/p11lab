@@ -6,8 +6,8 @@
   "parent": {
     "kind": "docker-local",
     "platform": "linux/amd64",
-    "reference": "sha256:7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf",
-    "sha256": "7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf"
+    "reference": "sha256:6a7e8da86573b230d989a44c079ede1be810c5a234907967cba5ae01fe2e93d3",
+    "sha256": "6a7e8da86573b230d989a44c079ede1be810c5a234907967cba5ae01fe2e93d3"
   },
   "source": {
     "kind": "git",
@@ -53,50 +53,6 @@
     {
       "path": "opt/bouncyhsm/server/BlazorComponentUtilities.dll",
       "sha256": "51aa64b0d89083796ee5033db9548bca312ecd11ffee8db67e6726c5c2c001e2"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/BrowserDebugHost.dll",
-      "sha256": "722f1661dfad0260a78c8ebc29f3e6e121ca66dfce2324d200c008d45a938698"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/BrowserDebugHost.runtimeconfig.json",
-      "sha256": "2288776f3423eb70057d0e6304a94da3d632c3e8412d8586344d0dd5a2abe5e5"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/BrowserDebugProxy.dll",
-      "sha256": "32cf4fca1509f6e50e79e0835a1bd2eecd069fca27f96e4d2c95b4e6d0a2c8c1"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.CodeAnalysis.CSharp.Scripting.dll",
-      "sha256": "2f06568140c98b1f9532054ddd5da322383c0ae14ef955a68b0e0b77ca4c94ea"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.CodeAnalysis.CSharp.dll",
-      "sha256": "cb745aac40e035270f7dfd78140701acaa2b6490e1134866256641994ecb9de7"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.CodeAnalysis.Scripting.dll",
-      "sha256": "3da22c86c353ae48679bc84df6d5087977f2bb25e242161e77fa35fce6582670"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.CodeAnalysis.dll",
-      "sha256": "2866ec668d4d6788141eb29157158e7786536ee2083ef71929e7a61b3e54a146"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.FileFormats.dll",
-      "sha256": "7adeca7d88690f52f5ea10d7d72998d483821e5526b407b25dde9dfbd8029f16"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.NET.WebAssembly.Webcil.dll",
-      "sha256": "654f2170ef513d0f3ae7d93b6d8b0d06c0ab99a781eeb2e2defdce3e7b35e6a7"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/Microsoft.SymbolStore.dll",
-      "sha256": "80634316741d0f5b81181d8dddbd0f0ca36dc9c1dc044ebe0452211c640ff175"
-    },
-    {
-      "path": "opt/bouncyhsm/server/BlazorDebugProxy/Newtonsoft.Json.dll",
-      "sha256": "7df4dc7dfdf1054bddca51294df11475e31c345c18fc7e634a990df722a62af9"
     },
     {
       "path": "opt/bouncyhsm/server/BlazorStrap.V5.dll",
@@ -148,7 +104,7 @@
     },
     {
       "path": "opt/bouncyhsm/server/BouncyHsm.staticwebassets.endpoints.json",
-      "sha256": "da277bc92f29b341dcc507bcbf9c4e5f4cc262df5b07365bdb140f890e487e18"
+      "sha256": "b59478638043b04e79ee8279acba557b9ce5e4850641789eee4e5065a68c573b"
     },
     {
       "path": "opt/bouncyhsm/server/CSharpExtensions.Annotations.dll",
@@ -1568,7 +1524,7 @@
   "toolchain": [
     {
       "name": "debian13-runtime-image",
-      "sha256": "7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf"
+      "sha256": "6a7e8da86573b230d989a44c079ede1be810c5a234907967cba5ae01fe2e93d3"
     },
     {
       "name": "dotnet-sdk",
