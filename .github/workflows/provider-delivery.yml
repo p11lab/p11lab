@@ -6,8 +6,9 @@
 # the binary (verdict-gated) -> finalize the handoff. A missing/private/expired
 # source companion, input mismatch, or newly discovered dependency stops
 # binary upload: the admit job fails and expose-binary never runs.
-# Delivery opens per provider; the test step below covers softhsm2 and fails
-# closed for other environments until their delivery test is authored.
+# Delivery opens per provider; the test step below covers softhsm2, nss and
+# opencryptoki and fails closed for other environments until their delivery
+# test is authored.
 # Release and rolling share this workflow; the channel input selects the lock,
 # and concurrency plus artifact names stay per-channel so runs never collide.
 name: provider-delivery
@@ -50,10 +51,13 @@ jobs:
       - name: Check delivery readiness
         shell: bash
         run: |
-          test "${{ inputs.environment }}" = "softhsm2" || {
-            echo "delivery test is not yet authored for ${{ inputs.environment }}" >&2
-            exit 1
-          }
+          case "${{ inputs.environment }}" in
+            softhsm2|nss|opencryptoki) ;;
+            *)
+              echo "delivery test is not yet authored for ${{ inputs.environment }}" >&2
+              exit 1
+              ;;
+          esac
           python --version
           docker version --format '{{.Server.Version}}'
           echo "ImageVersion=$ImageVersion"
@@ -95,14 +99,46 @@ jobs:
             --build-arg PROVIDER_IMAGE=p11lab-local-provider:consumer-parent \
             --iidfile consumer-id consumer-context
           CONSUMER_ID=$(cat consumer-id)
-          printf '1234' > pin
-          printf '12345678' > so-pin
+          case "${{ inputs.environment }}" in
+            softhsm2)
+              SMOKE_MODULE=/usr/local/lib/p11lab/libsofthsm2.so
+              SMOKE_LABEL=P11Lab
+              PIN_VALUE=1234
+              SOPIN_VALUE=12345678
+              ;;
+            nss)
+              SMOKE_MODULE=/usr/local/lib/p11lab/libsoftokn3.so
+              SMOKE_LABEL=P11Lab
+              PIN_VALUE=12345678
+              SOPIN_VALUE=12345678
+              ;;
+            opencryptoki)
+              SMOKE_MODULE=/usr/local/lib/p11lab/libopencryptoki.so
+              SMOKE_LABEL=P11Lab
+              PIN_VALUE=123456
+              SOPIN_VALUE=12345678
+              ;;
+          esac
+          printf '%s' "$PIN_VALUE" > pin
+          printf '%s' "$SOPIN_VALUE" > so-pin
           chmod 600 pin so-pin
-          p11lab run softhsm2 --channel ${{ inputs.channel }} --artifact "$CONSUMER_ID" \
+          # OpenCryptoki requires primary GID 1001 in the caller; p11lab run
+          # forwards the invoking UID:GID into the container. Re-exec under
+          # that GID only when needed, after proving socket access survives.
+          P11LAB_BIN="$(command -v p11lab)"
+          RUN_SUDO=""
+          if [ "${{ inputs.environment }}" = "opencryptoki" ] && [ "$(id -g)" != 1001 ]; then
+            sudo -n -g '#1001' true 2>/dev/null && sudo -n -g '#1001' docker info >/dev/null 2>&1 || {
+              echo "opencryptoki delivery test needs primary GID 1001" >&2
+              exit 1
+            }
+            RUN_SUDO="sudo -n -g #1001"
+          fi
+          $RUN_SUDO "$P11LAB_BIN" run "${{ inputs.environment }}" --channel ${{ inputs.channel }} --artifact "$CONSUMER_ID" \
             --input "P11LAB_PIN_FILE=$PWD/pin" --input "P11LAB_SO_PIN_FILE=$PWD/so-pin" \
             --output-dir smoke-run -- \
-            p11lab-smoke --module /usr/local/lib/p11lab/libsofthsm2.so \
-            --token-label P11Lab --pin-file /run/p11lab-input/P11LAB_PIN_FILE \
+            p11lab-smoke --module "$SMOKE_MODULE" \
+            --token-label "$SMOKE_LABEL" --pin-file /run/p11lab-input/P11LAB_PIN_FILE \
             --output /p11lab-output/crypto --key-mode generated
           python -c 'from p11lab.catalog import package_data; from pathlib import Path; Path("verify.py").write_bytes(package_data("consumer/verify.py").read_bytes())'
           python verify.py smoke-run/crypto
