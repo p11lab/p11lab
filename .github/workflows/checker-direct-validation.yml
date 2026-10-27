@@ -82,6 +82,8 @@ on:
       - 'src/p11lab/data/providers/kryoptic/**'
       - 'src/p11lab/data/providers/bouncyhsm/**'
       - 'src/p11lab/data/providers/softhsm2/**'
+      - 'src/p11lab/data/providers/nss/**'
+      - 'src/p11lab/data/providers/opencryptoki/**'
       - 'src/p11lab/data/tools.json'
       - 'src/p11lab/data/profiles/smoke-v1.json'
       - 'src/p11lab/checker.py'
@@ -106,15 +108,17 @@ env:
   KRYOPTIC_DIGEST: 'sha256:f7398f42e70141f2b321cfbd97f71ef5d7cf401c80ff26e2de9056a45bcb96c9'
   BOUNCYHSM_DIGEST: 'sha256:809ab1985931c7356f53e3675d26632870c06aedaf961987e7e92b1c5496c08e'
   SOFTHSM2_DIGEST: 'sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16'
+  NSS_DIGEST: 'sha256:42e6095ac865cf6c183c20fda489e3bbe5ac2c6522685f4db8a95adb56017e01'
+  OPENCRYPTOKI_DIGEST: 'sha256:b4bc9b9a3afc617bf6c956cac3c34fbcbaa391fdd6d386b1e53ec3bfbe65f924'
   CHECKER_VERSION: '0.2.2'
   # Expected-failures baselines per environment and suite (canonical node
   # IDs), reviewed entries only. Empty = unqualified. Extract to files
   # once non-empty.
-  BASELINES: '{"haskoki":{"smoke":[],"full":[]},"freehsm":{"smoke":[],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestProperties::test_sha256_empty_data"],"full":[]},"softhsm2":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_get_interface_list"],"full":[]}}'
+  BASELINES: '{"haskoki":{"smoke":[],"full":[]},"freehsm":{"smoke":[],"full":[]},"kryoptic":{"smoke":[],"full":[]},"bouncyhsm":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_digest.py::TestDigestProperties::test_sha256_empty_data"],"full":[]},"softhsm2":{"smoke":["/opt/p11lab-checker/lib/python3.13/site-packages/pkcs11_check/testcases/test_interface.py::TestInterfaceV30::test_v30_get_interface_list"],"full":[]},"nss":{"smoke":[],"full":[]},"opencryptoki":{"smoke":[],"full":[]}}'
   # Full-suite shard counts (smoke is always 1). Starting hints from
   # pkcs11-check test_pool.py timing practice; retune from evidence. Each
   # shard must fit the 900 s in-runner checker cap.
-  FULL_SHARDS: '{"haskoki":2,"freehsm":4,"kryoptic":5,"bouncyhsm":8,"softhsm2":2}'
+  FULL_SHARDS: '{"haskoki":2,"freehsm":4,"kryoptic":5,"bouncyhsm":8,"softhsm2":2,"nss":2,"opencryptoki":2}'
 
 jobs:
   select:
@@ -143,7 +147,7 @@ jobs:
           P11LAB_BASE_REF: ${{ github.base_ref }}
         run: |
           set -eu
-          LANE_ENVS="haskoki freehsm kryoptic bouncyhsm softhsm2"
+          LANE_ENVS="haskoki freehsm kryoptic bouncyhsm softhsm2 nss opencryptoki"
           if [ "$P11LAB_EVENT" = "pull_request" ]; then
             git fetch -q --depth 1 origin "$P11LAB_BASE_REF"
             changed="$(git diff --name-only "origin/$P11LAB_BASE_REF"...HEAD)"
