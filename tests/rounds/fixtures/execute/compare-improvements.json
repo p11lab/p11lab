@@ -1,0 +1,1 @@
+{"counts": {"compared": 2, "improvements": 1, "regressions": 0, "unstable": 0}, "improvements": [{"axis": "checker-direct", "new": "pass", "node_id": "/executor/tests/test_b.py::test_two", "old": "fail", "phase": "execute"}], "regressions": [], "unstable": []}

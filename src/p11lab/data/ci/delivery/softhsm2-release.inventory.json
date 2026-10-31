@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "artifact": null,
+  "observation": null,
+  "build_key": null,
+  "sources": [],
+  "components": [],
+  "reviews": [],
+  "content_reviews": [],
+  "patches": [],
+  "payloads": [],
+  "build_instructions": null,
+  "limitations": ["unreviewed; source and license obligations have not been approved"]
+}

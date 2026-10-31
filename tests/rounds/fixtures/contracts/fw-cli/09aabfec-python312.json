@@ -1,0 +1,1403 @@
+{
+  "framework_sha": "09aabfec9fea7e424aabb991f6347349bfa84075",
+  "python": "3.12.14",
+  "signatures": {
+    "compare-coverage": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "baseline",
+          "nargs": 1,
+          "opts": [
+            "baseline"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "candidate",
+          "nargs": 1,
+          "opts": [
+            "candidate"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "summary",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "fail_on_loss",
+          "nargs": 1,
+          "opts": [
+            "--fail-on-loss"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    "evidence-admit": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "ledger",
+          "nargs": 1,
+          "opts": [
+            "ledger"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "roster",
+          "nargs": 1,
+          "opts": [
+            "--roster"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "obligations",
+          "nargs": 1,
+          "opts": [
+            "--obligations"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "summary",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "evidence-compare": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "baseline",
+          "nargs": 1,
+          "opts": [
+            "baseline"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "candidate",
+          "nargs": 1,
+          "opts": [
+            "candidate"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "deltas",
+          "nargs": 1,
+          "opts": [
+            "--deltas"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": 3,
+          "kind": "option",
+          "name": "quorum_min_repeats",
+          "nargs": 1,
+          "opts": [
+            "--quorum-min-repeats"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": 0.6666666666666666,
+          "kind": "option",
+          "name": "quorum_frac",
+          "nargs": 1,
+          "opts": [
+            "--quorum-frac"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "float"
+        },
+        {
+          "default": "summary",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "evidence-export": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "report",
+          "nargs": 1,
+          "opts": [
+            "report"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "ledger",
+          "nargs": 1,
+          "opts": [
+            "ledger"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "lane",
+          "nargs": 1,
+          "opts": [
+            "--lane"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "lane_os",
+          "nargs": 1,
+          "opts": [
+            "--lane-os"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "lane_arch",
+          "nargs": 1,
+          "opts": [
+            "--lane-arch"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "framework_sha",
+          "nargs": 1,
+          "opts": [
+            "--framework-sha"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "p11lab_sha",
+          "nargs": 1,
+          "opts": [
+            "--p11lab-sha"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "image_digest",
+          "nargs": 1,
+          "opts": [
+            "--image-digest"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "corpus_hash",
+          "nargs": 1,
+          "opts": [
+            "--corpus-hash"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "disabled_hash",
+          "nargs": 1,
+          "opts": [
+            "--disabled-hash"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "summary",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "fetch-data": {
+      "parameters": [
+        {
+          "default": "all",
+          "kind": "argument",
+          "name": "source",
+          "nargs": 1,
+          "opts": [
+            "source"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "status",
+          "nargs": 1,
+          "opts": [
+            "--status"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "checksums",
+          "nargs": 1,
+          "opts": [
+            "--checksums"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "data_dir",
+          "nargs": 1,
+          "opts": [
+            "--data-dir"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        }
+      ]
+    },
+    "list-tests": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "targets",
+          "nargs": -1,
+          "opts": [
+            "targets"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "match",
+          "nargs": 1,
+          "opts": [
+            "--match"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "marker",
+          "nargs": 1,
+          "opts": [
+            "--marker"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "category",
+          "nargs": 1,
+          "opts": [
+            "--category",
+            "-c"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "skip_slow",
+          "nargs": 1,
+          "opts": [
+            "--skip-slow"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "only_slow",
+          "nargs": 1,
+          "opts": [
+            "--only-slow"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "module",
+          "nargs": 1,
+          "opts": [
+            "--module",
+            "-m"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "choices": [
+            "auto",
+            "2.40",
+            "3.0",
+            "3.1",
+            "3.2"
+          ],
+          "default": "auto",
+          "kind": "option",
+          "name": "interface",
+          "nargs": 1,
+          "opts": [
+            "--interface",
+            "-i"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "choice"
+        },
+        {
+          "default": 0,
+          "kind": "option",
+          "name": "slot",
+          "nargs": 1,
+          "opts": [
+            "--slot"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "include_disabled",
+          "nargs": 1,
+          "opts": [
+            "--include-disabled"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    "merge-shards": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "shard_dirs",
+          "nargs": -1,
+          "opts": [
+            "shard_dirs"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        }
+      ]
+    },
+    "root": {
+      "commands": [
+        "test",
+        "doctor",
+        "info",
+        "list",
+        "list-tests",
+        "state",
+        "compliance-report",
+        "compare-coverage",
+        "compare-results",
+        "fetch-data",
+        "fetch-disabled",
+        "shard-units",
+        "merge-shards",
+        "crash-calls",
+        "differential",
+        "evidence-export",
+        "evidence-admit",
+        "evidence-compare",
+        "version"
+      ],
+      "parameters": [
+        {
+          "choices": [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR",
+            "CRITICAL"
+          ],
+          "default": "INFO",
+          "kind": "option",
+          "name": "log_level",
+          "nargs": 1,
+          "opts": [
+            "--log-level"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "choice"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "trace",
+          "nargs": 1,
+          "opts": [
+            "--trace"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "install_completion",
+          "nargs": 1,
+          "opts": [
+            "--install-completion"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "show_completion",
+          "nargs": 1,
+          "opts": [
+            "--show-completion"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    "shard-units": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "option",
+          "name": "shards",
+          "nargs": 1,
+          "opts": [
+            "--shards",
+            "-n"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": "PosixPath('src/pkcs11_check/testcases')",
+          "kind": "option",
+          "name": "testcases_dir",
+          "nargs": 1,
+          "opts": [
+            "--testcases"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "prior_results",
+          "nargs": 1,
+          "opts": [
+            "--prior-results"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "lines",
+          "kind": "option",
+          "name": "output_format",
+          "nargs": 1,
+          "opts": [
+            "--format"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "test": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "option",
+          "name": "module",
+          "nargs": 1,
+          "opts": [
+            "--module",
+            "-m"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "choices": [
+            "auto",
+            "2.40",
+            "3.0",
+            "3.1",
+            "3.2"
+          ],
+          "default": "auto",
+          "kind": "option",
+          "name": "interface",
+          "nargs": 1,
+          "opts": [
+            "--interface",
+            "-i"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "choice"
+        },
+        {
+          "default": 1,
+          "kind": "option",
+          "name": "sessions",
+          "nargs": 1,
+          "opts": [
+            "--sessions",
+            "-s"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": 180,
+          "kind": "option",
+          "name": "timeout",
+          "nargs": 1,
+          "opts": [
+            "--timeout",
+            "-t"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "category",
+          "nargs": 1,
+          "opts": [
+            "--category",
+            "-c"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "match",
+          "nargs": 1,
+          "opts": [
+            "--match"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "marker",
+          "nargs": 1,
+          "opts": [
+            "--marker"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "skip_slow",
+          "nargs": 1,
+          "opts": [
+            "--skip-slow"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "only_slow",
+          "nargs": 1,
+          "opts": [
+            "--only-slow"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "pin",
+          "nargs": 1,
+          "opts": [
+            "--pin"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "so_pin",
+          "nargs": 1,
+          "opts": [
+            "--so-pin"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": 0,
+          "kind": "option",
+          "name": "slot",
+          "nargs": 1,
+          "opts": [
+            "--slot"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "destructive",
+          "nargs": 1,
+          "opts": [
+            "--destructive"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": "rich",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o",
+            "--format"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "output_file",
+          "nargs": 1,
+          "opts": [
+            "--output-file"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "verbose",
+          "nargs": 1,
+          "opts": [
+            "--verbose",
+            "-V"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "ignore_disabled_tests",
+          "nargs": 1,
+          "opts": [
+            "--ignore-disabled-tests"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": "auto",
+          "kind": "option",
+          "name": "isolation",
+          "nargs": 1,
+          "opts": [
+            "--isolation"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "no_collection_cache",
+          "nargs": 1,
+          "opts": [
+            "--no-collection-cache"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "resume",
+          "nargs": 1,
+          "opts": [
+            "--resume"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "stop_on_failure",
+          "nargs": 1,
+          "opts": [
+            "--stop-on-failure"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": "PosixPath('.pkcs11-check-isolation-state.json')",
+          "kind": "option",
+          "name": "state_file",
+          "nargs": 1,
+          "opts": [
+            "--state-file"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "PosixPath('.pkcs11-check-isolation-policy.json')",
+          "kind": "option",
+          "name": "policy_file",
+          "nargs": 1,
+          "opts": [
+            "--policy-file"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": 10,
+          "kind": "option",
+          "name": "max_crashes_per_file",
+          "nargs": 1,
+          "opts": [
+            "--max-crashes-per-file"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer range"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "rv_trace",
+          "nargs": 1,
+          "opts": [
+            "--rv-trace"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "rv_trace_compact",
+          "nargs": 1,
+          "opts": [
+            "--rv-trace-compact"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": "off",
+          "kind": "option",
+          "name": "key_inject",
+          "nargs": 1,
+          "opts": [
+            "--key-inject"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "bootstrap",
+          "kind": "option",
+          "name": "wrap_key_source",
+          "nargs": 1,
+          "opts": [
+            "--wrap-key-source"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "wrap_key_label",
+          "nargs": 1,
+          "opts": [
+            "--wrap-key-label"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "wrap_key_handle",
+          "nargs": 1,
+          "opts": [
+            "--wrap-key-handle"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "wrap_key_value",
+          "nargs": 1,
+          "opts": [
+            "--wrap-key-value"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "wrap_mech",
+          "nargs": 1,
+          "opts": [
+            "--wrap-mech"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": 2048,
+          "kind": "option",
+          "name": "wrap_rsa_bits",
+          "nargs": 1,
+          "opts": [
+            "--wrap-rsa-bits"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": "auto",
+          "kind": "option",
+          "name": "wrap_oaep_hash",
+          "nargs": 1,
+          "opts": [
+            "--wrap-oaep-hash"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "off",
+          "kind": "option",
+          "name": "recover_mode",
+          "nargs": 1,
+          "opts": [
+            "--recover-mode"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "recover_cmd",
+          "nargs": 1,
+          "opts": [
+            "--recover-cmd"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "allow_external_provision",
+          "nargs": 1,
+          "opts": [
+            "--allow-external-provision"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "external_provision_cmd",
+          "nargs": 1,
+          "opts": [
+            "--external-provision-cmd"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "selection_manifest",
+          "nargs": 1,
+          "opts": [
+            "--selection-manifest"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "vendor_mechanism",
+          "nargs": 1,
+          "opts": [
+            "--vendor-mechanism"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "show_config",
+          "nargs": 1,
+          "opts": [
+            "--show-config"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "targets",
+          "nargs": -1,
+          "opts": [
+            "targets"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "verify-round-receipt": {
+      "parameters": [
+        {
+          "default": "==SUPPRESS==",
+          "kind": "option",
+          "name": "help",
+          "nargs": 0,
+          "opts": [
+            "-h",
+            "--help"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "str"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "receipt",
+          "nargs": null,
+          "opts": [],
+          "required": true,
+          "secondary_opts": [],
+          "type": "Path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "lock",
+          "nargs": null,
+          "opts": [
+            "--lock"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "Path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "expect_fw",
+          "nargs": null,
+          "opts": [
+            "--expect-fw"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "str"
+        }
+      ]
+    }
+  },
+  "snapshots": [
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check [OPTIONS] COMMAND [ARGS]... CLI-first PKCS#11 test suite with segfault survival and interface forcing. \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --log-level [debug|info|warning|error|critical] Log level [default: INFO] \u2502 \u2502 --trace Trace PKCS#11 calls \u2502 \u2502 --install-completion Install completion for the current shell. \u2502 \u2502 --show-completion Show completion for the current shell, to copy it \u2502 \u2502 or customize the installation. \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Commands \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 test Run the PKCS#11 test suite against a module. \u2502 \u2502 doctor Diagnose a PKCS#11 module setup and print the next step for any problem. \u2502 \u2502 info Show PKCS#11 module information: version, slots, mechanisms. \u2502 \u2502 list List available PKCS#11 test categories. \u2502 \u2502 list-tests Enumerate pytest node-ids matching a selection, one per line to stdout. \u2502 \u2502 state Inspect isolated runner state and adaptive policy files. \u2502 \u2502 compliance-report Generate machine-readable PKCS#11 compliance report. \u2502 \u2502 compare-coverage Compare provider-local mechanism coverage states between two artifacts. \u2502 \u2502 compare-results Compare two pkcs11-check results.json files and report regressions. \u2502 \u2502 fetch-data Download third-party test vectors. \u2502 \u2502 fetch-disabled Download the disabled-tests baseline from GitHub. \u2502 \u2502 shard-units Plan N balanced shards of test FILES (heavy files spread via LPT). \u2502 \u2502 merge-shards Merge N shard artifact directories into one combined result set. \u2502 \u2502 crash-calls Show, per crashed unit, the last C_* call before the crash + its journal file. \u2502 \u2502 differential Diff N providers' KAT verdicts and report the odd-one-out per disagreeing node-id. \u2502 \u2502 evidence-export Export a raw report.jsonl stream to a semantic evidence ledger. \u2502 \u2502 evidence-admit Admit a lane ledger against its roster and obligation inventory. \u2502 \u2502 evidence-compare Compare baseline vs candidate ledgers for one lane under rotation deltas. \u2502 \u2502 version Show pkcs11-check version. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check [OPTIONS] COMMAND [ARGS]...                                                                        \n                                                                                                                        \n CLI-first PKCS#11 test suite with segfault survival and interface forcing.                                             \n                                                                                                                        \n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --log-level                 [debug|info|warning|error|critical]  Log level [default: INFO]                           \u2502\n\u2502 --trace                                                          Trace PKCS#11 calls                                 \u2502\n\u2502 --install-completion                                             Install completion for the current shell.           \u2502\n\u2502 --show-completion                                                Show completion for the current shell, to copy it   \u2502\n\u2502                                                                  or customize the installation.                      \u2502\n\u2502 --help                                                           Show this message and exit.                         \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Commands \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 test               Run the PKCS#11 test suite against a module.                                                      \u2502\n\u2502 doctor             Diagnose a PKCS#11 module setup and print the next step for any problem.                          \u2502\n\u2502 info               Show PKCS#11 module information: version, slots, mechanisms.                                      \u2502\n\u2502 list               List available PKCS#11 test categories.                                                           \u2502\n\u2502 list-tests         Enumerate pytest node-ids matching a selection, one per line to stdout.                           \u2502\n\u2502 state              Inspect isolated runner state and adaptive policy files.                                          \u2502\n\u2502 compliance-report  Generate machine-readable PKCS#11 compliance report.                                              \u2502\n\u2502 compare-coverage   Compare provider-local mechanism coverage states between two artifacts.                           \u2502\n\u2502 compare-results    Compare two pkcs11-check results.json files and report regressions.                               \u2502\n\u2502 fetch-data         Download third-party test vectors.                                                                \u2502\n\u2502 fetch-disabled     Download the disabled-tests baseline from GitHub.                                                 \u2502\n\u2502 shard-units        Plan N balanced shards of test FILES (heavy files spread via LPT).                                \u2502\n\u2502 merge-shards       Merge N shard artifact directories into one combined result set.                                  \u2502\n\u2502 crash-calls        Show, per crashed unit, the last C_* call before the crash + its journal file.                    \u2502\n\u2502 differential       Diff N providers' KAT verdicts and report the odd-one-out per disagreeing node-id.                \u2502\n\u2502 evidence-export    Export a raw report.jsonl stream to a semantic evidence ledger.                                   \u2502\n\u2502 evidence-admit     Admit a lane ledger against its roster and obligation inventory.                                  \u2502\n\u2502 evidence-compare   Compare baseline vs candidate ledgers for one lane under rotation deltas.                         \u2502\n\u2502 version            Show pkcs11-check version.                                                                        \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "0af7aca18a0543f5c4b6d40568fb8ca4c53254bc73380df0196e88701e792f54"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check list-tests [OPTIONS] [TARGETS]... Enumerate pytest node-ids matching a selection, one per line to stdout. For building disabled-tests files without repeated live runs (issue #6). Node-ids are forward-slash on every platform. Diagnostics go to stderr, so ``list-tests --match X > disabled.txt`` yields a clean file. \u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 targets [TARGETS]... Paths to scope collection (default: all test cases) \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --match TEXT Node-id name pattern (pytest -k) \u2502 \u2502 --marker TEXT Marker expression (pytest -m) \u2502 \u2502 --category -c TEXT Category (pytest -k) \u2502 \u2502 --skip-slow Exclude slow tests \u2502 \u2502 --only-slow Only slow tests \u2502 \u2502 --module -m PATH Optional module: enumerate mechanism-driven variants too \u2502 \u2502 --interface -i [auto|2.40|3.0|3.1|3.2] Interface version [default: auto] \u2502 \u2502 --slot INTEGER Slot index [default: 0] \u2502 \u2502 --include-disabled Also list node-ids the configured disabled baseline excludes \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "list-tests",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check list-tests [OPTIONS] [TARGETS]...                                                                  \n                                                                                                                        \n Enumerate pytest node-ids matching a selection, one per line to stdout.                                                \n                                                                                                                        \n For building disabled-tests files without repeated live runs (issue #6). Node-ids                                      \n are forward-slash on every platform. Diagnostics go to stderr, so                                                      \n ``list-tests --match X > disabled.txt`` yields a clean file.                                                           \n                                                                                                                        \n\u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502   targets      [TARGETS]...  Paths to scope collection (default: all test cases)                                     \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --match                     TEXT                     Node-id name pattern (pytest -k)                                \u2502\n\u2502 --marker                    TEXT                     Marker expression (pytest -m)                                   \u2502\n\u2502 --category          -c      TEXT                     Category (pytest -k)                                            \u2502\n\u2502 --skip-slow                                          Exclude slow tests                                              \u2502\n\u2502 --only-slow                                          Only slow tests                                                 \u2502\n\u2502 --module            -m      PATH                     Optional module: enumerate mechanism-driven variants too        \u2502\n\u2502 --interface         -i      [auto|2.40|3.0|3.1|3.2]  Interface version [default: auto]                               \u2502\n\u2502 --slot                      INTEGER                  Slot index [default: 0]                                         \u2502\n\u2502 --include-disabled                                   Also list node-ids the configured disabled baseline excludes    \u2502\n\u2502 --help                                               Show this message and exit.                                     \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "03e92b1838fb84eeb5b29f20146a3f8457f01b9174adf0848eaf4cc2687d9a0c"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check shard-units [OPTIONS] Plan N balanced shards of test FILES (heavy files spread via LPT). With ``--format lines`` (default) prints one shard per line as a space-separated file list \u2014 consumable by a shell launcher. With ``json`` prints ``{\"shards\": [, ...]}``. \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * --shards -n INTEGER Number of shards (>=1) [required] \u2502 \u2502 --testcases PATH Directory of test files to shard [default: src/pkcs11_check/testcases] \u2502 \u2502 --prior-results PATH A prior results.json; per-file durations balance shards (LPT) \u2502 \u2502 --format TEXT Output: 'lines' (one shard/line) or 'json' [default: lines] \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "shard-units",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check shard-units [OPTIONS]                                                                              \n                                                                                                                        \n Plan N balanced shards of test FILES (heavy files spread via LPT).                                                     \n                                                                                                                        \n With ``--format lines`` (default) prints one shard per line as a                                                       \n space-separated file list \u2014 consumable by a shell launcher. With ``json``                                              \n prints ``{\"shards\": [, ...]}``.                                                                                        \n                                                                                                                        \n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *  --shards         -n      INTEGER  Number of shards (>=1) [required]                                               \u2502\n\u2502    --testcases              PATH     Directory of test files to shard [default: src/pkcs11_check/testcases]          \u2502\n\u2502    --prior-results          PATH     A prior results.json; per-file durations balance shards (LPT)                   \u2502\n\u2502    --format                 TEXT     Output: 'lines' (one shard/line) or 'json' [default: lines]                     \u2502\n\u2502    --help                            Show this message and exit.                                                     \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "b062d7da92563a53a0a921a7f2ccc0cc79177783af445788e4a1b547419cc907"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check test [OPTIONS] [TARGETS]... Run the PKCS#11 test suite against a module. \u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 targets [TARGETS]... Optional pytest paths or nodeids \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * --module -m PATH Path to PKCS#11 module [required] \u2502 \u2502 --interface -i [auto|2.40|3.0|3.1|3.2] Interface version [default: auto] \u2502 \u2502 --timeout -t INTEGER Per-test timeout (seconds) [default: 180] \u2502 \u2502 --category -c TEXT Test categories \u2502 \u2502 --match TEXT Test name pattern \u2502 \u2502 --marker TEXT Pytest marker expression (-m) \u2502 \u2502 --skip-slow Fast profile: skip long-running tests (-m 'not slow') \u2502 \u2502 --only-slow Run only the long-running tests (-m 'slow') \u2502 \u2502 --pin TEXT PIN (prefer P11TEST_PIN env) \u2502 \u2502 --so-pin TEXT SO PIN for CKU_SO tests (prefer P11TEST_SO_PIN env) \u2502 \u2502 --slot INTEGER Slot index [default: 0] \u2502 \u2502 --output,--format -o TEXT Output: rich, json, junit [default: rich] \u2502 \u2502 --output-file TEXT Output file path \u2502 \u2502 --verbose -V Verbose output \u2502 \u2502 --show-config Print effective config (value + source per key) and exit \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Advanced \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --sessions -s INTEGER Concurrent sessions [default: 1] \u2502 \u2502 --destructive Enable destructive tests \u2502 \u2502 --ignore-disabled-tests Do not load the configured disabled baseline for this run \u2502 \u2502 --no-collection-cache Disable the cached collection metadata (always re-collect from scratch) \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Isolation \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --isolation TEXT Isolation mode: auto, file, test, none (auto is default; none is \u2502 \u2502 fastest but unsafe) \u2502 \u2502 [default: auto] \u2502 \u2502 --resume Continue a saved isolated run; skip targets already attempted \u2502 \u2502 --stop-on-failure Stop isolated mode at the first failing/crashing unit \u2502 \u2502 --state-file PATH State file for isolated runs \u2502 \u2502 [default: .pkcs11-check-isolation-state.json] \u2502 \u2502 --policy-file PATH Adaptive isolation policy file for isolated runs \u2502 \u2502 [default: .pkcs11-check-isolation-policy.json] \u2502 \u2502 --max-crashes-per-file INTEGER RANGE [x>=0] In test/auto isolation, skip remaining tests from a file after \u2502 \u2502 this many crashes (0 = unlimited; default 10). Abandoned tests \u2502 \u2502 are reported as crash_limited. \u2502 \u2502 [default: 10] \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 CK_RV tracing \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --rv-trace Record each C_* call's raw CK_RV per test into report.jsonl user_properties \u2502 \u2502 --rv-trace-compact N Keep only the last N CK_RV trace entries per test (implies --rv-trace) \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Key provisioning \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --key-inject TEXT Key-provisioning injection mode: off, unwrap, force-unwrap [default: off] \u2502 \u2502 --wrap-key-source TEXT Wrapping KEK source: bootstrap (auto-generate) or configured \u2502 \u2502 [default: bootstrap] \u2502 \u2502 --wrap-key-label TEXT Label of the configured wrapping key \u2502 \u2502 --wrap-key-handle INTEGER Handle of the configured wrapping key \u2502 \u2502 --wrap-key-value TEXT Hex value of a symmetric configured KEK (prefer P11TEST_WRAP_KEY_VALUE \u2502 \u2502 env) \u2502 \u2502 --wrap-mech TEXT Override auto-selected unwrap mechanism (e.g. CKM_RSA_AES_KEY_WRAP) \u2502 \u2502 --wrap-rsa-bits INTEGER RSA key size in bits for bootstrap wrapping key [default: 2048] \u2502 \u2502 --wrap-oaep-hash TEXT OAEP hash for wrapping: auto (probe; prefer sha256, fall back sha1), \u2502 \u2502 sha1, or sha256 \u2502 \u2502 [default: auto] \u2502 \u2502 --allow-external-provision Strict acknowledgement enabling external-tool provisioning (requires \u2502 \u2502 --external-provision-cmd) \u2502 \u2502 --external-provision-cmd TEXT Operator command template loading a key into the backend; placeholders \u2502 \u2502 {keyfile} {label} {key_type} {key_class} \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Daemon recovery \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --recover-mode TEXT Crashing-daemon recovery: off (default), wait (pause for an external supervisor to \u2502 \u2502 restart the daemon), or cmd (run --recover-cmd). Use wait if anything else restarts it. \u2502 \u2502 [default: off] \u2502 \u2502 --recover-cmd TEXT No-shell argv (tokenized) run between tests when the provider is detected down; implies \u2502 \u2502 --recover-mode cmd. Only for daemons nothing else restarts. \u2502 \u2502 [env var: P11TEST_RECOVER_CMD] \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Selection \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --selection-manifest PATH Path to an exact case batch selection manifest \u2502 \u2502 --vendor-mechanism NAME=0xID Vendor mechanism code point, e.g. KMAC_128=0x80001234 (repeatable) \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "test",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check test [OPTIONS] [TARGETS]...                                                                        \n                                                                                                                        \n Run the PKCS#11 test suite against a module.                                                                           \n                                                                                                                        \n\u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502   targets      [TARGETS]...  Optional pytest paths or nodeids                                                        \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *  --module           -m      PATH                     Path to PKCS#11 module [required]                             \u2502\n\u2502    --interface        -i      [auto|2.40|3.0|3.1|3.2]  Interface version [default: auto]                             \u2502\n\u2502    --timeout          -t      INTEGER                  Per-test timeout (seconds) [default: 180]                     \u2502\n\u2502    --category         -c      TEXT                     Test categories                                               \u2502\n\u2502    --match                    TEXT                     Test name pattern                                             \u2502\n\u2502    --marker                   TEXT                     Pytest marker expression (-m)                                 \u2502\n\u2502    --skip-slow                                         Fast profile: skip long-running tests (-m 'not slow')         \u2502\n\u2502    --only-slow                                         Run only the long-running tests (-m 'slow')                   \u2502\n\u2502    --pin                      TEXT                     PIN (prefer P11TEST_PIN env)                                  \u2502\n\u2502    --so-pin                   TEXT                     SO PIN for CKU_SO tests (prefer P11TEST_SO_PIN env)           \u2502\n\u2502    --slot                     INTEGER                  Slot index [default: 0]                                       \u2502\n\u2502    --output,--format  -o      TEXT                     Output: rich, json, junit [default: rich]                     \u2502\n\u2502    --output-file              TEXT                     Output file path                                              \u2502\n\u2502    --verbose          -V                               Verbose output                                                \u2502\n\u2502    --show-config                                       Print effective config (value + source per key) and exit      \u2502\n\u2502    --help                                              Show this message and exit.                                   \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Advanced \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --sessions               -s      INTEGER  Concurrent sessions [default: 1]                                           \u2502\n\u2502 --destructive                             Enable destructive tests                                                   \u2502\n\u2502 --ignore-disabled-tests                   Do not load the configured disabled baseline for this run                  \u2502\n\u2502 --no-collection-cache                     Disable the cached collection metadata (always re-collect from scratch)    \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Isolation \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --isolation                   TEXT                  Isolation mode: auto, file, test, none (auto is default; none is \u2502\n\u2502                                                     fastest but unsafe)                                              \u2502\n\u2502                                                     [default: auto]                                                  \u2502\n\u2502 --resume                                            Continue a saved isolated run; skip targets already attempted    \u2502\n\u2502 --stop-on-failure                                   Stop isolated mode at the first failing/crashing unit            \u2502\n\u2502 --state-file                  PATH                  State file for isolated runs                                     \u2502\n\u2502                                                     [default: .pkcs11-check-isolation-state.json]                    \u2502\n\u2502 --policy-file                 PATH                  Adaptive isolation policy file for isolated runs                 \u2502\n\u2502                                                     [default: .pkcs11-check-isolation-policy.json]                   \u2502\n\u2502 --max-crashes-per-file        INTEGER RANGE [x>=0]  In test/auto isolation, skip remaining tests from a file after   \u2502\n\u2502                                                     this many crashes (0 = unlimited; default 10). Abandoned tests   \u2502\n\u2502                                                     are reported as crash_limited.                                   \u2502\n\u2502                                                     [default: 10]                                                    \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 CK_RV tracing \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --rv-trace                   Record each C_* call's raw CK_RV per test into report.jsonl user_properties             \u2502\n\u2502 --rv-trace-compact        N  Keep only the last N CK_RV trace entries per test (implies --rv-trace)                  \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Key provisioning \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --key-inject                      TEXT     Key-provisioning injection mode: off, unwrap, force-unwrap [default: off] \u2502\n\u2502 --wrap-key-source                 TEXT     Wrapping KEK source: bootstrap (auto-generate) or configured              \u2502\n\u2502                                            [default: bootstrap]                                                      \u2502\n\u2502 --wrap-key-label                  TEXT     Label of the configured wrapping key                                      \u2502\n\u2502 --wrap-key-handle                 INTEGER  Handle of the configured wrapping key                                     \u2502\n\u2502 --wrap-key-value                  TEXT     Hex value of a symmetric configured KEK (prefer P11TEST_WRAP_KEY_VALUE    \u2502\n\u2502                                            env)                                                                      \u2502\n\u2502 --wrap-mech                       TEXT     Override auto-selected unwrap mechanism (e.g. CKM_RSA_AES_KEY_WRAP)       \u2502\n\u2502 --wrap-rsa-bits                   INTEGER  RSA key size in bits for bootstrap wrapping key [default: 2048]           \u2502\n\u2502 --wrap-oaep-hash                  TEXT     OAEP hash for wrapping: auto (probe; prefer sha256, fall back sha1),      \u2502\n\u2502                                            sha1, or sha256                                                           \u2502\n\u2502                                            [default: auto]                                                           \u2502\n\u2502 --allow-external-provision                 Strict acknowledgement enabling external-tool provisioning (requires      \u2502\n\u2502                                            --external-provision-cmd)                                                 \u2502\n\u2502 --external-provision-cmd          TEXT     Operator command template loading a key into the backend; placeholders    \u2502\n\u2502                                            {keyfile} {label} {key_type} {key_class}                                  \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Daemon recovery \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --recover-mode        TEXT  Crashing-daemon recovery: off (default), wait (pause for an external supervisor to       \u2502\n\u2502                             restart the daemon), or cmd (run --recover-cmd). Use wait if anything else restarts it.  \u2502\n\u2502                             [default: off]                                                                           \u2502\n\u2502 --recover-cmd         TEXT  No-shell argv (tokenized) run between tests when the provider is detected down; implies  \u2502\n\u2502                             --recover-mode cmd. Only for daemons nothing else restarts.                              \u2502\n\u2502                             [env var: P11TEST_RECOVER_CMD]                                                           \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Selection \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --selection-manifest        PATH       Path to an exact case batch selection manifest                                \u2502\n\u2502 --vendor-mechanism          NAME=0xID  Vendor mechanism code point, e.g. KMAC_128=0x80001234 (repeatable)            \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "c85945def22d16ac592b751417572cdb0ce2073d27d3b8e6263d8ddd0602405e"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check fetch-data [OPTIONS] [SOURCE] Download third-party test vectors. \u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 source [SOURCE] Source name or 'all' [default: all] \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --status Show status of each source \u2502 \u2502 --checksums Download and print SHA-256 checksums \u2502 \u2502 --data-dir PATH Override data directory \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "fetch-data",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check fetch-data [OPTIONS] [SOURCE]                                                                      \n                                                                                                                        \n Download third-party test vectors.                                                                                     \n                                                                                                                        \n\u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502   source      [SOURCE]  Source name or 'all' [default: all]                                                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --status                 Show status of each source                                                                  \u2502\n\u2502 --checksums              Download and print SHA-256 checksums                                                        \u2502\n\u2502 --data-dir         PATH  Override data directory                                                                     \u2502\n\u2502 --help                   Show this message and exit.                                                                 \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "ec19a3782a955afe86e5333914ace96946bdad45b08d48d66084b3cb3d01aca3"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check compare-coverage [OPTIONS] BASELINE CANDIDATE Compare provider-local mechanism coverage states between two artifacts. \u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * baseline PATH Baseline artifact directory, coverage.json, or results.json with embedded coverage \u2502 \u2502 [required] \u2502 \u2502 * candidate PATH Candidate artifact directory, coverage.json, or results.json with embedded coverage \u2502 \u2502 [required] \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --output -o TEXT Output: summary|json [default: summary] \u2502 \u2502 --fail-on-loss Exit 1 when the candidate loses any baseline mechanism coverage state \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "compare-coverage",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check compare-coverage [OPTIONS] BASELINE CANDIDATE                                                      \n                                                                                                                        \n Compare provider-local mechanism coverage states between two artifacts.                                                \n                                                                                                                        \n\u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *    baseline       PATH  Baseline artifact directory, coverage.json, or results.json with embedded coverage         \u2502\n\u2502                           [required]                                                                                 \u2502\n\u2502 *    candidate      PATH  Candidate artifact directory, coverage.json, or results.json with embedded coverage        \u2502\n\u2502                           [required]                                                                                 \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --output        -o      TEXT  Output: summary|json [default: summary]                                                \u2502\n\u2502 --fail-on-loss                Exit 1 when the candidate loses any baseline mechanism coverage state                  \u2502\n\u2502 --help                        Show this message and exit.                                                            \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "d4636881f08e4375b666337c30f9646edfc263bcb9c8498e0e1f9bb9807bc64b"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check evidence-export [OPTIONS] REPORT LEDGER Export a raw report.jsonl stream to a semantic evidence ledger. \u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * report PATH Input report.jsonl (raw report-log stream) [required] \u2502 \u2502 * ledger PATH Output ledger.jsonl path [required] \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --lane TEXT Lane name echoed into the header \u2502 \u2502 --lane-os TEXT Lane OS echoed into the header \u2502 \u2502 --lane-arch TEXT Lane arch echoed into the header \u2502 \u2502 --framework-sha TEXT Framework SHA identity \u2502 \u2502 --p11lab-sha TEXT p11lab SHA identity \u2502 \u2502 --image-digest TEXT Image digest identity \u2502 \u2502 --corpus-hash TEXT Corpus hash identity \u2502 \u2502 --disabled-hash TEXT Disabled-set hash identity \u2502 \u2502 --output -o TEXT Output: summary|json [default: summary] \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "evidence-export",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check evidence-export [OPTIONS] REPORT LEDGER                                                            \n                                                                                                                        \n Export a raw report.jsonl stream to a semantic evidence ledger.                                                        \n                                                                                                                        \n\u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *    report      PATH  Input report.jsonl (raw report-log stream) [required]                                         \u2502\n\u2502 *    ledger      PATH  Output ledger.jsonl path [required]                                                           \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --lane                   TEXT  Lane name echoed into the header                                                      \u2502\n\u2502 --lane-os                TEXT  Lane OS echoed into the header                                                        \u2502\n\u2502 --lane-arch              TEXT  Lane arch echoed into the header                                                      \u2502\n\u2502 --framework-sha          TEXT  Framework SHA identity                                                                \u2502\n\u2502 --p11lab-sha             TEXT  p11lab SHA identity                                                                   \u2502\n\u2502 --image-digest           TEXT  Image digest identity                                                                 \u2502\n\u2502 --corpus-hash            TEXT  Corpus hash identity                                                                  \u2502\n\u2502 --disabled-hash          TEXT  Disabled-set hash identity                                                            \u2502\n\u2502 --output         -o      TEXT  Output: summary|json [default: summary]                                               \u2502\n\u2502 --help                         Show this message and exit.                                                           \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "a511793ca5afc8744c5a4fbf315ef95070a6fb56f58a6adaee62c43d0b31847c"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check evidence-admit [OPTIONS] LEDGER Admit a lane ledger against its roster and obligation inventory. \u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * ledger PATH Ledger.jsonl to admit [required] \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * --roster PATH Predeclared roster JSON [required] \u2502 \u2502 * --obligations PATH Catalog/profile JSON [required] \u2502 \u2502 --output -o TEXT Output: summary|json [default: summary] \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "evidence-admit",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check evidence-admit [OPTIONS] LEDGER                                                                    \n                                                                                                                        \n Admit a lane ledger against its roster and obligation inventory.                                                       \n                                                                                                                        \n\u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *    ledger      PATH  Ledger.jsonl to admit [required]                                                              \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *  --roster               PATH  Predeclared roster JSON [required]                                                   \u2502\n\u2502 *  --obligations          PATH  Catalog/profile JSON [required]                                                      \u2502\n\u2502    --output       -o      TEXT  Output: summary|json [default: summary]                                              \u2502\n\u2502    --help                       Show this message and exit.                                                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "bea1c380a52880a84c1354ffad966dc06dcca426cdf7c39091e19f9367d84e58"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check evidence-compare [OPTIONS] BASELINE CANDIDATE Compare baseline vs candidate ledgers for one lane under rotation deltas. \u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * baseline PATH Baseline ledger.jsonl [required] \u2502 \u2502 * candidate PATH Candidate ledger.jsonl [required] \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 --deltas PATH Rotation deltas JSON \u2502 \u2502 --quorum-min-repeats INTEGER Quorum repeats [default: 3] \u2502 \u2502 --quorum-frac FLOAT Quorum fraction [default: 0.6666666666666666] \u2502 \u2502 --output -o TEXT Output: summary|json [default: summary] \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "evidence-compare",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check evidence-compare [OPTIONS] BASELINE CANDIDATE                                                      \n                                                                                                                        \n Compare baseline vs candidate ledgers for one lane under rotation deltas.                                              \n                                                                                                                        \n\u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *    baseline       PATH  Baseline ledger.jsonl [required]                                                           \u2502\n\u2502 *    candidate      PATH  Candidate ledger.jsonl [required]                                                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --deltas                      PATH     Rotation deltas JSON                                                          \u2502\n\u2502 --quorum-min-repeats          INTEGER  Quorum repeats [default: 3]                                                   \u2502\n\u2502 --quorum-frac                 FLOAT    Quorum fraction [default: 0.6666666666666666]                                 \u2502\n\u2502 --output              -o      TEXT     Output: summary|json [default: summary]                                       \u2502\n\u2502 --help                                 Show this message and exit.                                                   \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "c510c26569d23351b84f218eaa89d33021030b454c3770ab8d70356ab5d1ac47"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "Usage: pkcs11-check merge-shards [OPTIONS] SHARD_DIRS... Merge N shard artifact directories into one combined result set. \u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * shard_dirs SHARD_DIRS... Shard artifact directories (each with results.json + report.jsonl) [required] \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f \u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u2502 * --output -o PATH Combined output directory [required] \u2502 \u2502 --help Show this message and exit. \u2502 \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "command": [
+        "pkcs11-check",
+        "merge-shards",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "                                                                                                                        \n Usage: pkcs11-check merge-shards [OPTIONS] SHARD_DIRS...                                                               \n                                                                                                                        \n Merge N shard artifact directories into one combined result set.                                                       \n                                                                                                                        \n\u256d\u2500 Arguments \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *    shard_dirs      SHARD_DIRS...  Shard artifact directories (each with results.json + report.jsonl) [required]    \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 *  --output  -o      PATH  Combined output directory [required]                                                      \u2502\n\u2502    --help                  Show this message and exit.                                                               \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\n",
+      "stdout_sha256": "010412789d61809e91d67a6407a27523e52deade51bd5d62cde457f19402d12b"
+    },
+    {
+      "canonical_stderr": "",
+      "canonical_stdout": "usage: verify_round_receipt.py [-h] --lock LOCK --expect-fw EXPECT_FW receipt Verify a CI provider-round receipt. positional arguments: receipt path to the round receipt JSON options: -h, --help show this help message and exit --lock LOCK path to provider-round.lock.json --expect-fw EXPECT_FW expected framework SHA (opaque exact match)",
+      "command": [
+        "python3",
+        "scripts/verify_round_receipt.py",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "usage: verify_round_receipt.py [-h] --lock LOCK --expect-fw EXPECT_FW receipt\n\nVerify a CI provider-round receipt.\n\npositional arguments:\n  receipt               path to the round receipt JSON\n\noptions:\n  -h, --help            show this help message and exit\n  --lock LOCK           path to provider-round.lock.json\n  --expect-fw EXPECT_FW\n                        expected framework SHA (opaque exact match)\n",
+      "stdout_sha256": "edc818251fe4859d592d5a1c39527745fdc8d25b27db73704e734033b8d497d4"
+    }
+  ]
+}

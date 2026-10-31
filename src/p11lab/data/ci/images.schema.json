@@ -1,0 +1,1058 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "kind": {
+      "const": "image-pins"
+    },
+    "policy_revision": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/image"
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "policy_revision",
+    "images"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:p11lab:schema:images:v1",
+  "$comment": "Closed ImagePinV1 policy. ci_inputs.validate_image_pins additionally enforces lookup uniqueness, digest/reference equality, timestamp validity and eligibility consistency; declarations are not OCI authentication.",
+  "$defs": {
+    "root": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "manifest",
+            "index"
+          ]
+        },
+        "media_type": {
+          "enum": [
+            "application/vnd.docker.distribution.manifest.v2+json",
+            "application/vnd.oci.image.manifest.v1+json",
+            "application/vnd.docker.distribution.manifest.list.v2+json",
+            "application/vnd.oci.image.index.v1+json"
+          ]
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+        },
+        "index_digest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "index_absence_reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "media_type",
+        "digest",
+        "index_digest",
+        "index_absence_reason"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "index"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "index_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+              },
+              "index_absence_reason": {
+                "type": "null"
+              },
+              "media_type": {
+                "enum": [
+                  "application/vnd.docker.distribution.manifest.list.v2+json",
+                  "application/vnd.oci.image.index.v1+json"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "index_digest": {
+                "type": "null"
+              },
+              "index_absence_reason": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+              },
+              "media_type": {
+                "enum": [
+                  "application/vnd.docker.distribution.manifest.v2+json",
+                  "application/vnd.oci.image.manifest.v1+json"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))[^\\\\:\\x00-\\x1f]+(?![\\s\\S])"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^https://[^\\s/@]+(?:/[^\\s]*)?(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "bytes",
+        "sha256",
+        "url",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+        },
+        "channel": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+        },
+        "platform": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+/[a-z0-9]+(?:/[a-z0-9]+)?(?![\\s\\S])"
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+(?![\\s\\S])"
+        },
+        "root": {
+          "$ref": "#/$defs/root"
+        },
+        "platform_manifest_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+        },
+        "config_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+        },
+        "local_engine_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "source_seal": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "reference": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "manifest_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "file_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "readback_proof_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    }
+                  },
+                  "required": [
+                    "reference",
+                    "manifest_sha256",
+                    "file_sha256",
+                    "readback_proof_sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "content_companion": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "reference": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "manifest_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "file_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "readback_proof_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "receipt_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "spdx_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    }
+                  },
+                  "required": [
+                    "reference",
+                    "manifest_sha256",
+                    "file_sha256",
+                    "readback_proof_sha256",
+                    "receipt_sha256",
+                    "spdx_sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "handoff": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "reference": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "manifest_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "file_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "schema_version": {
+                      "type": "integer",
+                      "enum": [
+                        1,
+                        2
+                      ]
+                    }
+                  },
+                  "required": [
+                    "reference",
+                    "manifest_sha256",
+                    "file_sha256",
+                    "schema_version"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipe_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "provider_build_key": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "patches": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "origin": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                      },
+                      "license": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                      },
+                      "license_status": {
+                        "enum": [
+                          "reviewed",
+                          "unreviewed",
+                          "restricted",
+                          "missing"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "sha256",
+                      "origin",
+                      "license",
+                      "license_status"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "source_seal",
+            "content_companion",
+            "handoff",
+            "recipe_sha256",
+            "provider_build_key",
+            "patches"
+          ],
+          "additionalProperties": false
+        },
+        "semantics": {
+          "type": "object",
+          "properties": {
+            "modified": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "simulated": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "transport_limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "modified",
+            "simulated",
+            "transport_limitations"
+          ],
+          "additionalProperties": false
+        },
+        "observations": {
+          "type": "object",
+          "properties": {
+            "metadata": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "observed_at": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+                      "format": "date-time"
+                    },
+                    "source_revision": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+                    },
+                    "evidence": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/evidence"
+                      },
+                      "minItems": 1
+                    },
+                    "limitations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                      },
+                      "minItems": 0
+                    }
+                  },
+                  "required": [
+                    "observed_at",
+                    "source_revision",
+                    "evidence",
+                    "limitations"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pull": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "observed_at": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+                      "format": "date-time"
+                    },
+                    "source_revision": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+                    },
+                    "evidence": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/evidence"
+                      },
+                      "minItems": 1
+                    },
+                    "limitations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                      },
+                      "minItems": 0
+                    }
+                  },
+                  "required": [
+                    "observed_at",
+                    "source_revision",
+                    "evidence",
+                    "limitations"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "runtime": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "observed_at": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+                      "format": "date-time"
+                    },
+                    "source_revision": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+                    },
+                    "evidence": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/evidence"
+                      },
+                      "minItems": 1
+                    },
+                    "limitations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                      },
+                      "minItems": 0
+                    }
+                  },
+                  "required": [
+                    "observed_at",
+                    "source_revision",
+                    "evidence",
+                    "limitations"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "qualification": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "observed_at": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+                      "format": "date-time"
+                    },
+                    "source_revision": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+                    },
+                    "evidence": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/evidence"
+                      },
+                      "minItems": 1
+                    },
+                    "limitations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                      },
+                      "minItems": 0
+                    }
+                  },
+                  "required": [
+                    "observed_at",
+                    "source_revision",
+                    "evidence",
+                    "limitations"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "metadata",
+            "pull",
+            "runtime",
+            "qualification"
+          ],
+          "additionalProperties": false
+        },
+        "eligibility": {
+          "type": "object",
+          "properties": {
+            "distribution_eligible": {
+              "type": "boolean"
+            },
+            "acquisition_eligible": {
+              "type": "boolean"
+            },
+            "blockers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "distribution_eligible",
+            "acquisition_eligible",
+            "blockers"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "environment",
+        "channel",
+        "platform",
+        "repository",
+        "root",
+        "platform_manifest_digest",
+        "config_digest",
+        "local_engine_id",
+        "provenance",
+        "semantics",
+        "observations",
+        "eligibility"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "eligibility": {
+                "properties": {
+                  "distribution_eligible": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "provenance": {
+                "properties": {
+                  "source_seal": {
+                    "type": "object",
+                    "properties": {
+                      "reference": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "manifest_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "file_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "readback_proof_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      }
+                    },
+                    "required": [
+                      "reference",
+                      "manifest_sha256",
+                      "file_sha256",
+                      "readback_proof_sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "content_companion": {
+                    "type": "object",
+                    "properties": {
+                      "reference": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "manifest_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "file_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "readback_proof_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "receipt_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "spdx_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      }
+                    },
+                    "required": [
+                      "reference",
+                      "manifest_sha256",
+                      "file_sha256",
+                      "readback_proof_sha256",
+                      "receipt_sha256",
+                      "spdx_sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recipe_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                  },
+                  "provider_build_key": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                  },
+                  "patches": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                        },
+                        "license": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                        },
+                        "license_status": {
+                          "enum": [
+                            "reviewed",
+                            "unreviewed",
+                            "restricted",
+                            "missing"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "sha256",
+                        "origin",
+                        "license",
+                        "license_status"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 0
+                  }
+                }
+              },
+              "semantics": {
+                "properties": {
+                  "modified": {
+                    "type": "boolean"
+                  },
+                  "simulated": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "observations": {
+                "properties": {
+                  "metadata": {
+                    "type": "object",
+                    "properties": {
+                      "observed_at": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+                        "format": "date-time"
+                      },
+                      "source_revision": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/$defs/evidence"
+                        },
+                        "minItems": 1
+                      },
+                      "limitations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "observed_at",
+                      "source_revision",
+                      "evidence",
+                      "limitations"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "eligibility": {
+                "properties": {
+                  "blockers": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "eligibility": {
+                "properties": {
+                  "acquisition_eligible": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "eligibility": {
+                "properties": {
+                  "distribution_eligible": {
+                    "const": true
+                  }
+                }
+              },
+              "provenance": {
+                "properties": {
+                  "handoff": {
+                    "type": "object",
+                    "properties": {
+                      "reference": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "manifest_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "file_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                      },
+                      "schema_version": {
+                        "const": 2
+                      }
+                    },
+                    "required": [
+                      "reference",
+                      "manifest_sha256",
+                      "file_sha256",
+                      "schema_version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "observations": {
+                "properties": {
+                  "pull": {
+                    "type": "object",
+                    "properties": {
+                      "observed_at": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+                        "format": "date-time"
+                      },
+                      "source_revision": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/$defs/evidence"
+                        },
+                        "minItems": 1
+                      },
+                      "limitations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "observed_at",
+                      "source_revision",
+                      "evidence",
+                      "limitations"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "runtime": {
+                    "type": "object",
+                    "properties": {
+                      "observed_at": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+                        "format": "date-time"
+                      },
+                      "source_revision": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/$defs/evidence"
+                        },
+                        "minItems": 1
+                      },
+                      "limitations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "observed_at",
+                      "source_revision",
+                      "evidence",
+                      "limitations"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "qualification": {
+                    "type": "object",
+                    "properties": {
+                      "observed_at": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|\\+00:00)(?![\\s\\S])",
+                        "format": "date-time"
+                      },
+                      "source_revision": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/$defs/evidence"
+                        },
+                        "minItems": 1
+                      },
+                      "limitations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^[^\\x00-\\x1f\\x7f]+(?![\\s\\S])"
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "observed_at",
+                      "source_revision",
+                      "evidence",
+                      "limitations"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

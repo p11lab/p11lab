@@ -456,3 +456,17 @@ def test_tools_reject_false_or_broken_dispositions(mutate):
     mutate(tools)
     with pytest.raises(CatalogError):
         validate_tools(tools)
+
+
+def test_packaged_ci_pin_candidates_belong_to_catalogue_without_granting_rights():
+    try:
+        from p11lab.ci_inputs import load_image_pins
+    except ModuleNotFoundError:
+        pytest.fail('M01 packaged pin resolver is not implemented')
+    pins = load_image_pins()['images']
+    assert {pin['environment'] for pin in pins} == {
+        'softhsm2', 'kryoptic', 'bouncyhsm', 'haskoki', 'freehsm', 'nss', 'opencryptoki'}
+    for pin in pins:
+        spec = load_environment(pin['environment'], pin['channel'])
+        assert pin['platform'] in spec['runtime_platforms']
+        assert pin['eligibility']['distribution_eligible'] is False

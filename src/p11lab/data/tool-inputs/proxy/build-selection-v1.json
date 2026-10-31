@@ -1,0 +1,49 @@
+{
+  "build_status": "not-run",
+  "cargo_args": [
+    "build",
+    "--locked",
+    "--offline",
+    "--release",
+    "--target",
+    "x86_64-unknown-linux-gnu",
+    "-p",
+    "pkcs11-proxy-ng",
+    "-p",
+    "pkcs11-proxy-ng-cli",
+    "-p",
+    "pkcs11-proxy-ng-shim"
+  ],
+  "cargo_configuration": "Future producer must prevent loading the candidate .cargo/config.toml and provide only a fixed offline vendored-source configuration. This data does not implement that boundary.",
+  "environment_must_clear": [
+    "RUSTC_WRAPPER",
+    "RUSTC_WORKSPACE_WRAPPER",
+    "RUSTFLAGS",
+    "CARGO_ENCODED_RUSTFLAGS",
+    "RUSTUP_HOME"
+  ],
+  "environment_policy": "Future producer must construct an explicit allowlisted environment, private HOME and CARGO_HOME; no inherited host configuration, credentials, cargo credential helpers or wrappers.",
+  "features": "default",
+  "output_expectations": [
+    "bin/pkcs11-proxy-ng",
+    "bin/pkcs11-proxy-ng-cli",
+    "lib/libpkcs11_proxy_ng_shim.so"
+  ],
+  "output_hashes": "not-produced",
+  "packages": [
+    "pkcs11-proxy-ng",
+    "pkcs11-proxy-ng-cli",
+    "pkcs11-proxy-ng-shim"
+  ],
+  "profile": "release",
+  "profile_settings": {
+    "codegen-units": 1,
+    "lto": "thin",
+    "strip": "symbols"
+  },
+  "rights": "unreviewed",
+  "rustflags": [],
+  "schema_version": 1,
+  "status": "selected-inputs-only",
+  "target": "x86_64-unknown-linux-gnu"
+}

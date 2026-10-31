@@ -1,16 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-# Source-first delivery for one locked channel. Dispatch-only; the coordinator
-# triggers one run per provider and channel. Sequence per run: seal licensed
-# sources from locked inputs -> build and test the exact binary -> publish the
-# sealed source -> read it back anonymously -> admit actual content -> expose
-# the binary (verdict-gated) -> finalize the handoff. A missing/private/expired
-# source companion, input mismatch, or newly discovered dependency stops
-# binary upload: the admit job fails and expose-binary never runs.
-# Delivery opens per provider; the test step below covers softhsm2, nss and
-# opencryptoki and fails closed for other environments until their delivery
-# test is authored.
-# Release and rolling share this workflow; the channel input selects the lock,
-# and concurrency plus artifact names stay per-channel so runs never collide.
+# Source-first producer for one fixed candidate. The independently protected
+# source-delivery environment must supply a reviewed immutable controller wheel
+# URL and SHA256; an empty/unprotected enrollment is not delivery authority.
+# The candidate remains on this runner through D. Binary custody is a later
+# stage; runtime exposure and handoff remain blocked.
 name: provider-delivery
 
 on:
@@ -21,11 +14,11 @@ on:
         required: true
         default: 'softhsm2'
       channel:
-        description: 'Locked channel: release or rolling.'
+        description: 'Locked channel.'
         required: true
         default: 'release'
       registry:
-        description: 'Registry repository for delivery artifacts (empty selects ghcr.io/p11lab/<environment>).'
+        description: 'Empty or the fixed ghcr.io/p11lab/softhsm2 repository.'
         required: false
 
 permissions:
@@ -36,693 +29,558 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  seal-build-test:
+  producer:
+    name: trusted-producer
+    environment: source-delivery
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
-    steps:
-      - name: Checkout P11Lab
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: '3.12.10'
-
-      - name: Check delivery readiness
-        shell: bash
-        env:
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
-        run: |
-          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
-          case "$P11LAB_INPUT_ENVIRONMENT" in
-            softhsm2|nss|opencryptoki) ;;
-            *)
-              echo "delivery test is not yet authored for $P11LAB_INPUT_ENVIRONMENT" >&2
-              exit 1
-              ;;
-          esac
-          python --version
-          docker version --format '{{.Server.Version}}'
-          echo "ImageVersion=$ImageVersion"
-
-      - name: Install P11Lab and build the producer wheel
-        shell: bash
-        run: |
-          set -eu
-          python -m pip install .
-          python -m pip wheel --no-deps --wheel-dir dist-wheel .
-          ls dist-wheel
-          sha256sum dist-wheel/* > wheel.sha256
-          cat wheel.sha256
-
-      - name: Resolve and seal ${{ inputs.channel }} sources
-        shell: bash
-        env:
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
-        run: |
-          set -eu
-          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
-          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
-          p11lab resolve "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --output-dir resolve-out
-          p11lab publish seal-sources "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" \
-            --resolved-dir resolve-out --output-dir seal-out
-
-      - name: Build the exact runtime binary
-        shell: bash
-        env:
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
-        run: |
-          set -eu
-          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
-          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
-          p11lab build "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --output-dir build-out
-          python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])'
-
-      - name: Test with the installed C consumer and OpenSSL oracle
-        shell: bash
-        env:
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
-        run: |
-          set -eu
-          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
-          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
-          PROVIDER_ID=$(python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])')
-          docker tag "$PROVIDER_ID" p11lab-local-provider:consumer-parent
-          test "$(docker image inspect --format '{{.Id}}' p11lab-local-provider:consumer-parent)" = "$PROVIDER_ID"
-          python examples/linux/prepare-consumer.py --channel "$P11LAB_INPUT_CHANNEL" --output-dir consumer-context
-          docker build --platform linux/amd64 --provenance=false \
-            --build-arg PROVIDER_IMAGE=p11lab-local-provider:consumer-parent \
-            --iidfile consumer-id consumer-context
-          CONSUMER_ID=$(cat consumer-id)
-          case "$P11LAB_INPUT_ENVIRONMENT" in
-            softhsm2)
-              SMOKE_MODULE=/usr/local/lib/p11lab/libsofthsm2.so
-              SMOKE_LABEL=P11Lab
-              PIN_VALUE=1234
-              SOPIN_VALUE=12345678
-              ;;
-            nss)
-              SMOKE_MODULE=/usr/local/lib/p11lab/libsoftokn3.so
-              SMOKE_LABEL=P11Lab
-              PIN_VALUE=12345678
-              SOPIN_VALUE=12345678
-              ;;
-            opencryptoki)
-              SMOKE_MODULE=/usr/local/lib/p11lab/libopencryptoki.so
-              SMOKE_LABEL=P11Lab
-              PIN_VALUE=123456
-              SOPIN_VALUE=12345678
-              ;;
-          esac
-          printf '%s' "$PIN_VALUE" > pin
-          printf '%s' "$SOPIN_VALUE" > so-pin
-          chmod 600 pin so-pin
-          # OpenCryptoki requires primary GID 1001 in the caller; p11lab run
-          # forwards the invoking UID:GID into the container. Re-exec under
-          # that GID only when needed, after proving socket access survives.
-          P11LAB_BIN="$(command -v p11lab)"
-          RUN_SUDO=""
-          if [ "$P11LAB_INPUT_ENVIRONMENT" = "opencryptoki" ] && [ "$(id -g)" != 1001 ]; then
-            sudo -n -g '#1001' true 2>/dev/null && sudo -n -g '#1001' docker info >/dev/null 2>&1 || {
-              echo "opencryptoki delivery test needs primary GID 1001" >&2
-              exit 1
-            }
-            RUN_SUDO="sudo -n -g #1001"
-          fi
-          $RUN_SUDO "$P11LAB_BIN" run "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --artifact "$CONSUMER_ID" \
-            --input "P11LAB_PIN_FILE=$PWD/pin" --input "P11LAB_SO_PIN_FILE=$PWD/so-pin" \
-            --output-dir smoke-run -- \
-            p11lab-smoke --module "$SMOKE_MODULE" \
-            --token-label "$SMOKE_LABEL" --pin-file /run/p11lab-input/P11LAB_PIN_FILE \
-            --output /p11lab-output/crypto --key-mode generated
-          python -c 'from p11lab.catalog import package_data; from pathlib import Path; Path("verify.py").write_bytes(package_data("consumer/verify.py").read_bytes())'
-          python verify.py smoke-run/crypto
-          openssl version
-
-      - name: Save the runtime image for the gated expose job
-        shell: bash
-        run: |
-          set -eu
-          PROVIDER_ID=$(python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])')
-          docker image inspect "$PROVIDER_ID" > local-inspect.json
-          docker save "$PROVIDER_ID" | gzip -n > runtime-image.tar.gz
-          sha256sum runtime-image.tar.gz > runtime-image.sha256
-          cat runtime-image.sha256
-          # One staged directory: artifact contents land deterministically.
-          mkdir -p staging/seal-out staging/build-out staging/meta staging/dist-wheel
-          cp seal-out/sealed-source.tar.gz seal-out/sealed-source.json staging/seal-out/
-          cp build-out/artifact.json build-out/context-manifest.json staging/build-out/
-          cp local-inspect.json runtime-image.tar.gz runtime-image.sha256 smoke-run/receipt.json staging/meta/
-          mv staging/meta/receipt.json staging/meta/smoke-receipt.json
-          cp dist-wheel/*.whl staging/dist-wheel/
-          cp wheel.sha256 staging/meta/
-          # Single-file job transport: deterministic placement, no layout guess.
-          tar -czf transport-build.tar.gz -C staging .
-
-      - name: Upload job transport (short-lived; registry is the durable record)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: provider-${{ inputs.channel }}-build
-          retention-days: 1
-          path: transport-build.tar.gz
-
-  publish-source:
-    needs: seal-build-test
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 360
     permissions:
       contents: read
+      actions: read
       packages: write
+      attestations: write
+      id-token: write
     steps:
-      - name: Checkout P11Lab
+      - name: Checkout selected producer source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - name: Resolve the effective registry
-        shell: bash
-        env:
-          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          set -eu
-          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
-          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
-
-      - name: Set up Python
+      - name: Set up exact Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: '3.12.10'
+          python-version: '3.12.14'
 
-      - name: Install P11Lab and pinned ORAS
-        shell: bash
-        run: |
-          set -eu
-          python -m pip install .
-          bash src/p11lab/data/delivery/install-oras.sh --output-dir "$RUNNER_TEMP/p11lab-oras"
-          echo "$RUNNER_TEMP/p11lab-oras" >> "$GITHUB_PATH"
-          echo "P11LAB_ORAS=$RUNNER_TEMP/p11lab-oras/oras" >> "$GITHUB_ENV"
-
-      - name: Download job transport
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: provider-${{ inputs.channel }}-build
-          path: transport-dl
-
-      - name: Unpack job transport
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p transport
-          tar -xzf transport-dl/transport-build.tar.gz -C transport
-          find transport | sort | head -30
-
-      - name: Verify the seal before publishing
-        shell: bash
-        working-directory: transport
-        env:
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
-        run: |
-          set -eu
-          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
-          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
-          python -c '
-          import json, os, sys
-          from p11lab.publish import artifact_tag, verify_sealed_archive
-          manifest = verify_sealed_archive("seal-out/sealed-source.tar.gz", "seal-check")
-          assert (manifest["environment"], manifest["channel"]) == (os.environ["P11LAB_INPUT_ENVIRONMENT"], os.environ["P11LAB_INPUT_CHANNEL"]), manifest
-          receipt = json.load(open("seal-out/sealed-source.json"))
-          tag = artifact_tag("src", receipt["environment"], receipt["channel"], receipt["archive_sha256"])
-          Path = __import__("pathlib").Path
-          Path("src-tag.txt").write_text(tag + "\n")
-          print(tag, receipt["archive_sha256"])
-          '
-
-      - name: Publish the sealed source
-        shell: bash
-        working-directory: transport
-        run: |
-          set -eu
-          echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
-          cd seal-out
-          "$P11LAB_ORAS" push --artifact-type application/vnd.p11lab.sealed-source.v1 \
-            --format json --export-manifest ../pushed-src-manifest.json \
-            "$P11LAB_REGISTRY:$(cat ../src-tag.txt)" \
-            sealed-source.tar.gz sealed-source.json | tee ../pushed-src.json
-
-      - name: Pack the sealed receipt for readback
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p seal-stage/seal-out
-          cp transport/seal-out/sealed-source.json seal-stage/seal-out/
-          cp transport/pushed-src.json transport/pushed-src-manifest.json seal-stage/
-          tar -czf transport-seal.tar.gz -C seal-stage .
-
-      - name: Upload the sealed receipt for readback
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: provider-${{ inputs.channel }}-seal
-          retention-days: 1
-          path: transport-seal.tar.gz
-
-  readback:
-    needs: publish-source
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    # No packages permission: this job cannot authenticate to the registry
-    # even if it tried. Anonymous pull with fresh empty credential state.
-    permissions:
-      contents: read
-      packages: none
-    steps:
-      - name: Checkout P11Lab
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Resolve the effective registry
-        shell: bash
-        env:
-          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          set -eu
-          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
-          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: '3.12.10'
-
-      - name: Install P11Lab and pinned ORAS
-        shell: bash
-        run: |
-          set -eu
-          python -m pip install .
-          bash src/p11lab/data/delivery/install-oras.sh --output-dir "$RUNNER_TEMP/p11lab-oras"
-          echo "P11LAB_ORAS=$RUNNER_TEMP/p11lab-oras/oras" >> "$GITHUB_ENV"
-
-      - name: Download job transport
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: provider-${{ inputs.channel }}-seal
-          path: transport-dl
-
-      - name: Unpack job transport
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p transport
-          tar -xzf transport-dl/transport-seal.tar.gz -C transport
-          find transport | sort | head -30
-
-      - name: Pull the sealed source anonymously
-        shell: bash
-        run: |
-          set -eu
-          MANIFEST_DIGEST=$(python -c 'import json; print(json.load(open("transport/pushed-src.json"))["digest"])')
-          echo "manifest=$MANIFEST_DIGEST"
-          mkdir -p "$RUNNER_TEMP/anon/home" "$RUNNER_TEMP/anon/xdg" pulled
-          printf '{"auths":{}}\n' > "$RUNNER_TEMP/anon/auth.json"
-          {
-            echo "=== empty credential state ==="
-            ls -la "$RUNNER_TEMP/anon"
-            echo "=== anonymous pull by manifest digest ==="
-            env -i "PATH=/usr/bin:/bin" "HOME=$RUNNER_TEMP/anon/home" "XDG_CONFIG_HOME=$RUNNER_TEMP/anon/xdg" \
-              "$P11LAB_ORAS" pull --registry-config "$RUNNER_TEMP/anon/auth.json" --no-tty \
-              -o "$PWD/pulled" "$P11LAB_REGISTRY@$MANIFEST_DIGEST"
-            echo "=== pulled ==="
-            ls -la pulled
-          } 2>&1 | tee readback-transcript.log
-
-      - name: Verify the readback byte for byte
-        shell: bash
-        run: |
-          set -eu
-          p11lab publish verify-readback --sealed-receipt transport/seal-out/sealed-source.json \
-            --pulled-dir pulled --transcript readback-transcript.log --extract-dir readback/extract
-
-      - name: Pack the readback proof
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p readback-stage
-          cp -r readback readback-transcript.log readback-stage/
-          cp transport/pushed-src.json transport/pushed-src-manifest.json readback-stage/
-          tar -czf transport-readback.tar.gz -C readback-stage .
-
-      - name: Upload the readback proof
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: provider-${{ inputs.channel }}-readback
-          retention-days: 1
-          path: transport-readback.tar.gz
-
-  admit:
-    needs: [seal-build-test, readback]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    outputs:
-      status: ${{ steps.gate.outputs.status }}
-    steps:
-      - name: Checkout P11Lab
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Resolve the effective registry
-        shell: bash
-        env:
-          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          set -eu
-          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
-          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: '3.12.10'
-
-      - name: Install P11Lab
-        shell: bash
-        run: python -m pip install .
-
-      - name: Download job transports
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: provider-${{ inputs.channel }}-build
-          path: build-dl
-
-      - name: Download the readback proof
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: provider-${{ inputs.channel }}-readback
-          path: readback-dl
-
-      - name: Unpack job transports
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p build-transport readback-transport
-          tar -xzf build-dl/transport-build.tar.gz -C build-transport
-          tar -xzf readback-dl/transport-readback.tar.gz -C readback-transport
-          find build-transport readback-transport | sort | head -40
-
-      - name: Run the delivery gate
-        id: gate
+      - name: Install independently protected controller wheel
         shell: bash
         env:
           P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
           P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
-        run: |
-          set -eu -o pipefail
-          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
-          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
-          BIN_SHA=$(python -c 'import json; print(json.load(open("build-transport/build-out/artifact.json"))["artifact"]["sha256"])')
-          WHEEL_SHA=$(cut -d' ' -f1 build-transport/meta/wheel.sha256)
-          SRC_MANIFEST_DIGEST=$(python -c 'import json; print(json.load(open("readback-transport/pushed-src.json"))["digest"].removeprefix("sha256:"))')
-          p11lab publish check-inputs "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" \
-            --sealed-manifest readback-transport/readback/extract/sealed.json \
-            --build-receipt build-transport/build-out/artifact.json
-          set +e
-          p11lab publish admit "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" \
-            --sealed-receipt build-transport/seal-out/sealed-source.json \
-            --sealed-manifest readback-transport/readback/extract/sealed.json \
-            --readback-proof readback-transport/readback/readback-proof.json \
-            --build-receipt build-transport/build-out/artifact.json \
-            --artifact-kind docker-local --artifact-reference "sha256:$BIN_SHA" --artifact-digest "$BIN_SHA" \
-            --registry "$P11LAB_REGISTRY" --output-dir admission-out \
-            --producer-wheel-sha256 "$WHEEL_SHA" \
-            --source-manifest-digest "$SRC_MANIFEST_DIGEST" \
-            --source-manifest readback-transport/pushed-src-manifest.json | tee admit.json
-          code=$?
-          set -e
-          if [ -f admission-out/verdict.json ]; then
-            echo "status=$(python -c "import json; print(json.load(open('admission-out/verdict.json'))['status'])")" >> "$GITHUB_OUTPUT"
-            cat admission-out/verdict.json >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "status=crashed" >> "$GITHUB_OUTPUT"
-            echo "admit produced no verdict" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          exit "$code"
-
-      - name: Pack the admission record
-        if: always()
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p admit-stage
-          cp -r admission-out admit-stage/ 2>/dev/null || mkdir -p admit-stage/admission-out
-          tar -czf transport-admission.tar.gz -C admit-stage .
-
-      - name: Upload the admission record
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: provider-${{ inputs.channel }}-admission
-          retention-days: 1
-          path: transport-admission.tar.gz
-
-  expose-binary:
-    needs: admit
-    # Fail closed: a blocked verdict skips binary upload entirely.
-    if: needs.admit.outputs.status == 'eligible'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      pushed-digest: ${{ steps.push.outputs['pushed-digest'] }}
-      pushed-tag: ${{ steps.push.outputs['pushed-tag'] }}
-    steps:
-      - name: Checkout P11Lab
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Resolve the effective registry
-        shell: bash
-        env:
           P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_CONTROL_WHEEL_URL: ${{ vars.P11LAB_CONTROL_WHEEL_URL }}
+          P11LAB_CONTROL_WHEEL_SHA256: ${{ vars.P11LAB_CONTROL_WHEEL_SHA256 }}
+          P11LAB_ENVIRONMENT_READER_TOKEN: ${{ secrets.P11LAB_ENVIRONMENT_READER_TOKEN }}
         run: |
           set -eu
-          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
-          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
+          test "$P11LAB_INPUT_ENVIRONMENT" = softhsm2
+          test "$P11LAB_INPUT_CHANNEL" = release
+          case "$P11LAB_INPUT_REGISTRY" in ''|ghcr.io/p11lab/softhsm2) ;; *) exit 1;; esac
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP" P11LAB_CONTROL_WHEEL_URL="$P11LAB_CONTROL_WHEEL_URL" \
+            P11LAB_CONTROL_WHEEL_SHA256="$P11LAB_CONTROL_WHEEL_SHA256" \
+            P11LAB_ENVIRONMENT_READER_TOKEN="$P11LAB_ENVIRONMENT_READER_TOKEN" python - <<'PY'
+          import json, os, re
+          from urllib.parse import urlsplit
+          from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
+          url = urlsplit(os.environ['P11LAB_CONTROL_WHEEL_URL'])
+          digest = os.environ['P11LAB_CONTROL_WHEEL_SHA256']
+          token = os.environ['P11LAB_ENVIRONMENT_READER_TOKEN']
+          if (url.scheme != 'https' or url.hostname != 'github.com' or url.port not in (None, 443)
+                  or url.username or url.password or url.query or url.fragment
+                  or not re.fullmatch(r'/p11lab/p11lab/releases/download/[A-Za-z0-9._-]+/p11lab-[A-Za-z0-9._-]+\.whl', url.path)
+                  or not re.fullmatch(r'[0-9a-f]{64}', digest) or not token or '\n' in token or '\r' in token):
+              raise SystemExit('protected controller wheel pin unavailable or invalid')
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          opener = build_opener(ProxyHandler({}), NoRedirect())
+          for name, expected in [('P11LAB_CONTROL_WHEEL_URL', os.environ['P11LAB_CONTROL_WHEEL_URL']),
+                                 ('P11LAB_CONTROL_WHEEL_SHA256', digest)]:
+              api = 'https://api.github.com/repos/p11lab/p11lab/environments/source-delivery/variables/' + name
+              request = Request(api, headers={'Authorization': 'Bearer ' + token,
+                  'Accept': 'application/vnd.github+json', 'User-Agent': 'p11lab-source-controller'})
+              try:
+                  with opener.open(request, timeout=15) as response:
+                      body = response.read(131073)
+                      if response.status != 200 or len(body) > 131072:
+                          raise ValueError('invalid response')
+                  record = json.loads(body)
+                  if record.get('name') != name or record.get('value') != expected:
+                      raise ValueError('environment value mismatch')
+              except Exception:
+                  raise SystemExit('protected environment controller pin unavailable or mismatched') from None
+          PY
+          unset P11LAB_ENVIRONMENT_READER_TOKEN
+          mkdir -m 700 "$RUNNER_TEMP/p11lab-controller" "$RUNNER_TEMP/p11lab-isolated"
+          wheel="$RUNNER_TEMP/p11lab-controller/${P11LAB_CONTROL_WHEEL_URL##*/}"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" \
+            curl --noproxy '*' --fail --silent --show-error --location --proto '=https' \
+              --proto-redir '=https' --max-time 120 --max-filesize 67108864 \
+              "$P11LAB_CONTROL_WHEEL_URL" -o "$wheel"
+          printf '%s  %s\n' "$P11LAB_CONTROL_WHEEL_SHA256" "$wheel" | sha256sum -c -
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" \
+            python -m pip install --no-index --no-deps "$wheel"
 
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: '3.12.10'
-
-      - name: Install P11Lab and pinned ORAS
-        shell: bash
-        run: |
-          set -eu
-          python -m pip install .
-          bash src/p11lab/data/delivery/install-oras.sh --output-dir "$RUNNER_TEMP/p11lab-oras"
-          echo "P11LAB_ORAS=$RUNNER_TEMP/p11lab-oras/oras" >> "$GITHUB_ENV"
-
-      - name: Download job transports
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: provider-${{ inputs.channel }}-build
-          path: build-dl
-
-      - name: Download the admission record
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: provider-${{ inputs.channel }}-admission
-          path: admit-dl
-
-      - name: Unpack job transports
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p build-transport admit-transport
-          tar -xzf build-dl/transport-build.tar.gz -C build-transport
-          tar -xzf admit-dl/transport-admission.tar.gz -C admit-transport
-          find build-transport admit-transport | sort | head -40
-
-      - name: Push the admitted binary and read it back anonymously
-        id: push
+      - name: Verify protected producer before candidate work
         shell: bash
         env:
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: p11lab publish check-producer softhsm2 --channel release
+
+      - name: Resolve, seal and build exact candidate without controller credentials
+        shell: bash
         run: |
           set -eu
-          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
-          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
-          cd build-transport
-          (cd meta && sha256sum -c runtime-image.sha256)
-          PROVIDER_ID=$(python -c 'import json; print(json.load(open("build-out/artifact.json"))["artifact"]["reference"])')
-          docker load -i meta/runtime-image.tar.gz
-          test "$(docker image inspect --format '{{.Id}}' "$PROVIDER_ID")" = "$PROVIDER_ID"
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
-          # The tag alias is computed after the push fixes the index digest.
-          # One reused staging alias per channel: the repository already
-          # scopes the environment, so no tag accumulation.
-          STAGE_TAG="t13-staging-$P11LAB_INPUT_CHANNEL"
-          docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$STAGE_TAG"
-          docker push "$P11LAB_REGISTRY:$STAGE_TAG"
-          docker buildx imagetools inspect "$P11LAB_REGISTRY:$STAGE_TAG" --raw > pushed-manifest.json
-          INDEX_DIGEST="sha256:$(sha256sum pushed-manifest.json | cut -d' ' -f1)"
-          RT_TAG=$(P11LAB_INDEX_DIGEST="$INDEX_DIGEST" python -c "import os; from p11lab.publish import artifact_tag; print(artifact_tag('rt', os.environ['P11LAB_INPUT_ENVIRONMENT'], os.environ['P11LAB_INPUT_CHANNEL'], os.environ['P11LAB_INDEX_DIGEST'].removeprefix('sha256:')))")
-          docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$RT_TAG"
-          docker push "$P11LAB_REGISTRY:$RT_TAG"
-          docker buildx imagetools inspect "$P11LAB_REGISTRY:$RT_TAG" --raw > pushed-rt-manifest.json
-          test "sha256:$(sha256sum pushed-rt-manifest.json | cut -d' ' -f1)" = "$INDEX_DIGEST"
-          # Human-friendly aliases (version/floating tags) for the same bytes.
-          # Each push is verified byte-identical to the canonical digest above.
-          ALIASES=$(python -c "import os; from p11lab.publish import runtime_aliases; print(' '.join(runtime_aliases(os.environ['P11LAB_INPUT_ENVIRONMENT'], os.environ['P11LAB_INPUT_CHANNEL'])))")
-          for ALIAS in $ALIASES; do
-            docker tag "$PROVIDER_ID" "$P11LAB_REGISTRY:$ALIAS"
-            docker push "$P11LAB_REGISTRY:$ALIAS"
-            SAFE_ALIAS=$(printf '%s' "$ALIAS" | tr -c 'a-zA-Z0-9_.-' '_')
-            docker buildx imagetools inspect "$P11LAB_REGISTRY:$ALIAS" --raw > "pushed-alias-$SAFE_ALIAS.json"
-            test "sha256:$(sha256sum "pushed-alias-$SAFE_ALIAS.json" | cut -d' ' -f1)" = "$INDEX_DIGEST"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" TMPDIR="$RUNNER_TEMP" \
+            p11lab resolve softhsm2 --channel release --output-dir resolve-out
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" TMPDIR="$RUNNER_TEMP" \
+            p11lab publish seal-sources softhsm2 --channel release --resolved-dir resolve-out --output-dir seal-out
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" TMPDIR="$RUNNER_TEMP" \
+            p11lab build softhsm2 --channel release --output-dir build-out
+
+      - name: Prepare fixed validation tools and validate the local candidate
+        shell: bash
+        run: |
+          set -eu
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" TMPDIR="$RUNNER_TEMP" \
+            p11lab image prepare-tools --output-dir "$RUNNER_TEMP/p11lab-tools"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" TMPDIR="$RUNNER_TEMP" \
+            p11lab image validate-local --artifact build-out/artifact.json \
+              --policy "$RUNNER_TEMP/p11lab-tools/validation-policy.json" --output-dir validation-out
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" TMPDIR="$RUNNER_TEMP" \
+            p11lab publish materialize-inventory --artifact build-out/artifact.json \
+              --build-receipt build-out/artifact.json --output-dir inventory-out
+
+      - name: Reassess complete source and rights before publishing any source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          p11lab publish prepare-source softhsm2 --channel release --artifact build-out/artifact.json \
+            --inventory inventory-out/inventory.json --validation-dir validation-out --validation-policy "$RUNNER_TEMP/p11lab-tools/validation-policy.json" \
+            --build-receipt build-out/artifact.json --sealed-dir seal-out --output-dir source-preparation
+
+      - name: Install pinned ORAS and patched attestation verifier
+        shell: bash
+        run: |
+          set -eu
+          oras_archive="$RUNNER_TEMP/oras.tar.gz"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" \
+            curl --noproxy '*' --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+              --max-time 120 --max-filesize 4679642 \
+              https://github.com/oras-project/oras/releases/download/v1.3.4/oras_1.3.4_linux_amd64.tar.gz -o "$oras_archive"
+          printf '%s  %s\n' f27adb935022d94df8dc77719c322dda592c78a0d57a6f7dcdd8d900b248c454 "$oras_archive" | sha256sum -c -
+          test "$(wc -c < "$oras_archive")" -eq 4679642
+          test "$(tar -tzf "$oras_archive" | LC_ALL=C sort)" = "$(printf 'LICENSE\noras')"
+          mkdir "$RUNNER_TEMP/p11lab-oras"
+          tar -xzf "$oras_archive" -C "$RUNNER_TEMP/p11lab-oras"
+          printf '%s  %s\n' 246c47e91bf2749a555ffe00a9824844c6df3a26d61974e3ce08f2077d79c556 "$RUNNER_TEMP/p11lab-oras/oras" | sha256sum -c -
+          archive="$RUNNER_TEMP/gh.tar.gz"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" \
+            curl --noproxy '*' --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+              --max-time 120 --max-filesize 15031001 \
+              https://github.com/cli/cli/releases/download/v2.103.2/gh_2.103.2_linux_amd64.tar.gz -o "$archive"
+          printf '%s  %s\n' 62ccf747115ddc61237efffdde66a3c8f70ba249433dc64f70801089b59c59c8 "$archive" | sha256sum -c -
+          test "$(wc -c < "$archive")" -eq 15031001
+          mkdir "$RUNNER_TEMP/p11lab-gh"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/p11lab-gh" gh_2.103.2_linux_amd64/bin/gh
+          gh="$RUNNER_TEMP/p11lab-gh/gh_2.103.2_linux_amd64/bin/gh"
+          printf '%s  %s\n' cbfdc94f3a5c0713c0d6df3e0a1d88a59a76b0c52332aad7d21d112f9da2cc0e "$gh" | sha256sum -c -
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" XDG_CACHE_HOME="$RUNNER_TEMP/p11lab-isolated/cache" \
+            "$gh" attestation trusted-root > "$RUNNER_TEMP/p11lab-trusted-root.jsonl"
+
+      - name: Publish only the reviewed source rosters
+        shell: bash
+        env:
+          P11LAB_PUBLISH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          P11LAB_ACTOR: ${{ github.actor }}
+        run: |
+          set -eu
+          repo=ghcr.io/p11lab/softhsm2
+          oras="$RUNNER_TEMP/p11lab-oras/oras"
+          auth="$RUNNER_TEMP/p11lab-registry-auth"
+          mkdir -m 700 "$auth"
+          trap 'rm -rf "$auth"' EXIT
+          printf '%s' "$P11LAB_PUBLISH_TOKEN" | "$oras" login ghcr.io --username "$P11LAB_ACTOR" \
+            --password-stdin --registry-config "$auth/config.json"
+          tag="source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          (cd seal-out && "$oras" push --registry-config "$auth/config.json" --format json \
+            --artifact-type application/vnd.p11lab.sealed-source.v1 "$repo:$tag-seal" \
+            sealed-source.tar.gz:application/gzip sealed-source.json:application/json > ../seal-pushed.json)
+          (cd source-preparation/evidence && "$oras" push --registry-config "$auth/config.json" --format json \
+            --artifact-type application/vnd.p11lab.source-companion.v1 "$repo:$tag-content" \
+            source-companion.tar.gz:application/gzip source-companion.json:application/json \
+            sbom.spdx.json:application/spdx+json > ../../content-pushed.json)
+
+      - name: Anonymous exact readback and attestation context
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          seal=$(python -c 'import json; print(json.load(open("seal-pushed.json"))["digest"].removeprefix("sha256:"))')
+          content=$(python -c 'import json; print(json.load(open("content-pushed.json"))["digest"].removeprefix("sha256:"))')
+          p11lab publish source-context softhsm2 --channel release --artifact build-out/artifact.json \
+            --evidence-dir source-preparation/evidence --validation-dir validation-out --validation-policy "$RUNNER_TEMP/p11lab-tools/validation-policy.json" \
+            --build-receipt build-out/artifact.json --sealed-dir seal-out --registry ghcr.io/p11lab/softhsm2 \
+            --source-manifest-digest "$seal" --content-manifest-digest "$content" --output-dir source-context-out
+
+      - name: Attest exact source admission context
+        id: source-attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: source-context-out/source-context.json
+          predicate-type: https://p11lab.org/attestations/source-admission/v1
+          predicate: '{"schema_version":1}'
+
+      - name: Authenticate context and recompute D
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          P11LAB_ATTESTATION_BUNDLE: ${{ steps.source-attestation.outputs.bundle-path }}
+        run: |
+          set -eu
+          seal=$(python -c 'import json; print(json.load(open("seal-pushed.json"))["digest"].removeprefix("sha256:"))')
+          content=$(python -c 'import json; print(json.load(open("content-pushed.json"))["digest"].removeprefix("sha256:"))')
+          p11lab publish admit-source softhsm2 --channel release --artifact build-out/artifact.json \
+            --evidence-dir source-preparation/evidence --validation-dir validation-out --validation-policy "$RUNNER_TEMP/p11lab-tools/validation-policy.json" \
+            --build-receipt build-out/artifact.json --sealed-dir seal-out --registry ghcr.io/p11lab/softhsm2 \
+            --source-manifest-digest "$seal" --content-manifest-digest "$content" \
+            --attestation-context source-context-out/source-context.json --bundle "$P11LAB_ATTESTATION_BUNDLE" \
+            --gh "$RUNNER_TEMP/p11lab-gh/gh_2.103.2_linux_amd64/bin/gh" \
+            --trusted-root "$RUNNER_TEMP/p11lab-trusted-root.jsonl" --output-dir source-admission-out
+
+      - name: Assess every fixed custody component and collect its sources
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          P11LAB_ATTESTATION_BUNDLE: ${{ steps.source-attestation.outputs.bundle-path }}
+        run: |
+          set -eu
+          seal=$(python -c 'import json; print(json.load(open("seal-pushed.json"))["digest"].removeprefix("sha256:"))')
+          content=$(python -c 'import json; print(json.load(open("content-pushed.json"))["digest"].removeprefix("sha256:"))')
+          p11lab custody component-sources --environment softhsm2 --channel release --artifact build-out/artifact.json \
+            --evidence-dir source-preparation/evidence --validation-dir validation-out --validation-policy "$RUNNER_TEMP/p11lab-tools/validation-policy.json" \
+            --build-receipt build-out/artifact.json --sealed-dir seal-out --registry ghcr.io/p11lab/softhsm2 \
+            --source-manifest-digest "$seal" --content-manifest-digest "$content" \
+            --attestation-context source-context-out/source-context.json --bundle "$P11LAB_ATTESTATION_BUNDLE" \
+            --gh "$RUNNER_TEMP/p11lab-gh/gh_2.103.2_linux_amd64/bin/gh" --trusted-root "$RUNNER_TEMP/p11lab-trusted-root.jsonl" \
+            --output-dir custody-component-sources > custody-component-summary.json
+
+      - name: Publish only independently reviewed custody component sources
+        shell: bash
+        env:
+          P11LAB_PUBLISH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          P11LAB_ACTOR: ${{ github.actor }}
+        run: |
+          set -eu
+          repo=ghcr.io/p11lab/softhsm2
+          oras="$RUNNER_TEMP/p11lab-oras/oras"
+          auth="$RUNNER_TEMP/p11lab-custody-registry-auth"
+          mkdir -m 700 "$auth"
+          trap 'rm -rf "$auth"' EXIT
+          printf '%s' "$P11LAB_PUBLISH_TOKEN" | "$oras" login ghcr.io --username "$P11LAB_ACTOR" \
+            --password-stdin --registry-config "$auth/config.json"
+          for component in evaluator-original checker-root consumer-root oracle-root checker-inputs consumer-inputs oracle-inputs checker-image checker-derived consumer-image consumer-derived oracle-image; do
+            tag="custody-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${component}"
+            (cd "custody-component-sources/$component/evidence" && "$oras" push --registry-config "$auth/config.json" --format json \
+              --artifact-type application/vnd.p11lab.source-companion.v1 "$repo:$tag" \
+              source-companion.tar.gz:application/gzip source-companion.json:application/json \
+              sbom.spdx.json:application/spdx+json > "../../../$component-pushed.json")
           done
-          echo "pushed-tag=$RT_TAG" >> "$GITHUB_OUTPUT"
-          echo "pushed-digest=$INDEX_DIGEST" >> "$GITHUB_OUTPUT"
-          echo "aliases: \`$RT_TAG $ALIASES\`" >> "$GITHUB_STEP_SUMMARY"
-          {
-            echo "=== empty docker credential state ==="
-            mkdir -p "$RUNNER_TEMP/anon-docker"
-            ls -la "$RUNNER_TEMP/anon-docker"
-            echo "=== remove local copy, pull anonymously by digest ==="
-            RMI_TAGS=("$PROVIDER_ID" "$P11LAB_REGISTRY:$RT_TAG" "$P11LAB_REGISTRY:$STAGE_TAG")
-            for ALIAS in $ALIASES; do RMI_TAGS+=("$P11LAB_REGISTRY:$ALIAS"); done
-            docker rmi "${RMI_TAGS[@]}"
-            DOCKER_CONFIG="$RUNNER_TEMP/anon-docker" docker pull "$P11LAB_REGISTRY@$INDEX_DIGEST"
-            DOCKER_CONFIG="$RUNNER_TEMP/anon-docker" docker image inspect "$P11LAB_REGISTRY@$INDEX_DIGEST" > ../pulled-inspect.json
-          } 2>&1 | tee ../binary-readback-transcript.log
-          cp ../pulled-inspect.json .
-          docker logout "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)"
+          python - <<'PYCODE'
+          import json, re
+          from pathlib import Path
+          names = ('evaluator-original', 'checker-root', 'consumer-root', 'oracle-root',
+                   'checker-inputs', 'consumer-inputs', 'oracle-inputs', 'checker-image',
+                   'checker-derived', 'consumer-image', 'consumer-derived', 'oracle-image')
+          result = {}
+          for name in names:
+              digest = json.loads(Path(name + '-pushed.json').read_text())['digest']
+              if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest):
+                  raise SystemExit('invalid component source OCI digest')
+              result[name] = {'evidence_dir': str(Path('custody-component-sources', name, 'evidence').absolute()),
+                              'manifest_sha256': digest.removeprefix('sha256:')}
+          Path('custody-component-sources.json').write_text(json.dumps(result, sort_keys=True))
+          PYCODE
 
-      - name: Pack the exposure evidence
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p exposure-stage
-          cp build-transport/pulled-inspect.json build-transport/meta/local-inspect.json exposure-stage/
-          cp binary-readback-transcript.log exposure-stage/
-          tar -czf transport-exposure.tar.gz -C exposure-stage .
-
-      - name: Upload the exposure evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: provider-${{ inputs.channel }}-exposure
-          retention-days: 1
-          path: transport-exposure.tar.gz
-
-  # Per-delivery checker validation: exactly the pushed bytes, this env
-  # only, both lanes. Advisory: provider findings record but do not fail
-  # the delivery; infra/incomplete evidence fails it. Each call is gated
-  # on explicit lane coverage (kept in sync with the lane select lists by
-  # tests/test_checker_workflows.py); uncovered envs skip the call.
-  validate-direct:
-    needs: expose-binary
-    if: contains(fromJSON('["haskoki", "freehsm", "kryoptic", "bouncyhsm", "softhsm2", "nss"]'), inputs.environment)
-    uses: ./.github/workflows/checker-direct-validation.yml
-    with:
-      environment: ${{ inputs.environment }}
-      digest: ${{ needs.expose-binary.outputs.pushed-digest }}
-      suite: smoke
-      advisory: 'true'
-
-  validate-proxy:
-    needs: expose-binary
-    if: contains(fromJSON('["softhsm2", "kryoptic", "bouncyhsm", "haskoki", "freehsm", "nss", "opencryptoki"]'), inputs.environment)
-    uses: ./.github/workflows/checker-proxy-validation.yml
-    with:
-      environment: ${{ inputs.environment }}
-      digest: ${{ needs.expose-binary.outputs.pushed-digest }}
-      suite: smoke
-      advisory: 'true'
-
-  finalize-handoff:
-    needs: [admit, expose-binary]
-    # Defense in depth: the admit job already exits nonzero on a blocked
-    # verdict, but the handoff push must never run without eligibility.
-    if: needs.admit.outputs.status == 'eligible'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout P11Lab
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Resolve the effective registry
+      - name: Freeze the custody roster after source readback and fresh D
+        id: custody_plan
         shell: bash
         env:
-          P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          P11LAB_ATTESTATION_BUNDLE: ${{ steps.source-attestation.outputs.bundle-path }}
         run: |
           set -eu
-          P11LAB_REGISTRY="$(PYTHONPATH="${{ github.workspace }}/src" python3 -c "from p11lab.publish import effective_registry; import os; print(effective_registry(os.environ.get('P11LAB_INPUT_REGISTRY', ''), os.environ['P11LAB_INPUT_ENVIRONMENT']))")"
-          echo "P11LAB_REGISTRY=$P11LAB_REGISTRY" >> "$GITHUB_ENV"
+          seal=$(python -c 'import json; print(json.load(open("seal-pushed.json"))["digest"].removeprefix("sha256:"))')
+          content=$(python -c 'import json; print(json.load(open("content-pushed.json"))["digest"].removeprefix("sha256:"))')
+          p11lab custody prepare --environment softhsm2 --channel release --artifact build-out/artifact.json \
+            --evidence-dir source-preparation/evidence --validation-dir validation-out --validation-policy "$RUNNER_TEMP/p11lab-tools/validation-policy.json" \
+            --build-receipt build-out/artifact.json --sealed-dir seal-out --registry ghcr.io/p11lab/softhsm2 \
+            --source-manifest-digest "$seal" --content-manifest-digest "$content" \
+            --attestation-context source-context-out/source-context.json --bundle "$P11LAB_ATTESTATION_BUNDLE" \
+            --gh "$RUNNER_TEMP/p11lab-gh/gh_2.103.2_linux_amd64/bin/gh" --trusted-root "$RUNNER_TEMP/p11lab-trusted-root.jsonl" \
+            --component-sources custody-component-sources.json --output-dir custody-out > custody-prepared.json
+          python - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          roles = ('image', 'validation', 'source-records', 'evaluator-original',
+                   'checker-tool', 'consumer-tool', 'oracle-tool', 'tool-inputs')
+          data = json.loads(Path('custody-prepared.json').read_text())
+          parts = [(row['role'], row['part']) for row in data['parts']]
+          if len(parts) != len(set(parts)) or any((role, 1) not in parts for role in roles):
+              raise SystemExit('invalid custody part roster')
+          if any(role not in roles or part not in (1, 2) for role, part in parts):
+              raise SystemExit('invalid custody part')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              for role in roles:
+                  output.write(role.replace('-', '_') + '_part2=' + ('yes' if (role, 2) in parts else 'no') + '\n')
+          PYCODE
 
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - name: Upload fixed custody image part 1
+        id: custody_image_part1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          python-version: '3.12.10'
+          name: p11lab-image-custody-image-part1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/image-part1/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-      - name: Install P11Lab and pinned ORAS
-        shell: bash
-        run: |
-          set -eu
-          python -m pip install .
-          bash src/p11lab/data/delivery/install-oras.sh --output-dir "$RUNNER_TEMP/p11lab-oras"
-          echo "P11LAB_ORAS=$RUNNER_TEMP/p11lab-oras/oras" >> "$GITHUB_ENV"
-
-      - name: Download the admission record
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - name: Upload fixed custody image part 2
+        id: custody_image_part2
+        if: ${{ success() && steps.custody_plan.outputs.image_part2 == 'yes' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: provider-${{ inputs.channel }}-admission
-          path: admit-dl
+          name: p11lab-image-custody-image-part2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/image-part2/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-      - name: Download the exposure evidence
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - name: Upload fixed custody validation part 1
+        id: custody_validation_part1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: provider-${{ inputs.channel }}-exposure
-          path: exposure-dl
+          name: p11lab-image-custody-validation-part1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/validation-part1/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-      - name: Unpack job transports
-        shell: bash
-        run: |
-          set -eu
-          mkdir -p admit-transport exposure-transport
-          tar -xzf admit-dl/transport-admission.tar.gz -C admit-transport
-          tar -xzf exposure-dl/transport-exposure.tar.gz -C exposure-transport
-          find admit-transport exposure-transport | sort | head -40
+      - name: Upload fixed custody validation part 2
+        id: custody_validation_part2
+        if: ${{ success() && steps.custody_plan.outputs.validation_part2 == 'yes' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-validation-part2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/validation-part2/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-      - name: Write and publish the handoff
+      - name: Upload fixed custody source-records part 1
+        id: custody_source_records_part1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-source-records-part1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/source-records-part1/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody source-records part 2
+        id: custody_source_records_part2
+        if: ${{ success() && steps.custody_plan.outputs.source_records_part2 == 'yes' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-source-records-part2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/source-records-part2/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody evaluator-original part 1
+        id: custody_evaluator_original_part1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-evaluator-original-part1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/evaluator-original-part1/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody evaluator-original part 2
+        id: custody_evaluator_original_part2
+        if: ${{ success() && steps.custody_plan.outputs.evaluator_original_part2 == 'yes' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-evaluator-original-part2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/evaluator-original-part2/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody checker-tool part 1
+        id: custody_checker_tool_part1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-checker-tool-part1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/checker-tool-part1/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody checker-tool part 2
+        id: custody_checker_tool_part2
+        if: ${{ success() && steps.custody_plan.outputs.checker_tool_part2 == 'yes' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-checker-tool-part2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/checker-tool-part2/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody consumer-tool part 1
+        id: custody_consumer_tool_part1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-consumer-tool-part1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/consumer-tool-part1/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody consumer-tool part 2
+        id: custody_consumer_tool_part2
+        if: ${{ success() && steps.custody_plan.outputs.consumer_tool_part2 == 'yes' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-consumer-tool-part2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/consumer-tool-part2/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody oracle-tool part 1
+        id: custody_oracle_tool_part1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-oracle-tool-part1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/oracle-tool-part1/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody oracle-tool part 2
+        id: custody_oracle_tool_part2
+        if: ${{ success() && steps.custody_plan.outputs.oracle_tool_part2 == 'yes' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-oracle-tool-part2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/oracle-tool-part2/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody tool-inputs part 1
+        id: custody_tool_inputs_part1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-tool-inputs-part1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/tool-inputs-part1/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload fixed custody tool-inputs part 2
+        id: custody_tool_inputs_part2
+        if: ${{ success() && steps.custody_plan.outputs.tool_inputs_part2 == 'yes' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-tool-inputs-part2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-out/parts/tool-inputs-part2/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Verify uploaded bytes and prepare external finalization
         shell: bash
         env:
-          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
-          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          P11LAB_ATTESTATION_BUNDLE: ${{ steps.source-attestation.outputs.bundle-path }}
+          IMAGE_1_ID: ${{ steps.custody_image_part1.outputs.artifact-id }}
+          IMAGE_1_DIGEST: ${{ steps.custody_image_part1.outputs.artifact-digest }}
+          IMAGE_2_ID: ${{ steps.custody_image_part2.outputs.artifact-id }}
+          IMAGE_2_DIGEST: ${{ steps.custody_image_part2.outputs.artifact-digest }}
+          VALIDATION_1_ID: ${{ steps.custody_validation_part1.outputs.artifact-id }}
+          VALIDATION_1_DIGEST: ${{ steps.custody_validation_part1.outputs.artifact-digest }}
+          VALIDATION_2_ID: ${{ steps.custody_validation_part2.outputs.artifact-id }}
+          VALIDATION_2_DIGEST: ${{ steps.custody_validation_part2.outputs.artifact-digest }}
+          SOURCE_RECORDS_1_ID: ${{ steps.custody_source_records_part1.outputs.artifact-id }}
+          SOURCE_RECORDS_1_DIGEST: ${{ steps.custody_source_records_part1.outputs.artifact-digest }}
+          SOURCE_RECORDS_2_ID: ${{ steps.custody_source_records_part2.outputs.artifact-id }}
+          SOURCE_RECORDS_2_DIGEST: ${{ steps.custody_source_records_part2.outputs.artifact-digest }}
+          EVALUATOR_ORIGINAL_1_ID: ${{ steps.custody_evaluator_original_part1.outputs.artifact-id }}
+          EVALUATOR_ORIGINAL_1_DIGEST: ${{ steps.custody_evaluator_original_part1.outputs.artifact-digest }}
+          EVALUATOR_ORIGINAL_2_ID: ${{ steps.custody_evaluator_original_part2.outputs.artifact-id }}
+          EVALUATOR_ORIGINAL_2_DIGEST: ${{ steps.custody_evaluator_original_part2.outputs.artifact-digest }}
+          CHECKER_TOOL_1_ID: ${{ steps.custody_checker_tool_part1.outputs.artifact-id }}
+          CHECKER_TOOL_1_DIGEST: ${{ steps.custody_checker_tool_part1.outputs.artifact-digest }}
+          CHECKER_TOOL_2_ID: ${{ steps.custody_checker_tool_part2.outputs.artifact-id }}
+          CHECKER_TOOL_2_DIGEST: ${{ steps.custody_checker_tool_part2.outputs.artifact-digest }}
+          CONSUMER_TOOL_1_ID: ${{ steps.custody_consumer_tool_part1.outputs.artifact-id }}
+          CONSUMER_TOOL_1_DIGEST: ${{ steps.custody_consumer_tool_part1.outputs.artifact-digest }}
+          CONSUMER_TOOL_2_ID: ${{ steps.custody_consumer_tool_part2.outputs.artifact-id }}
+          CONSUMER_TOOL_2_DIGEST: ${{ steps.custody_consumer_tool_part2.outputs.artifact-digest }}
+          ORACLE_TOOL_1_ID: ${{ steps.custody_oracle_tool_part1.outputs.artifact-id }}
+          ORACLE_TOOL_1_DIGEST: ${{ steps.custody_oracle_tool_part1.outputs.artifact-digest }}
+          ORACLE_TOOL_2_ID: ${{ steps.custody_oracle_tool_part2.outputs.artifact-id }}
+          ORACLE_TOOL_2_DIGEST: ${{ steps.custody_oracle_tool_part2.outputs.artifact-digest }}
+          TOOL_INPUTS_1_ID: ${{ steps.custody_tool_inputs_part1.outputs.artifact-id }}
+          TOOL_INPUTS_1_DIGEST: ${{ steps.custody_tool_inputs_part1.outputs.artifact-digest }}
+          TOOL_INPUTS_2_ID: ${{ steps.custody_tool_inputs_part2.outputs.artifact-id }}
+          TOOL_INPUTS_2_DIGEST: ${{ steps.custody_tool_inputs_part2.outputs.artifact-digest }}
         run: |
           set -eu
-          case "$P11LAB_INPUT_CHANNEL" in release|rolling) ;; *) echo "bad channel" >&2; exit 1;; esac
-          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo "bad environment" >&2; exit 1;; esac
-          PUSHED_DIGEST="${{ needs['expose-binary'].outputs['pushed-digest'] }}"
-          PUSHED_TAG="${{ needs['expose-binary'].outputs['pushed-tag'] }}"
-          PUSHED_SIZE=$(python -c 'import json; print(json.load(open("exposure-transport/pulled-inspect.json"))[0]["Size"])')
-          p11lab publish expose --admission admit-transport/admission-out/admission.json \
-            --pushed-digest "${PUSHED_DIGEST#sha256:}" --pushed-tag "$PUSHED_TAG" --pushed-size "$PUSHED_SIZE" \
-            --local-inspect exposure-transport/local-inspect.json \
-            --pulled-inspect exposure-transport/pulled-inspect.json \
-            --registry "$P11LAB_REGISTRY" --output-dir handoff-out
-          HANDOFF_SHA=$(sha256sum handoff-out/handoff.json | cut -d' ' -f1)
-          HANDOFF_TAG=$(P11LAB_HANDOFF_SHA="$HANDOFF_SHA" python -c "import os; from p11lab.publish import artifact_tag; print(artifact_tag('handoff', os.environ['P11LAB_INPUT_ENVIRONMENT'], os.environ['P11LAB_INPUT_CHANNEL'], os.environ['P11LAB_HANDOFF_SHA']))")
-          echo "${{ secrets.GITHUB_TOKEN }}" | "$P11LAB_ORAS" login "$(echo "$P11LAB_REGISTRY" | cut -d/ -f1)" --username "${{ github.actor }}" --password-stdin
-          cd handoff-out
-          "$P11LAB_ORAS" push --artifact-type application/vnd.p11lab.handoff.v1 \
-            --format json "$P11LAB_REGISTRY:$HANDOFF_TAG" handoff.json | tee ../pushed-handoff.json
-          echo "## Handoff" >> "$GITHUB_STEP_SUMMARY"
-          echo "tag: \`$HANDOFF_TAG\`, binary: \`$PUSHED_TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PYCODE'
+          import json, os, re
+          from pathlib import Path
+          data = json.loads(Path('custody-prepared.json').read_text())
+          rows = []
+          for part in data['parts']:
+              key = part['role'].replace('-', '_').upper() + '_' + str(part['part'])
+              ident, digest = os.environ[key + '_ID'], os.environ[key + '_DIGEST']
+              if not re.fullmatch(r'[1-9][0-9]*', ident) or not re.fullmatch(r'[0-9a-f]{64}', digest):
+                  raise SystemExit('invalid uploaded artifact identity')
+              rows.append({'name': part['name'], 'id': int(ident), 'digest': 'sha256:' + digest})
+          Path('custody-uploads.json').write_text(json.dumps(rows))
+          PYCODE
+          seal=$(python -c 'import json; print(json.load(open("seal-pushed.json"))["digest"].removeprefix("sha256:"))')
+          content=$(python -c 'import json; print(json.load(open("content-pushed.json"))["digest"].removeprefix("sha256:"))')
+          p11lab custody finalize --environment softhsm2 --channel release --artifact build-out/artifact.json \
+            --evidence-dir source-preparation/evidence --validation-dir validation-out --validation-policy "$RUNNER_TEMP/p11lab-tools/validation-policy.json" \
+            --build-receipt build-out/artifact.json --sealed-dir seal-out --registry ghcr.io/p11lab/softhsm2 \
+            --source-manifest-digest "$seal" --content-manifest-digest "$content" \
+            --attestation-context source-context-out/source-context.json --bundle "$P11LAB_ATTESTATION_BUNDLE" \
+            --gh "$RUNNER_TEMP/p11lab-gh/gh_2.103.2_linux_amd64/bin/gh" --trusted-root "$RUNNER_TEMP/p11lab-trusted-root.jsonl" \
+            --component-sources custody-component-sources.json --payload-dir custody-out \
+            --uploads custody-uploads.json --output-dir custody-finalization > custody-finalization-result.json
+
+      - name: Attest the checked custody finalization
+        id: custody_attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: custody-finalization/custody-finalization.json
+          predicate-type: https://p11lab.org/attestations/image-custody/v1
+          predicate: '{"schema_version":1}'
+
+      - name: Stage the two-file custody control
+        shell: bash
+        env:
+          P11LAB_CUSTODY_BUNDLE: ${{ steps.custody_attestation.outputs.bundle-path }}
+        run: |
+          set -eu
+          mkdir custody-control
+          cp custody-finalization/custody-finalization.json custody-control/custody-finalization.json
+          cp "$P11LAB_CUSTODY_BUNDLE" custody-control/bundle.json
+
+      - name: Upload the separately attested custody control
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-image-custody-control-${{ github.run_id }}-${{ github.run_attempt }}
+          path: custody-control/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: Apache-2.0
+# Diagnostic only: this workflow does not execute or qualify a round.
+name: checker-round
+on:
+  workflow_call:
+    inputs:
+      framework_sha:
+        required: true
+        type: string
+      tier:
+        required: true
+        type: string
+      p11lab_ref:
+        required: true
+        type: string
+    outputs:
+      round_positive:
+        value: ${{ jobs.diagnostic.outputs.round_positive }}
+      receipt_artifact:
+        value: ${{ jobs.diagnostic.outputs.receipt_artifact }}
+      capsule_artifact:
+        value: ${{ jobs.diagnostic.outputs.capsule_artifact }}
+      capsule_sha256:
+        value: ${{ jobs.diagnostic.outputs.capsule_sha256 }}
+      raw_artifacts_manifest:
+        value: ${{ jobs.diagnostic.outputs.raw_artifacts_manifest }}
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      round_positive: ${{ steps.result.outputs.round_positive }}
+      receipt_artifact: ${{ steps.result.outputs.receipt_artifact }}
+      capsule_artifact: ${{ steps.result.outputs.capsule_artifact }}
+      capsule_sha256: ${{ steps.result.outputs.capsule_sha256 }}
+      raw_artifacts_manifest: ${{ steps.result.outputs.raw_artifacts_manifest }}
+    steps:
+      - name: Validate input identities
+        id: inputs
+        shell: bash
+        env:
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+          TIER: ${{ inputs.tier }}
+        run: |
+          [[ "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$P11LAB_REF" =~ ^[0-9a-f]{40}$ ]]
+          case "$TIER" in pr-smoke|nightly|release) ;; *) exit 1 ;; esac
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: bash
+        env:
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Validate policy and write diagnostic manifest
+        id: result
+        shell: bash
+        env:
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+          TIER: ${{ inputs.tier }}
+        run: |
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python -m p11lab round validate-policy --policy-root "$GITHUB_WORKSPACE/p11lab-control/src/p11lab/data/rounds" --tier "$TIER" --output-json "$RUNNER_TEMP/round-policy.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          policy = json.loads((temp / 'round-policy.json').read_text())
+          if policy['round_positive'] is not False:
+              raise SystemExit('policy must remain diagnostic')
+          manifest = {'schema': 'p11lab-round-diagnostic-v1', 'diagnostic_only': True,
+                      'framework_sha': os.environ['FRAMEWORK_SHA'], 'p11lab_ref': os.environ['P11LAB_REF'],
+                      'tier': os.environ['TIER'], 'round_positive': False, 'policy': policy,
+                      'receipt_artifact': None, 'capsule_artifact': None, 'capsule_sha256': None,
+                      'raw_artifacts_manifest': None}
+          (temp / 'round-diagnostic.json').write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+          PY
+          {
+            echo 'round_positive=false'
+            echo 'receipt_artifact='
+            echo 'capsule_artifact='
+            echo 'capsule_sha256='
+            echo 'raw_artifacts_manifest='
+          } >> "$GITHUB_OUTPUT"
+      - name: Upload diagnostic manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-round-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/round-diagnostic.json
+          if-no-files-found: error
+          retention-days: 14

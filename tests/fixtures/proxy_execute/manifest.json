@@ -1,0 +1,42 @@
+{
+  "build_context_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "build_job_id": "777778",
+  "caller_repository_full_name": "example/proxy-gates-caller",
+  "caller_repository_id": 7777,
+  "cargo_lock_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "cli_path": "cli.bin",
+  "cli_sha256": "b4bdb2ce412608492eaa32cfa915f626c07244e5e2f62424a7b0fd2aec16b4a8",
+  "cli_size": 25,
+  "config_hashes": {
+    "daemon": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "daemon_path": "daemon.bin",
+  "daemon_sha256": "96e8c9cca5ecf1f84429242315732aa71bdc08487dcebe5013814d82e7ddc011",
+  "daemon_size": 28,
+  "dependency_closure": [
+    "2222222222222222222222222222222222222222222222222222222222222222"
+  ],
+  "features": [
+    "softHSM"
+  ],
+  "flags": [
+    "--locked"
+  ],
+  "hook_hashes": {},
+  "protoc_identity": "protoc 25.1 p1a-fixture",
+  "run_attempt": 2,
+  "run_id": 777771,
+  "rustc_identity": "rustc 1.82.0 p1a-fixture",
+  "schema_version": 1,
+  "shim_path": "shim.bin",
+  "shim_sha256": "a45f76eb226f588bad30bade17021161856e1a479202123f307b51cb0788c311",
+  "shim_size": 26,
+  "source_archive_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_commit": "e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8",
+  "source_tree": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "target": "x86_64-unknown-linux-gnu",
+  "toolchain_identities": [
+    "gcc 13 p1a-fixture"
+  ],
+  "vendored_closure": []
+}

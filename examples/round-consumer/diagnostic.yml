@@ -1,0 +1,18 @@
+# UNPUBLISHED TEMPLATE: replace both P11LAB_COMMIT_SHA placeholders with the
+# same reviewed full commit SHA after a compatible workflow is published.
+# Replace FRAMEWORK_COMMIT_SHA with the candidate identity. This diagnostic
+# does not execute or qualify the candidate and produces no acceptance receipt.
+name: diagnostic-example
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    permissions:
+      contents: read
+    uses: p11lab/p11lab/.github/workflows/checker-round.yml@<P11LAB_COMMIT_SHA>
+    with:
+      framework_sha: <FRAMEWORK_COMMIT_SHA>
+      tier: pr-smoke
+      p11lab_ref: <P11LAB_COMMIT_SHA>

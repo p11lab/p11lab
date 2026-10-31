@@ -78,7 +78,10 @@ def _file(record):
     _sha(record['sha256'])
     _require(type(record['size']) is int and 0 < record['size'] <= _LIMITS['file_bytes'], 'invalid tool input size')
     if 'url' in record:
-        _url(record['url'])
+        if record.get('kind') in {'git-source', 'python-wheel', 'python-source', 'proxy-rust-dist', 'proxy-crate', 'proxy-source', 'proxy-protobuf'}:
+            _opaque_url(record['url'], record['kind'])
+        else:
+            _url(record['url'])
 
 
 def _unique(records, key):
@@ -105,6 +108,10 @@ def _records(lock):
                       {'kind': 'metadata', 'id': p['filename']})
     for p in lock['resources']:
         result.append(dict(p) | {'kind': 'resource', 'id': p['asset']})
+    if lock['schema_version'] == 2:
+        result.extend(dict(p) for p in lock['python_inputs'])
+        if lock['checker_source'] is not None:
+            result.append(dict(lock['checker_source']) | {'kind': 'git-source', 'id': 'checker-source'})
     return result
 
 
@@ -186,9 +193,12 @@ def _package_record(record, snapshot):
 def _validate(lock, provenance):
     _keys(lock, {'schema_version', 'toolset', 'target', 'platform', 'apt_snapshot', 'base_image',
                  'parent_packages', 'stages', 'packages', 'sources', 'metadata', 'resources',
-                 'provenance', 'limits', 'license_status'})
-    _require(type(lock['schema_version']) is int and lock['schema_version'] == 1, 'unsupported tool input schema')
-    _require((lock['toolset'], lock['target'], lock['platform']) == ('consumer', 'debian13-amd64', 'linux/amd64'),
+                 'provenance', 'limits', 'license_status'} |
+          ({'execution', 'readiness', 'python_inputs', 'checker_source'} if lock.get('schema_version') == 2 else set()))
+    _require(type(lock['schema_version']) is int and lock['schema_version'] in {1, 2}, 'unsupported tool input schema')
+    _require(lock['target'] == 'debian13-amd64' and lock['platform'] == 'linux/amd64'
+             and ((lock['schema_version'] == 1 and lock['toolset'] == 'consumer')
+                  or (lock['schema_version'] == 2 and lock['toolset'] in {'checker', 'oracle'})),
              'unsupported tool input selection')
     _require(lock['apt_snapshot'] == '20260918T000000Z' and lock['license_status'] == 'unreviewed', 'invalid snapshot/admission')
     _require(isinstance(lock['base_image'], str) and re.fullmatch(r'docker.io/library/debian@sha256:[0-9a-f]{64}', lock['base_image']), 'invalid base pin')
@@ -238,9 +248,10 @@ def _validate(lock, provenance):
              and len(incorporated) == len(provenance['parent_incorporated_source_ids'])
              and incorporated == set(provenance['parent_incorporated_source_ids']), 'incorporated source roster mismatch')
 
-    _keys(lock['stages'], {'compiler', 'consumer'})
-    _keys(provenance['relations'], {'compiler', 'consumer'})
-    _keys(provenance['conflicts'], {'compiler', 'consumer'})
+    stages = {'compiler', 'consumer'} if lock['schema_version'] == 1 else {lock['toolset']}
+    _keys(lock['stages'], stages)
+    _keys(provenance['relations'], stages)
+    _keys(provenance['conflicts'], stages)
     for name, stage in lock['stages'].items():
         _keys(stage, {'roots', 'packages'})
         _require(isinstance(stage['packages'], list) and all(isinstance(x, str) for x in stage['packages'])
@@ -302,7 +313,10 @@ def _validate(lock, provenance):
             _file(p)
             if key == 'resources':
                 _path(p['asset'])
-                _require(p['asset'].startswith('consumer/'), 'invalid owned resource')
+                prefixes = ('consumer/',) if lock['schema_version'] == 1 else ('consumer/', 'tool-inputs/checker/', 'oracle/')
+                _require(p['asset'].startswith(prefixes), 'invalid owned resource')
+    if lock['schema_version'] == 2:
+        _validate_execution(lock)
     records = _records(lock)
     _unique(records, 'path')
     _unique(records, 'id')
@@ -312,12 +326,14 @@ def _validate(lock, provenance):
 
 
 def _load(toolset, target):
-    _require((toolset, target) == ('consumer', 'debian13-amd64'), 'unsupported toolset/target; only consumer debian13-amd64 is implemented')
-    raw = package_data('tool-inputs/consumer.debian13-amd64.lock.json').read_bytes()
+    _require(toolset in {'consumer', 'checker', 'oracle'} and target == 'debian13-amd64',
+             'unsupported toolset/target')
+    raw = package_data(f'tool-inputs/{toolset}.{target}.lock.json').read_bytes()
     lock = _json(raw)
     _require(isinstance(lock, dict) and isinstance(lock.get('provenance'), dict), 'missing tool provenance')
     _keys(lock['provenance'], {'path', 'sha256'})
-    _require(lock['provenance']['path'] == 'tool-inputs/consumer.debian13-amd64.provenance.json', 'unsupported provenance asset')
+    _require(lock['toolset'] == toolset and lock['target'] == target, 'tool selection mismatch')
+    _require(lock['provenance']['path'] == f'tool-inputs/{toolset}.{target}.provenance.json', 'unsupported provenance asset')
     provenance = package_data(lock['provenance']['path']).read_bytes()
     _require(_digest(provenance) == lock['provenance']['sha256'], 'provenance checksum mismatch')
     _validate(lock, _json(provenance))
@@ -384,11 +400,15 @@ def _verify_tree(root, records, *, receipt):
 
 
 def _receipt(lock, lock_sha256, records, observations, elapsed):
-    return {'schema_version': 1, 'status': 'resolved', 'toolset': lock['toolset'], 'target': lock['target'],
+    result = {'schema_version': 1, 'status': 'resolved', 'toolset': lock['toolset'], 'target': lock['target'],
             'lock_sha256': lock_sha256, 'records': records, 'observations': observations,
             'network_bytes': sum(p['size'] for p in records if p['kind'] != 'resource'),
             'resource_bytes': sum(p['size'] for p in records if p['kind'] == 'resource'),
             'elapsed_seconds': elapsed, 'admission': 'unreviewed', 'installation': 'not-executed'}
+    if lock['schema_version'] == 2:
+        result.update(expected_outputs=lock['execution']['expected_outputs'], readiness=lock['readiness'],
+                      reproduction=lock['execution'].get('reproduction', 'not-applicable'))
+    return result
 
 
 def resolve_tool_inputs(toolset: str, *, target: str, output_dir) -> dict:
@@ -422,6 +442,8 @@ def resolve_tool_inputs(toolset: str, *, target: str, output_dir) -> dict:
                 observation = download_locked_file(record, destination, deadline=deadline)
             observations.append({'path': record['path']} | observation)
         _verify_tree(root, records, receipt=False)
+        if lock['schema_version'] == 2:
+            _verify_execution_inputs(lock, root)
         _remaining(deadline)
         result = _receipt(lock, lock_sha256, records, observations, time.monotonic() - started)
         receipts.write_receipt(receipt_path, result)
@@ -466,5 +488,307 @@ def verify_resolved_tool_inputs(toolset: str, *, target: str, receipt_path) -> d
         if 'final_url' in observation:
             _require(isinstance(observation['final_url'], str), 'invalid observed origin')
             _target(observation['final_url'])
+            _require(urlsplit(observation['final_url']).netloc == urlsplit(record['url']).netloc,
+                     'observed origin differs from selected input origin')
     _verify_tree(path.parent, records, receipt=True)
+    if lock['schema_version'] == 2:
+        _verify_execution_inputs(lock, path.parent)
     return result
+
+
+def _opaque_url(value, kind):
+    """Separate immutable upstream artifact families from signed Debian records."""
+    _require(isinstance(value, str), 'invalid upstream input URL')
+    parsed = urlsplit(value)
+    _require(parsed.scheme == 'https' and not parsed.query and not parsed.fragment
+             and not any(c.isspace() or ord(c) < 32 for c in value), 'unapproved upstream input URL')
+    if kind == 'git-source':
+        _require(parsed.netloc == 'codeload.github.com' and re.fullmatch(
+            r'/mingulov/pkcs11-check/tar.gz/[0-9a-f]{40}', parsed.path), 'unapproved source origin/revision')
+    elif kind == 'proxy-source':
+        _require(parsed.netloc == 'codeload.github.com' and parsed.path ==
+                 '/mingulov/pkcs11-proxy-ng/tar.gz/a348a5f59b535b1ca309ea9f0a722e3bec692f72', 'unapproved proxy source')
+    elif kind == 'proxy-rust-dist':
+        _require(parsed.netloc == 'static.rust-lang.org' and re.fullmatch(
+            r'/dist/2026-09-03/(?:rustc|cargo|rust-std)-1\.98\.1-x86_64-unknown-linux-gnu\.tar\.xz', parsed.path),
+            'unapproved proxy Rust distribution')
+    elif kind == 'proxy-crate':
+        _require(parsed.netloc == 'static.crates.io' and re.fullmatch(
+            r'/crates/([A-Za-z0-9_-]+)/\1-[A-Za-z0-9_.+\-]+\.crate', parsed.path), 'unapproved crates archive')
+    elif kind == 'proxy-protobuf':
+        _require(parsed.netloc == 'github.com' and parsed.path ==
+                 '/protocolbuffers/protobuf/releases/download/v36.1/protoc-36.1-linux-x86_64.zip',
+                 'unapproved protobuf release asset')
+    else:
+        suffix = r'[^/]+\.whl' if kind == 'python-wheel' else r'[^/]+\.(?:tar\.gz|zip)'
+        _require(parsed.netloc == 'files.pythonhosted.org' and re.fullmatch(
+            r'/packages/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{60}/' + suffix, parsed.path), 'unapproved Python artifact origin/type')
+
+
+def _git_digest(kind, raw):
+    return hashlib.sha1(kind.encode() + b' ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+
+
+def _source_manifest(asset):
+    manifest = _json(package_data(asset).read_bytes())
+    _keys(manifest, {'repository', 'revision', 'tree', 'commit', 'files', 'authentication'})
+    _require(manifest['repository'] == 'https://github.com/mingulov/pkcs11-check.git'
+             and manifest['revision'] == '9df03bd8b811966fa7856394b19e3f57ffcd8a40', 'wrong checker source origin/revision')
+    _text(manifest['commit'])
+    _text(manifest['authentication'])
+    _require(_git_digest('commit', manifest['commit'].encode()) == manifest['revision']
+             and manifest['commit'].startswith('tree ' + manifest['tree'] + '\n'), 'Git commit/tree identity mismatch')
+    _unique(manifest['files'], 'path')
+    tree = {}
+    for record in manifest['files']:
+        _keys(record, {'path', 'mode', 'git_blob', 'sha256', 'size'})
+        _path(record['path'])
+        _sha(record['sha256'])
+        _require(type(record['size']) is int and 0 <= record['size'] <= _LIMITS['file_bytes'], 'invalid Git source size')
+        _require(record['mode'] in {'100644', '100755'} and re.fullmatch(r'[0-9a-f]{40}', record['git_blob']), 'invalid Git file identity/mode')
+        directory = tree
+        parts = record['path'].split('/')
+        for part in parts[:-1]:
+            _require(not isinstance(directory.get(part), tuple), 'Git file/directory collision')
+            directory = directory.setdefault(part, {})
+        _require(parts[-1] not in directory, 'duplicate Git path')
+        directory[parts[-1]] = (record['mode'], record['git_blob'])
+    def tree_oid(directory):
+        raw = bytearray()
+        for name, value in sorted(directory.items(), key=lambda x: (x[0] + ('/' if isinstance(x[1], dict) else '')).encode()):
+            mode, oid = ('40000', tree_oid(value)) if isinstance(value, dict) else value
+            raw.extend(mode.encode() + b' ' + name.encode() + b'\0' + bytes.fromhex(oid))
+        return _git_digest('tree', bytes(raw))
+    _require(sum(p['size'] for p in manifest['files']) <= _LIMITS['total_bytes'], 'source expansion exceeds bound')
+    _require(tree_oid(tree) == manifest['tree'], 'complete Git tree roster/modes mismatch')
+    return manifest
+
+
+def _validate_execution(lock):
+    _keys(lock['readiness'], {'installation', 'qualification', 'rights', 'build_outputs'})
+    _require(lock['readiness'] == {'installation': 'not-executed', 'qualification': 'blocked',
+                                  'rights': 'unreviewed', 'build_outputs': 'not-produced'}, 'invalid input readiness claim')
+    execution = lock['execution']
+    if lock['toolset'] == 'oracle':
+        _keys(execution, {'provider_state', 'environment', 'argv', 'runtime_roots', 'expected_outputs'})
+        _require(lock['python_inputs'] == [] and lock['checker_source'] is None
+                 and execution['provider_state'] == 'absent' and execution['expected_outputs'] == [], 'oracle is not independent')
+        _require(execution['environment'] == {'OPENSSL_CONF': '/opt/p11lab-oracle/openssl.cnf',
+                                             'OPENSSL_MODULES': '/usr/lib/x86_64-linux-gnu/ossl-modules',
+                                             'PYTHONNOUSERSITE': '1', 'PYTHONSAFEPATH': '1', 'LC_ALL': 'C'}, 'invalid oracle environment')
+        _require(execution['argv'] == ['/usr/bin/python3.13', '-I', '/opt/p11lab-oracle/verify.py',
+                                        '/input', '--openssl', '/usr/bin/openssl'], 'invalid oracle invocation')
+        _require(execution['runtime_roots'] == lock['stages']['oracle']['roots'], 'oracle runtime selector mismatch')
+        assets = {p['asset'] for p in lock['resources']}
+        _require(assets == {'consumer/verify.py', 'oracle/openssl.cnf'}, 'missing oracle script/configuration')
+        _require({'python3.13', 'openssl'} <= {r.split('=')[0] for r in execution['runtime_roots']}, 'missing oracle runtime root')
+        return
+    _keys(execution, {'source_revision', 'source_manifest', 'runtime_lock', 'build_lock', 'bootstrap_lock',
+                      'runtime_wheels', 'build_wheels', 'expected_outputs', 'retained_source',
+                      'retained_wheel_metadata', 'reproduction', 'metadata_comparison', 'python_metadata'})
+    _require(execution['source_revision'] == '9df03bd8b811966fa7856394b19e3f57ffcd8a40'
+             and execution['source_manifest'] == 'tool-inputs/checker/source-manifest.json', 'wrong executor source')
+    manifest = _source_manifest(execution['source_manifest'])
+    _keys(lock['checker_source'], {'path', 'url', 'sha256', 'size', 'manifest_asset'})
+    _file(lock['checker_source'] | {'kind': 'git-source'})
+    _require(lock['checker_source']['url'].endswith('/' + manifest['revision'])
+             and lock['checker_source']['manifest_asset'] == execution['source_manifest'], 'source acquisition binding mismatch')
+    _require(execution['reproduction'] == 'blocked-unreproduced-output'
+             and execution['metadata_comparison'] == 'complete-source-and-build-metadata-equal-official-git', 'unproved checker build claim')
+    resources = {p['asset']: p for p in lock['resources']}
+    fixed = [('runtime_lock', 'runtime-requirements.txt', '98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab'),
+             ('build_lock', 'build-requirements.txt', '594e522cfeeb6d3315db53587e932eb4d0c06fcf174d87fc2bd89355920d016e'),
+             ('bootstrap_lock', 'bootstrap-requirements.txt', 'ca993306863bc89df9e3280001060b8bf59d751974eb47d16482279321f16f83')]
+    requirements = {}
+    for key, filename, digest in fixed:
+        asset = 'tool-inputs/checker/' + filename
+        _require(execution[key] == asset and resources[asset]['sha256'] == digest, 'fixed checker dependency lock mismatch')
+        raw = package_data(asset).read_bytes()
+        _require(_digest(raw) == digest, 'checker requirements checksum mismatch')
+        entries = []
+        for line in raw.decode().splitlines():
+            match = re.fullmatch(r'([A-Za-z0-9_.-]+)==([^ ]+) --hash=sha256:([0-9a-f]{64})', line)
+            _require(match is not None, 'nonportable checker requirement')
+            entries.append((re.sub(r'[-_.]+', '-', match[1]).lower(), match[2], match[3]))
+        _require(len(entries) == len(set(entries)), 'duplicate requirement')
+        requirements[key] = entries
+    _unique(lock['python_inputs'], 'path')
+    _unique(lock['python_inputs'], 'id')
+    metadata = {}
+    _unique(execution['python_metadata'], 'asset')
+    for record in execution['python_metadata']:
+        _keys(record, {'asset', 'url', 'sha256', 'size', 'name', 'version'})
+        _require(record['asset'] in resources and resources[record['asset']]['sha256'] == record['sha256']
+                 and resources[record['asset']]['size'] == record['size'], 'Python metadata resource binding mismatch')
+        _require(record['url'] == f'https://pypi.org/pypi/{record["name"]}/{record["version"]}/json', 'wrong Python metadata origin')
+        data = _json(package_data(record['asset']).read_bytes())
+        _require(data['info']['name'].lower().replace('_', '-') == record['name']
+                 and data['info']['version'] == record['version'], 'Python metadata identity mismatch')
+        metadata[record['asset']] = data
+    selected = {}
+    for record in lock['python_inputs']:
+        _keys(record, {'path', 'url', 'sha256', 'size', 'filename', 'name', 'version', 'kind', 'metadata_asset', 'license_status', 'id'})
+        _require(record['kind'] in {'python-wheel', 'python-source'} and record['license_status'] == 'unreviewed', 'invalid Python input type/admission')
+        _file(record)
+        _require(record['path'] == ('wheels/' if record['kind'] == 'python-wheel' else 'python-sources/') + record['filename']
+                 and record['id'] == record['filename'], 'Python input path/identity mismatch')
+        data = metadata[record['metadata_asset']]
+        published = [p for p in data['urls'] if p['filename'] == record['filename']]
+        _require(len(published) == 1, 'missing/duplicate published Python artifact')
+        published = published[0]
+        _require(published['url'] == record['url'] and published['digests']['sha256'] == record['sha256']
+                 and type(published['size']) is int and published['size'] == record['size']
+                 and published['yanked'] is False
+                 and published['packagetype'] == ('bdist_wheel' if record['kind'] == 'python-wheel' else 'sdist')
+                 and re.sub(r'[-_.]+', '-', data['info']['name']).lower() == record['name']
+                 and data['info']['version'] == record['version'], 'published Python member identity/hash/type mismatch')
+        if record['kind'] == 'python-wheel':
+            selected[record['path']] = (record['name'], record['version'], record['sha256'])
+    expected_resources = {execution[k] for k in ('source_manifest', 'runtime_lock', 'build_lock', 'bootstrap_lock', 'retained_wheel_metadata')} | set(metadata)
+    _require(resources.keys() == expected_resources, 'orphan or missing checker resource')
+    for asset, data in metadata.items():
+        members = [p for p in lock['python_inputs'] if p['metadata_asset'] == asset]
+        expected_sources = {p['filename'] for p in data['urls'] if p['packagetype'] == 'sdist'}
+        _require(sum(p['kind'] == 'python-wheel' for p in members) == 1
+                 and {p['filename'] for p in members if p['kind'] == 'python-source'} == expected_sources
+                 and bool(expected_sources), 'incomplete published Python source/wheel roster')
+    outputs = execution['expected_outputs']
+    _require(outputs == [{'path': 'runtime-wheelhouse/pkcs11_check-0.2.3-py3-none-any.whl',
+                         'sha256': '58ac3451ae0dba207a48affa460309e4024c2ec7aefb04ef73062f420fdcffec',
+                         'size': 2084028, 'name': 'pkcs11-check', 'version': '0.2.3',
+                         'status': 'expected-unbuilt-local-artifact-no-public-url'}], 'fixed checker output changed or relabeled')
+    _keys(execution['retained_source'], {'sha256', 'size', 'official_git_comparison'})
+    _require(execution['retained_source'] == {'sha256': '895f74063dda5ba97776906e0dae86cd3a2c68bc9254ae2cc84be07abc64f502',
+                  'size': 18196480, 'official_git_comparison': 'all-1301-files-equal-executable-modes-preserved-git-archive-adds-group-write'}, 'retained source identity changed')
+    _require(execution['retained_wheel_metadata'] == 'tool-inputs/checker/retained-wheel-metadata.json'
+             and execution['retained_wheel_metadata'] in resources, 'missing retained wheel metadata')
+    _require(execution['source_manifest'] in resources, 'missing source manifest resource')
+    all_selected = set()
+    for field, reqs in [('runtime_wheels', requirements['runtime_lock']),
+                        ('build_wheels', requirements['build_lock'] + requirements['bootstrap_lock'])]:
+        roster = execution[field]
+        _require(isinstance(roster, list) and all(isinstance(x, str) for x in roster)
+                 and len(roster) == len(set(roster)), 'duplicate/invalid wheel roster')
+        actual = [selected[p] for p in roster if p in selected]
+        if field == 'runtime_wheels':
+            _require(outputs[0]['path'] in roster, 'missing fixed expected checker output')
+            actual.append(('pkcs11-check', '0.2.3', outputs[0]['sha256']))
+        _require(len(actual) == len(roster) == len(reqs) and set(actual) == set(reqs), 'wheel/requirement roster mismatch')
+        all_selected.update(p for p in roster if p in selected)
+    _require(all_selected == selected.keys(), 'unselected Python wheel input')
+    _require({'python3.13', 'python3.13-venv'} <= {r.split('=')[0] for r in lock['stages']['checker']['roots']}, 'missing checker Python/venv root')
+
+
+def _verify_execution_inputs(lock, root):
+    """Read opaque source/metadata members only; never import or extract them."""
+    _verify_debian_inputs(lock, root)
+    if lock['toolset'] != 'checker':
+        return
+    import tarfile
+    manifest = _source_manifest(lock['execution']['source_manifest'])
+    expected = {p['path']: p for p in manifest['files']}
+    prefix = 'pkcs11-check-' + manifest['revision']
+    directories = {prefix} | {prefix + '/' + str(parent) for name in expected
+                             for parent in PurePosixPath(name).parents if str(parent) != '.'}
+    seen, seen_members = set(), set()
+    with tarfile.open(root / lock['checker_source']['path'], mode='r:gz') as archive:
+        for member in archive:
+            name = member.name.rstrip('/')
+            _path(name)
+            _require(name not in seen_members, 'duplicate source archive member')
+            seen_members.add(name)
+            if member.isdir():
+                _require(name in directories, 'undeclared source directory')
+                continue
+            _require(member.isfile() and name.startswith(prefix + '/'), 'unsafe source archive member type/path')
+            relative = name[len(prefix) + 1:]
+            _require(relative in expected, 'undeclared source member')
+            record = expected[relative]
+            _require(member.size == record['size'] and member.mode in {int(record['mode'], 8) & 0o777, (int(record['mode'], 8) & 0o777) | 0o020},
+                     'source file size/mode mismatch')
+            with archive.extractfile(member) as stream:
+                raw = stream.read(record['size'] + 1)
+            _require(len(raw) == record['size'] and _digest(raw) == record['sha256']
+                     and _git_digest('blob', raw) == record['git_blob'], 'source file/Git object mismatch')
+            seen.add(relative)
+    _require(seen == expected.keys(), 'incomplete source archive roster')
+
+
+def _index_fields(raw):
+    result, last = {}, None
+    for line in raw.decode().splitlines():
+        if not line:
+            continue
+        if line.startswith(' '):
+            _require(last is not None, 'invalid index continuation')
+            result[last] += '\n' + line[1:]
+        else:
+            key, separator, value = line.partition(':')
+            _require(separator and key not in result, 'duplicate/invalid index field')
+            result[key] = value.strip()
+            last = key
+    return result
+
+
+def _verify_index_records(lock, provenance, indexes):
+    """Bind each curated package/source selector to the authenticated full stanza."""
+    records = provenance['parent_package_evidence'] + lock['packages'] + lock['sources']
+    for selector in {p['index'] for p in records}:
+        wanted = [p for p in records if p['index'] == selector]
+        expected = {(p['name'], p['version']): p for p in wanted}
+        _require(len(expected) == len(wanted), 'duplicate index member selector')
+        seen = set()
+        for raw in indexes[selector].split(b'\n\n'):
+            if not raw.strip():
+                continue
+            fields = _index_fields(raw)
+            key = (fields.get('Package'), fields.get('Version'))
+            if key not in expected:
+                continue
+            record = expected[key]
+            _require(key not in seen and _digest(raw + b'\n') == record['stanza_sha256'], 'index member/stanza identity mismatch')
+            seen.add(key)
+            if selector.endswith('.Packages'):
+                source = fields.get('Source', fields['Package'])
+                match = re.fullmatch(r'([^ ()]+)(?: \(([^ ()]+)\))?', source)
+                _require(match is not None, 'invalid index source identity')
+                _require(fields['Filename'] == record['filename'] and fields['SHA256'] == record['sha256']
+                         and fields['Size'] == str(record['size']) and fields['Architecture'] == record['architecture']
+                         and match[1] == record['source_package'] and (match[2] or fields['Version']) == record['source_version']
+                         and {k: v for k, v in fields.items() if k in _RELATIONS} == record['relations'], 'package index member binding mismatch')
+            else:
+                files = {line.split()[2]: (line.split()[0], int(line.split()[1]))
+                         for line in fields['Checksums-Sha256'].splitlines() if line.strip()}
+                _require(files == {p['filename']: (p['sha256'], p['size']) for p in record['files']}
+                         and all('/' + fields['Directory'] + '/' + p['filename'] in p['url'] for p in record['files']),
+                         'source index member binding mismatch')
+        _require(seen == expected.keys(), 'missing authenticated index member')
+
+
+def _verify_debian_inputs(lock, root):
+    import lzma
+    provenance_raw = package_data(lock['provenance']['path']).read_bytes()
+    _require(_digest(provenance_raw) == lock['provenance']['sha256'], 'changed provenance checksum')
+    provenance = _json(provenance_raw)
+    _require(_digest(_canonical({k: v for k, v in lock.items() if k != 'provenance'})) == provenance['lock_binding_sha256'],
+             'changed Debian provenance authority')
+    indexes = {}
+    for suite in ('trixie', 'trixie-updates', 'trixie-security'):
+        entry = provenance['metadata'][suite]
+        signed = _read_regular(root / ('metadata/' + entry['filename']), maximum=entry['size'])
+        # Exact signed bytes are pinned by the previously authenticated installed
+        # metadata chain. This operation does not trust new signature declarations.
+        release = signed.split(b'\n\n', 1)[1].split(b'-----BEGIN PGP SIGNATURE-----', 1)[0]
+        fields = _index_fields(release)
+        published = {line.split()[2]: (line.split()[0], int(line.split()[1]))
+                     for line in fields['SHA256'].splitlines() if line.strip()}
+        for index in entry['indexes']:
+            suffix = 'main/binary-amd64/Packages.xz' if index['filename'].endswith('.Packages.xz') else 'main/source/Sources.xz'
+            _require(published[suffix] == (index['sha256'], index['size']), 'signed index checksum/member mismatch')
+            compressed = _read_regular(root / ('metadata/' + index['filename']), maximum=index['size'])
+            decoder = lzma.LZMADecompressor()
+            expanded = decoder.decompress(compressed, max_length=index['uncompressed']['size'] + 1)
+            _require(decoder.eof and not decoder.unused_data and len(expanded) == index['uncompressed']['size']
+                     and _digest(expanded) == index['uncompressed']['sha256'], 'expanded index checksum/size mismatch')
+            indexes[index['filename'][:-3]] = expanded
+    _verify_index_records(lock, provenance, indexes)

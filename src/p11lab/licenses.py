@@ -7,15 +7,255 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 import json
+import mmap
+import os
 from pathlib import Path, PurePosixPath
 import re
+import stat
 import struct
 import subprocess
 import tarfile
 import tempfile
 
+from .jsonutil import loads as strict_json_loads
 from .models import ArtifactRef
 from .sources import SourceError, checksum
+
+
+class SealedTreeObservation:
+    """A local tree measured by the inspector, not a source-rights verdict."""
+
+    __slots__ = ('_artifact', '_observation')
+
+    def __init__(self, key, artifact, observation):
+        if key is not _TREE_OBSERVATION_KEY:
+            raise TypeError('tree observation requires the local inspector')
+        self._artifact = artifact
+        self._observation = json.dumps(observation, sort_keys=True, separators=(',', ':'))
+
+    def artifact(self):
+        return self._artifact
+
+    def observation(self):
+        return strict_json_loads(self._observation)
+
+
+_TREE_OBSERVATION_KEY = object()
+
+
+def observe_custody_tree(root: Path, *, platform: str) -> SealedTreeObservation:
+    """Hash a closed, bounded local tree without following links or executing it.
+
+    File-backed ELF dependencies are resolved only to candidates within this
+    tree. Missing dependencies remain unresolved for the existing validator.
+    This is an observation, not a grant or a source-first readback.
+    """
+    import posixpath
+    if platform != 'linux/amd64':
+        raise SourceError('unsupported custody tree platform')
+    root = Path(root).absolute()
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    files, tree, binaries, aliases = [], [], [], {}
+    total = 0
+
+    def identity(value):
+        return (value.st_dev, value.st_ino, value.st_mode, value.st_nlink,
+                value.st_size, value.st_mtime_ns, value.st_ctime_ns)
+
+    def scan(directory, prefix):
+        nonlocal total
+        before = os.fstat(directory)
+        with os.scandir(directory) as iterator:
+            entries = sorted(iterator, key=lambda entry: entry.name)
+        for entry in entries:
+            name = entry.name
+            relative = prefix + name
+            relative_path(relative)
+            if len(tree) >= 100000:
+                raise SourceError('custody tree entry bound exceeded')
+            initial = os.stat(name, dir_fd=directory, follow_symlinks=False)
+            path = '/' + relative
+            mode = stat.S_IMODE(initial.st_mode)
+            if stat.S_ISDIR(initial.st_mode):
+                child = os.open(name, flags, dir_fd=directory)
+                try:
+                    if identity(os.fstat(child)) != identity(initial):
+                        raise SourceError('custody tree directory changed')
+                    tree.append({'path': path, 'type': 'directory', 'mode': mode})
+                    scan(child, relative + '/')
+                    if identity(os.fstat(child)) != identity(initial):
+                        raise SourceError('custody tree directory changed')
+                finally:
+                    os.close(child)
+            elif stat.S_ISLNK(initial.st_mode):
+                target = os.readlink(name, dir_fd=directory)
+                if not target or '\x00' in target or len(os.fsencode(target)) > 4096:
+                    raise SourceError('invalid custody tree link')
+                tree.append({'path': path, 'type': 'symlink', 'mode': mode, 'target': target})
+                aliases[path] = target
+            elif stat.S_ISREG(initial.st_mode):
+                if initial.st_nlink != 1 or initial.st_size > 512 * 1024**2:
+                    raise SourceError('custody tree member bound or link count')
+                total += initial.st_size
+                if total > 8 * 1024**3:
+                    raise SourceError('custody tree total byte bound exceeded')
+                fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=directory)
+                try:
+                    if identity(os.fstat(fd)) != identity(initial):
+                        raise SourceError('custody tree file changed')
+                    with os.fdopen(fd, 'rb', closefd=False) as stream:
+                        digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+                    record = {'path': path, 'sha256': digest, 'size': initial.st_size,
+                              'mode': mode, 'package': None}
+                    files.append(record)
+                    tree.append({'path': path, 'type': 'file', 'mode': mode,
+                                 'size': initial.st_size, 'sha256': digest})
+                    if os.pread(fd, 4, 0) == b'\x7fELF':
+                        try:
+                            with mmap.mmap(fd, 0, access=mmap.ACCESS_READ) as contents:
+                                needed = _needed(contents, allow_origin=True)
+                        except SourceError as error:
+                            raise SourceError('custody tree ELF ' + path + ': ' + str(error)) from error
+                        binaries.append({'path': path, 'sha256': digest, 'size': initial.st_size,
+                                         'needed': needed, 'package': None})
+                    if identity(os.fstat(fd)) != identity(initial):
+                        raise SourceError('custody tree file changed')
+                finally:
+                    os.close(fd)
+            else:
+                raise SourceError('unsupported custody tree file type')
+            if identity(os.stat(name, dir_fd=directory, follow_symlinks=False)) != identity(initial):
+                raise SourceError('custody tree member changed')
+        if identity(os.fstat(directory)) != identity(before):
+            raise SourceError('custody tree directory changed')
+
+    descriptor = os.open(root, flags)
+    try:
+        root_before = os.fstat(descriptor)
+        scan(descriptor, '')
+        if identity(os.stat(root, follow_symlinks=False)) != identity(root_before):
+            raise SourceError('custody tree root changed')
+    finally:
+        os.close(descriptor)
+    if not tree:
+        raise SourceError('empty custody tree')
+    elf_paths = {record['path'] for record in binaries}
+    candidates: dict[str, set[str]] = {}
+    def resolve(path):
+        target, seen = path, set()
+        while target in aliases:
+            if target in seen:
+                raise SourceError('cyclic custody tree link')
+            seen.add(target)
+            link = aliases[target]
+            if link.startswith('/'):
+                try:
+                    target = '/' + Path(posixpath.normpath(link)).relative_to(root).as_posix()
+                except ValueError:
+                    return None
+            else:
+                parts = list(PurePosixPath(target).parent.parts[1:])
+                for item in link.split('/'):
+                    if item == '..':
+                        if not parts:
+                            return None
+                        parts.pop()
+                    elif item and item != '.':
+                        parts.append(item)
+                target = '/' + '/'.join(parts)
+        return target
+    for path in sorted(elf_paths | aliases.keys()):
+        target = resolve(path)
+        if target in elf_paths:
+            candidates.setdefault(PurePosixPath(path).name, set()).add(target)
+    links = []
+    for record in binaries:
+        for needed in record['needed']:
+            if needed.startswith('$ORIGIN/'):
+                parts = list(PurePosixPath(record['path']).parent.parts[1:])
+                for item in needed.removeprefix('$ORIGIN/').split('/'):
+                    if item == '..':
+                        if not parts:
+                            raise SourceError('ELF dependency escapes custody tree')
+                        parts.pop()
+                    elif item != '.':
+                        parts.append(item)
+                target = resolve('/' + '/'.join(parts))
+                resolved = [target] if target in elf_paths else []
+            else:
+                resolved = sorted(candidates.get(needed, []))
+            links.append({'binary': record['path'], 'needed': needed, 'resolved': resolved})
+    facts = {'tree_entries': tree, 'packages': [], 'binaries': binaries, 'linked_libraries': links,
+             'files': files, 'link_method': 'ELF DT_NEEDED and tree candidates; not runtime search-order attestation'}
+    raw = json.dumps(facts, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
+    artifact = ArtifactRef('custody-tree', str(root), hashlib.sha256(raw).hexdigest(), platform)
+    return SealedTreeObservation(_TREE_OBSERVATION_KEY, artifact, {'artifact': asdict(artifact)} | facts)
+
+
+def _evaluator_metadata_observation(artifact, receipt, record, identity_sha256, mode):
+    metadata = {'renderer_sha256': receipt['bootstrap_driver_sha256'], 'contract_sha256': receipt['contract_sha256'],
+                'tooling_sha256': receipt['tooling_sha256'], 'evaluator_identity_sha256': identity_sha256,
+                'source': receipt['source'], 'wheel': receipt['wheel'], 'locks': receipt['locks'],
+                'python': receipt['python'], 'native_dependencies': receipt['native_dependencies'],
+                'receipt_sha256': record['sha256']}
+    return {'artifact': asdict(artifact), 'packages': [], 'binaries': [], 'linked_libraries': [],
+            'files': [{'path': '/evaluator-build-receipt.json', 'sha256': record['sha256'],
+                       'size': record['size'], 'mode': mode, 'package': None}], 'generated_metadata': metadata}
+
+
+def observe_custody_evaluator_metadata(root: Path, *, platform: str) -> SealedTreeObservation:
+    """Observe only the original strict evaluator receipt, not its executable tree."""
+    from .delivery_authority import _read_bounded_file
+    from .round_core.evaluator_replay import _input_identity
+    from .round_core.tool_identity import verified_evaluator_identity
+    if platform != 'linux/amd64':
+        raise SourceError('unsupported evaluator metadata platform')
+    root = Path(root).resolve(strict=True)
+    identity = verified_evaluator_identity(root)
+    path = root / 'evaluator-build-receipt.json'
+    record = _input_identity(path)
+    raw = _read_bounded_file(path, 16 * 1024 * 1024)
+    receipt = strict_json_loads(raw)
+    if (record['sha256'] != identity['receipt_sha256'] or hashlib.sha256(raw).hexdigest() != record['sha256']
+            or verified_evaluator_identity(root) != identity or _input_identity(path) != record):
+        raise SourceError('original evaluator metadata changed during observation')
+    artifact = ArtifactRef('custody-evaluator-metadata', str(root), record['sha256'], platform)
+    observation = _evaluator_metadata_observation(artifact, receipt, record, identity['identity_sha256'],
+                                                  stat.S_IMODE(path.stat().st_mode))
+    return SealedTreeObservation(_TREE_OBSERVATION_KEY, artifact, observation)
+
+
+def _replayed_evaluator_metadata(artifact, replay_binding):
+    from .delivery_authority import _read_bounded_file
+    from .round_core.evaluator_replay import EvaluatorReplayBinding, _input_identity
+    from .round_core.tool_identity import verified_evaluator_identity
+    if type(replay_binding) is not EvaluatorReplayBinding:
+        raise TypeError('typed evaluator replay binding required')
+    binding = replay_binding.as_dict()
+    path = Path(artifact.reference)
+    original = _input_identity(path)
+    raw = _read_bounded_file(path, 16 * 1024 * 1024)
+    if (artifact.kind != 'custody-evaluator-metadata' or artifact.platform != 'linux/amd64'
+            or original['sha256'] != artifact.sha256 or original['sha256'] != binding['original_receipt_sha256']
+            or hashlib.sha256(raw).hexdigest() != original['sha256']):
+        raise SourceError('replayed original evaluator receipt mismatch')
+    receipt = strict_json_loads(raw)
+    root = Path(binding['current_root']).resolve(strict=True)
+    current = verified_evaluator_identity(root)
+    if (current['identity_sha256'] != binding['identity_sha256']
+            or current['receipt_sha256'] != binding['current_receipt_sha256']):
+        raise SourceError('replayed current evaluator identity changed')
+    current_receipt = strict_json_loads(_read_bounded_file(root / 'evaluator-build-receipt.json', 16 * 1024 * 1024))
+    fields = ('source', 'locks', 'wheel', 'tooling_sha256', 'bootstrap_driver_sha256', 'contract_sha256',
+              'python', 'native_dependencies')
+    if any(receipt[field] != current_receipt[field] for field in fields):
+        raise SourceError('replayed evaluator source or native prerequisite mismatch')
+    driver = Path(__file__).resolve().parent / 'data/ci/delivery/evaluator-replay-driver.py'
+    if (_input_identity(driver) != binding['driver'] or _input_identity(path) != original
+            or verified_evaluator_identity(root) != current):
+        raise SourceError('replayed evaluator metadata inputs changed')
+    return _evaluator_metadata_observation(artifact, receipt, original, current['identity_sha256'],
+                                           stat.S_IMODE(path.stat().st_mode))
 
 
 def relative_path(name: str) -> str:
@@ -67,7 +307,7 @@ def parse_dpkg_status(text: str) -> list[dict]:
     return sorted(packages, key=lambda p: p['name'])
 
 
-def _needed(binary: bytes) -> list[str]:
+def _needed(binary: bytes, *, allow_origin: bool = False) -> list[str]:
     # The loader uses program headers; section names are only consistency evidence.
     try:
         if binary[:6] != b'\x7fELF\x02\x01':
@@ -127,22 +367,42 @@ def _needed(binary: bytes) -> list[str]:
         if len(pointers) != 1 or len(lengths) != 1:
             raise ValueError('missing/duplicate dynamic string table')
         address, length = pointers[0], lengths[0]
-        loads = [h for h in programs if h[0] == 1 and h[3] <= address and address + length <= h[3] + h[5]]
-        if len(loads) != 1:
-            raise ValueError('unmapped dynamic string table')
-        string_start = loads[0][2] + address - loads[0][3]
-        if string_start + length > len(binary):
-            raise ValueError('invalid dynamic string bounds')
+        loads = [h for h in programs if h[0] == 1 and h[5] and h[3] < address + length and h[3] + h[5] > address]
+        cursor = address
+        pieces = []
+        while cursor < address + length:
+            active = [h for h in loads if h[3] <= cursor < h[3] + h[5]]
+            if len(active) != 1:
+                raise ValueError('unmapped or ambiguous dynamic string table')
+            segment = active[0]
+            end = min(address + length, segment[3] + segment[5])
+            following = [h[3] for h in loads if cursor < h[3] < end]
+            if following:
+                end = min(following)
+            start_offset = segment[2] + cursor - segment[3]
+            end_offset = start_offset + end - cursor
+            if end_offset > len(binary):
+                raise ValueError('invalid dynamic string bounds')
+            pieces.append(binary[start_offset:end_offset])
+            cursor = end
+        strings = b''.join(pieces)
         string_sections = [h for h in sections if label(h) == b'.dynstr']
-        if string_sections and (len(string_sections) != 1 or string_sections[0][4:6] != (string_start, length)):
-            raise ValueError('inconsistent section/program string metadata')
-        strings = binary[string_start:string_start + length]
+        if string_sections:
+            if len(string_sections) != 1:
+                raise ValueError('inconsistent section/program string metadata')
+            section = string_sections[0]
+            if (section[3] != address or section[5] != length or section[4] + length > len(binary)
+                    or binary[section[4]:section[4] + length] != strings):
+                raise ValueError('inconsistent section/program string metadata')
         needed = []
         for offset in needed_offsets:
             if offset >= length or b'\0' not in strings[offset:]:
                 raise ValueError('invalid dependency string offset')
             name = strings[offset:].split(b'\0', 1)[0].decode('utf-8')
-            if not name or '/' in name:
+            origin = (allow_origin and name.startswith('$ORIGIN/') and '\\' not in name
+                      and all(part and (part in ('.', '..') or re.fullmatch(r'[A-Za-z0-9_.+\-]+', part))
+                              for part in name.removeprefix('$ORIGIN/').split('/')))
+            if not name or ('/' in name and not origin):
                 raise ValueError('unsupported dependency name')
             needed.append(name)
         return sorted(set(needed))
@@ -239,13 +499,33 @@ def inspect_distribution_archive(archive: Path, final_files: list[dict]) -> dict
             'measurement': 'distribution archive bytes, compressed OCI blob bytes and summed regular-file payload bytes per layer; directories/symlinks excluded'}
 
 
-def inspect_artifact(artifact: ArtifactRef) -> dict:
+def inspect_artifact(artifact: ArtifactRef, *, inspection_policy=None, journal_path=None, replay_binding=None) -> dict:
     """Export an exact stopped container; inspect inert rootfs bytes, never its code.
 
     Retain a complete filesystem hash roster and installed source/static fields.
     ELF DT_NEEDED lookup records candidates, not a runtime loader-order claim.
     Container creation/export do not run entrypoints. Only the owned ID is removed.
     """
+    if replay_binding is not None:
+        from .round_core.evaluator_replay import EvaluatorReplayBinding
+        if type(replay_binding) is not EvaluatorReplayBinding or artifact.kind != 'custody-evaluator-metadata':
+            raise TypeError('typed evaluator replay binding required for evaluator metadata')
+        if inspection_policy is not None or journal_path is not None:
+            raise SourceError('evaluator metadata uses its own bounded inspector')
+        return _replayed_evaluator_metadata(artifact, replay_binding)
+    if artifact.kind in ('custody-tree', 'custody-evaluator-metadata'):
+        if inspection_policy is not None or journal_path is not None:
+            raise SourceError('custody tree uses its own bounded inspector')
+        observer = {'custody-tree': observe_custody_tree,
+                    'custody-evaluator-metadata': observe_custody_evaluator_metadata}[artifact.kind]
+        actual = observer(Path(artifact.reference), platform=artifact.platform)
+        if actual.artifact() != artifact:
+            raise SourceError('custody tree identity mismatch')
+        return actual.observation()
+    if inspection_policy is not None and (artifact.kind != 'docker-local' or journal_path is None):
+        raise SourceError('bounded inspection requires a local image and fresh journal')
+    if inspection_policy is None and journal_path is not None:
+        raise SourceError('inspection journal requires bounded policy')
     if artifact.kind != 'docker-local':
         if artifact.kind != 'bundle' or checksum(artifact.reference) != artifact.sha256:
             raise SourceError('binary artifact checksum mismatch or unsupported kind')
@@ -314,17 +594,26 @@ def inspect_artifact(artifact: ArtifactRef) -> dict:
         return result
     if artifact.reference != 'sha256:' + artifact.sha256:
         raise SourceError('local engine identity mismatch')
+    bounded = None
     try:
-        inspect = json.loads(subprocess.check_output(['docker', 'image', 'inspect', artifact.reference], text=True))[0]
+        if inspection_policy is None:
+            inspect = json.loads(subprocess.check_output(['docker', 'image', 'inspect', artifact.reference], text=True))[0]
+        else:
+            from .inspection_bounded import BoundedInspection
+            bounded = BoundedInspection(artifact, inspection_policy, Path(journal_path))
+            inspect = bounded.image
         if inspect['Id'] != artifact.reference or inspect['Os'] + '/' + inspect['Architecture'] != artifact.platform:
             raise SourceError('binary artifact identity/platform mismatch')
         with tempfile.TemporaryDirectory(prefix='p11lab-inventory-') as temporary:
             archive = Path(temporary) / 'rootfs.tar'
-            container = subprocess.check_output(['docker', 'create', '--network', 'none', artifact.reference, '/p11lab-inspection-not-executed'], text=True).strip()
-            try:
-                subprocess.run(['docker', 'export', '--output', str(archive), container], check=True, capture_output=True)
-            finally:
-                subprocess.run(['docker', 'rm', container], check=True, capture_output=True)
+            if bounded is None:
+                container = subprocess.check_output(['docker', 'create', '--network', 'none', artifact.reference, '/p11lab-inspection-not-executed'], text=True).strip()
+                try:
+                    subprocess.run(['docker', 'export', '--output', str(archive), container], check=True, capture_output=True)
+                finally:
+                    subprocess.run(['docker', 'rm', container], check=True, capture_output=True)
+            else:
+                bounded.export(archive)
             if archive.stat().st_size > 2 * 1024**3:
                 raise SourceError('rootfs inspection exceeds 2 GiB bound')
             with tarfile.open(archive) as contents:
@@ -388,7 +677,10 @@ def inspect_artifact(artifact: ArtifactRef) -> dict:
                     for needed in record['needed']:
                         links.append({'binary': path, 'needed': needed, 'resolved': sorted(candidates.get(needed, []))})
                 distribution_archive = Path(temporary) / 'distribution.tar'
-                subprocess.run(['docker', 'image', 'save', '--output', str(distribution_archive), artifact.reference], check=True, capture_output=True)
+                if bounded is None:
+                    subprocess.run(['docker', 'image', 'save', '--output', str(distribution_archive), artifact.reference], check=True, capture_output=True)
+                else:
+                    bounded.save(distribution_archive)
                 distribution = inspect_distribution_archive(distribution_archive, files)
                 descriptor = inspect.get('Descriptor')
                 if descriptor:
@@ -428,27 +720,61 @@ def inspect_artifact(artifact: ArtifactRef) -> dict:
                         record['package_verification'] = verification
                 if distribution['platform'] != artifact.platform:
                     raise SourceError('exported distribution platform mismatch')
+                if bounded is not None:
+                    bounded.complete()
                 return {'artifact': asdict(artifact), 'distribution': distribution, 'packages': packages, 'binaries': list(elf.values()),
                     'linked_libraries': links, 'files': sorted(files, key=lambda f: f['path']),
                     'descriptor': inspect.get('Descriptor'), 'link_method': 'ELF DT_NEEDED and rootfs candidates; not runtime search-order attestation'}
     except (subprocess.SubprocessError, OSError, KeyError, ValueError) as error:
+        if bounded is not None:
+            bounded.fail(error)
         raise SourceError('actual artifact inspection failed: ' + str(error)) from error
+    except Exception as error:
+        if bounded is not None:
+            bounded.fail(error)
+            raise SourceError('bounded actual artifact inspection failed (' + type(error).__name__ + ')') from error
+        raise
 
 
 def _same_artifact(record: dict, artifact: ArtifactRef) -> bool:
     expected = asdict(artifact)
-    if artifact.kind == 'bundle':
+    if artifact.kind in ('bundle', 'custody-tree', 'custody-evaluator-metadata'):
         expected.pop('reference')
         record = {k: v for k, v in record.items() if k != 'reference'}
     return record == expected
 
 
-def _same_observation(actual: dict, recorded: dict, artifact: ArtifactRef) -> bool:
-    return _same_artifact(recorded.get('artifact', {}), artifact) and \
-        {k: v for k, v in actual.items() if k != 'artifact'} == {k: v for k, v in recorded.items() if k != 'artifact'}
+def _same_observation(actual: dict, recorded: dict, artifact: ArtifactRef, *, replay_binding=None) -> bool:
+    import copy
+    if not _same_artifact(recorded.get('artifact', {}), artifact):
+        return False
+    if replay_binding is None:
+        return {k: v for k, v in actual.items() if k != 'artifact'} == {k: v for k, v in recorded.items() if k != 'artifact'}
+    actual, recorded = copy.deepcopy(actual), copy.deepcopy(recorded)
+    actual.pop('artifact', None)
+    recorded.pop('artifact', None)
+    if replay_binding is not None:
+        from .round_core.evaluator_replay import EvaluatorReplayBinding
+        if type(replay_binding) is not EvaluatorReplayBinding or artifact.kind != 'custody-evaluator-metadata':
+            raise TypeError('typed evaluator replay binding required for evaluator metadata')
+        if (len(actual.get('files', [])) != 1 or len(recorded.get('files', [])) != 1
+                or actual['files'][0].get('path') != '/evaluator-build-receipt.json'
+                or recorded['files'][0].get('path') != '/evaluator-build-receipt.json'):
+            return False
+        # Original and current filesystem modes are distinct observations. The
+        # signed original inventory retains its mode; extraction uses a fresh
+        # restrictive mode and neither value is presented as the other.
+        actual['files'][0].pop('mode', None)
+        recorded['files'][0].pop('mode', None)
+    return actual == recorded
 
 
-def validate_inventory(artifact: ArtifactRef, inventory: dict) -> list[str]:
+def validate_inventory(artifact: ArtifactRef, inventory: dict, *, consumer_binding=None) -> list[str]:
+    if consumer_binding is not None:
+        from .image_custody import ConsumerImageBinding
+        if type(consumer_binding) is not ConsumerImageBinding or artifact.kind != 'custody-tree':
+            raise TypeError('typed consumer image binding required for custody tree')
+        consumer_binding.check(artifact, inventory)
     reasons = []
     if inventory.get('schema_version') != 1 or not _same_artifact(inventory.get('artifact', {}), artifact):
         reasons.append('inventory binary identity mismatch')
@@ -516,7 +842,7 @@ def validate_inventory(artifact: ArtifactRef, inventory: dict) -> list[str]:
         if not binary.get('package') and binary['path'] not in components:
             reasons.append('unmapped shipped binary: ' + binary['path'])
     for link in observation.get('linked_libraries', []):
-        if not link.get('resolved'):
+        if not link.get('resolved') and (consumer_binding is None or not consumer_binding.covers(link)):
             reasons.append('missing runtime dependency: ' + link['needed'])
     if inventory.get('role') == 'debug-companion':
         relationship = observation.get('debug_relationship', {})
@@ -632,15 +958,32 @@ def spdx_inventory(artifact: ArtifactRef, inventory: dict) -> dict:
         'packages': packages, 'relationships': relationships, 'files': files, 'hasExtractedLicensingInfos': inventory.get('extracted_licenses', [])}
 
 
-def assess_distribution(artifact: ArtifactRef, evidence_dir: Path) -> dict:
-    from .sources import verify_source_bundle, _verify_package_files
+def assess_distribution(artifact: ArtifactRef, evidence_dir: Path, *,
+                        inspection_policy=None, journal_path=None, replay_binding=None, consumer_binding=None) -> dict:
+    from .sources import verify_source_bundle, verify_source_receipt, _verify_package_files
+    if replay_binding is not None:
+        from .round_core.evaluator_replay import EvaluatorReplayBinding
+        if type(replay_binding) is not EvaluatorReplayBinding or artifact.kind != 'custody-evaluator-metadata':
+            raise TypeError('typed evaluator replay binding required for evaluator metadata')
     evidence_dir = Path(evidence_dir)
+    # Contract: evidence_dir is caller-staged, not a fresh output dir. The
+    # caller pre-places source-companion.json, the archive, and sbom.spdx.json
+    # (missing or foreign staged inputs yield a recorded blocked verdict,
+    # never eligible); package-cache may be pre-staged or is acquired into
+    # the dir on a cache miss (bounded, checksummed; failures yield blocked,
+    # never eligible on unverified bytes).
+    # The verdict record write is admission.json below. exist_ok=True is
+    # intentional here (unlike fresh-output gates that require exist_ok=False).
+    # Sharing one dir across concurrent calls is caller error; per-call
+    # isolation is the caller's job. The mkdir exists so even a missing dir
+    # yields a recorded blocked verdict instead of an uncontrolled
+    # FileNotFoundError from the final write.
     evidence_dir.mkdir(parents=True, exist_ok=True)
     blockers = []
     companion = None
     inventory = {}
     try:
-        receipt = json.loads((evidence_dir / 'source-companion.json').read_text())
+        receipt = strict_json_loads((evidence_dir / 'source-companion.json').read_text())
         companion = receipt['artifact']
         archive = evidence_dir / relative_path(receipt['archive'])
         if checksum(archive) != companion['sha256']:
@@ -649,24 +992,19 @@ def assess_distribution(artifact: ArtifactRef, evidence_dir: Path) -> dict:
             extracted = Path(temporary) / 'extract'
             inventory = verify_source_bundle(archive, extracted)
             _verify_package_files(inventory, extracted, evidence_dir / 'package-cache')
-            expected_receipt = {'schema_version': 1, 'role': 'source-companion', 'archive': archive.name,
-                'artifact': {'kind': 'bundle', 'reference': 'sha256:' + checksum(archive),
-                    'sha256': checksum(archive), 'platform': artifact.platform},
-                'matched_artifact': inventory['artifact'], 'size_bytes': archive.stat().st_size,
-                'sbom_sha256': checksum(extracted / 'sbom.spdx.json'), 'inventory_sha256': checksum(extracted / 'inventory.json'),
-                'payload_count': len(inventory['payloads']), 'source_count': len(inventory['sources']),
-                'publication_status': 'not-published', 'source_rights': 'explicit reviewed records; no automatic grant inference'}
-            if json.dumps(receipt, sort_keys=True) != json.dumps(expected_receipt, sort_keys=True):
-                blockers.append('source companion receipt metadata mismatch')
-            if (evidence_dir / 'sbom.spdx.json').read_bytes() != (extracted / 'sbom.spdx.json').read_bytes():
-                blockers.append('outer/embedded SPDX inventory mismatch')
-        blockers.extend(validate_inventory(artifact, inventory))
-        actual = inspect_artifact(artifact)
-        if not _same_observation(actual, inventory['observation'], artifact):
+            verify_source_receipt(artifact, receipt, archive, extracted, evidence_dir / 'sbom.spdx.json', inventory)
+        blockers.extend(validate_inventory(artifact, inventory, consumer_binding=consumer_binding))
+        if replay_binding is not None:
+            actual = inspect_artifact(artifact, replay_binding=replay_binding)
+        elif inspection_policy is None and journal_path is None:
+            actual = inspect_artifact(artifact)
+        else:
+            actual = inspect_artifact(artifact, inspection_policy=inspection_policy, journal_path=journal_path)
+        if not _same_observation(actual, inventory['observation'], artifact, replay_binding=replay_binding):
             blockers.append('actual binary content inventory mismatch')
         if not _same_artifact(receipt['matched_artifact'], artifact):
             blockers.append('source companion binary identity mismatch')
-        sbom = json.loads((evidence_dir / 'sbom.spdx.json').read_text())
+        sbom = strict_json_loads((evidence_dir / 'sbom.spdx.json').read_text())
         if checksum(evidence_dir / 'sbom.spdx.json') != receipt['sbom_sha256']:
             blockers.append('SPDX inventory checksum mismatch')
         if sbom['documentComment'].split(';')[0] != 'Artifact sha256:' + artifact.sha256:

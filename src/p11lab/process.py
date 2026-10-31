@@ -15,14 +15,22 @@ _reaper_users = 0
 _previous_reaper = 0
 
 
-def _subreaper(acquire):
-    """Adopt only for an active owned run; reap only our identified descendants."""
+def _subreaper(acquire, *, deadline=None):
+    """Adopt for owned runs; optionally bound the shared lease lock wait."""
     global _reaper_users, _previous_reaper
     if not sys.platform.startswith('linux'):
         return
     import ctypes
     libc = ctypes.CDLL(None, use_errno=True)
-    with _reaper_lock:
+    if deadline is None:
+        _reaper_lock.acquire()
+    else:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or not _reaper_lock.acquire(timeout=remaining):
+            raise TimeoutError('subreaper lease lock deadline')
+    try:
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError('subreaper lease lock deadline')
         if acquire:
             if not _reaper_users:
                 previous = ctypes.c_int()
@@ -31,9 +39,18 @@ def _subreaper(acquire):
                 _previous_reaper = previous.value
             _reaper_users += 1
         else:
-            _reaper_users -= 1
-            if not _reaper_users:
-                libc.prctl(36, _previous_reaper, 0, 0, 0)
+            if deadline is None:
+                _reaper_users -= 1
+                if not _reaper_users:
+                    libc.prctl(36, _previous_reaper, 0, 0, 0)
+            else:
+                if _reaper_users <= 0:
+                    raise RuntimeError('subreaper lease not held')
+                if _reaper_users == 1 and libc.prctl(36, _previous_reaper, 0, 0, 0):
+                    raise OSError(ctypes.get_errno(), 'cannot restore owned child reaping')
+                _reaper_users -= 1
+    finally:
+        _reaper_lock.release()
 
 
 def redacted(data: bytes, secrets, truncated=False) -> str:

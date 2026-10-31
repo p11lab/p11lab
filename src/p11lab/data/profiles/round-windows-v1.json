@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "round-windows-v1",
+  "collection": "filtered",
+  "nodes": [],
+  "marker_expression": "not security",
+  "keyword_expression": "test_encrypt or test_sign or test_digest",
+  "destructive": false,
+  "key_injection": false,
+  "recovery": false,
+  "disabled_inventory": {
+    "sha256": null,
+    "reason": "W05 must freeze and disambiguate the candidate/lane disabled inventory."
+  }
+}

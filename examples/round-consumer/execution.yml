@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# UNPUBLISHED TEMPLATE: replace both P11LAB_COMMIT_SHA placeholders with the
+# same reviewed full commit SHA after a compatible workflow is published.
+# Replace FRAMEWORK_COMMIT_SHA with the candidate identity. This execution
+# path stages context+evaluator, invokes the bridged round lane, and uploads
+# one diagnostic artifact (round_positive false, non-H-C); refusals exit 3.
+name: execution-example
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  execution:
+    permissions:
+      contents: read
+      actions: read
+    uses: p11lab/p11lab/.github/workflows/checker-round-execution.yml@<P11LAB_COMMIT_SHA>
+    with:
+      framework_sha: <FRAMEWORK_COMMIT_SHA>
+      tier: pr-smoke
+      p11lab_ref: <P11LAB_COMMIT_SHA>

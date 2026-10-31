@@ -10,6 +10,7 @@ import tempfile
 from urllib.request import urlopen
 
 from .catalog import locked_asset, validate_build_inputs
+from .jsonutil import loads as strict_json_loads
 
 
 class SourceError(ValueError):
@@ -106,7 +107,7 @@ def _portable_inventory(inventory: dict) -> dict:
         archive.pop('local_path', None)
     # A local reference is an acquisition handle, not a public identity.
     for ref in (result['artifact'], result['observation']['artifact']):
-        if ref['kind'] == 'bundle':
+        if ref['kind'] in ('bundle', 'custody-tree', 'custody-evaluator-metadata'):
             ref['reference'] = 'sha256:' + ref['sha256']
     return result
 
@@ -289,7 +290,8 @@ def _verify_package_files(inventory: dict, files: Path, cache: Path) -> None:
         raise SourceError('package file lacks authenticated archive')
 
 
-def collect_source_bundle(artifact, inventory: dict, output_dir: Path) -> Path:
+def collect_source_bundle(artifact, inventory: dict, output_dir: Path, *,
+                          inspection_policy=None, journal_path=None, consumer_binding=None) -> Path:
     """Collect exact retained sources/notices/recipes from reviewed declarations.
 
     Local cache paths are optional acquisition inputs, removed from the archive.
@@ -297,8 +299,11 @@ def collect_source_bundle(artifact, inventory: dict, output_dir: Path) -> Path:
     A fresh output directory preserves prior attempts. No public write occurs.
     """
     from .licenses import inspect_artifact, validate_inventory, spdx_inventory, relative_path
-    reasons = validate_inventory(artifact, inventory)
-    actual = inspect_artifact(artifact)
+    reasons = validate_inventory(artifact, inventory, consumer_binding=consumer_binding)
+    if inspection_policy is None and journal_path is None:
+        actual = inspect_artifact(artifact)
+    else:
+        actual = inspect_artifact(artifact, inspection_policy=inspection_policy, journal_path=journal_path)
     if actual != inventory.get('observation'):
         reasons.append('actual binary content inventory mismatch')
     if reasons:
@@ -338,6 +343,35 @@ def collect_source_bundle(artifact, inventory: dict, output_dir: Path) -> Path:
         'publication_status': 'not-published', 'source_rights': 'explicit reviewed records; no automatic grant inference'}
     (output_dir / 'source-companion.json').write_text(json.dumps(receipt, sort_keys=True, indent=2) + '\n')
     return archive
+
+
+def verify_source_receipt(artifact, receipt: dict, archive: Path, extracted: Path,
+                          outer_spdx: Path, inventory: dict) -> None:
+    """Check complete companion metadata/bytes, without a new rights evaluator."""
+    from .licenses import _same_artifact, spdx_inventory
+    if inventory != _portable_inventory(inventory):
+        raise SourceError('source companion inventory contains private acquisition paths')
+    digest = checksum(archive)
+    expected = {'schema_version': 1, 'role': 'source-companion', 'archive': archive.name,
+        'artifact': {'kind': 'bundle', 'reference': 'sha256:' + digest, 'sha256': digest, 'platform': artifact.platform},
+        'matched_artifact': inventory['artifact'], 'size_bytes': archive.stat().st_size,
+        'sbom_sha256': checksum(extracted / 'sbom.spdx.json'), 'inventory_sha256': checksum(extracted / 'inventory.json'),
+        'payload_count': len(inventory['payloads']), 'source_count': len(inventory['sources']),
+        'publication_status': 'not-published', 'source_rights': 'explicit reviewed records; no automatic grant inference'}
+    if json.dumps(receipt, sort_keys=True) != json.dumps(expected, sort_keys=True):
+        raise SourceError('source companion receipt metadata mismatch')
+    if not _same_artifact(inventory['artifact'], artifact) or not _same_artifact(inventory['observation']['artifact'], artifact):
+        raise SourceError('source companion ArtifactRef/platform mismatch')
+    if outer_spdx.read_bytes() != (extracted / 'sbom.spdx.json').read_bytes():
+        raise SourceError('outer/embedded SPDX inventory mismatch')
+    sbom = strict_json_loads(outer_spdx.read_text())
+    generated = spdx_inventory(artifact, inventory)
+    # Creation time is observational metadata, not semantic inventory content.
+    if not isinstance(sbom, dict) or not isinstance(sbom.get('creationInfo'), dict):
+        raise SourceError('SPDX creation metadata missing')
+    generated['creationInfo']['created'] = sbom['creationInfo'].get('created')
+    if json.dumps(sbom, sort_keys=True) != json.dumps(generated, sort_keys=True):
+        raise SourceError('SPDX content/inventory mismatch')
 
 
 def verify_source_bundle(archive: Path, output_dir: Path) -> dict:
@@ -381,11 +415,17 @@ def verify_source_bundle(archive: Path, output_dir: Path) -> dict:
         for name, digest in expected.items():
             if checksum(output_dir / name) != digest:
                 raise SourceError('source companion checksum mismatch: ' + name)
-        inventory = json.loads((output_dir / 'inventory.json').read_text())
+        inventory = strict_json_loads((output_dir / 'inventory.json').read_text())
+        strict_json_loads((output_dir / 'sbom.spdx.json').read_text())
         for payload in inventory['payloads']:
             name = relative_path(payload['path'])
             if name not in expected or expected[name] != payload['sha256'] or (output_dir / name).stat().st_size != payload['size']:
                 raise SourceError('source payload manifest mismatch: ' + name)
+        payload_names = [relative_path(payload['path']) for payload in inventory['payloads']]
+        if (len(payload_names) != len(set(payload_names))
+                or set(payload_names) & {'inventory.json', 'sbom.spdx.json', 'SHA256SUMS'}
+                or seen != set(payload_names) | {'inventory.json', 'sbom.spdx.json', 'SHA256SUMS'}):
+            raise SourceError('source companion inventory file roster mismatch')
         _verify_debian_source_sets(output_dir, inventory)
         return inventory
     except (tarfile.TarError, OSError, KeyError, ValueError) as error:

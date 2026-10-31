@@ -1,0 +1,242 @@
+{
+  "definition": {
+    "allowed_axis": "text",
+    "catalog_union": [
+      "text"
+    ],
+    "endpoints": {
+      "baseline": {
+        "artifacts": {
+          "checker": {
+            "installed_manifest_sha256": "hash",
+            "source_sha": "rev",
+            "wheel_sha256": "hash"
+          },
+          "consumer": {
+            "installed_manifest_sha256": "hash"
+          },
+          "derivative": {
+            "config_digest": "digest",
+            "layer_digests": [
+              "digest"
+            ],
+            "manifest_digest": "digest",
+            "parent_manifest_digest": "digest"
+          },
+          "provider": {
+            "build_key": "hash",
+            "config_digest": "digest",
+            "family": "text",
+            "layer_digests": [
+              "digest"
+            ],
+            "manifest_digest": "digest",
+            "platform": "text",
+            "recipe_sha256": "hash",
+            "source_sha": "rev"
+          },
+          "proxy": {
+            "build_key": "hash",
+            "cli_sha256": "hash",
+            "daemon_sha256": "hash",
+            "shim_sha256": "hash",
+            "source_sha": "rev"
+          }
+        },
+        "catalog": [
+          "text"
+        ],
+        "evidence": {
+          "catalog_sha256": "hash",
+          "coverage_sha256": "hash",
+          "ledger_sha256": "hash",
+          "obligations_sha256": "hash",
+          "raw_manifest_sha256": "hash",
+          "selected_sha256": "hash"
+        },
+        "frozen_controls": {
+          "config_policy": "hash",
+          "consumer_policy": "hash",
+          "dataset": "hash",
+          "obligation_policy": "hash",
+          "profile": "hash"
+        },
+        "header": {
+          "corpus_hash": "hash",
+          "counters": {
+            "child_crash": "int",
+            "child_timeout": "int",
+            "crash_limited": "int",
+            "crashed": "int",
+            "error": "int",
+            "failed": "int",
+            "incomplete": "int",
+            "missing": "int",
+            "passed": "int",
+            "skipped": "int",
+            "timeout": "int",
+            "xfailed": "int",
+            "xpassed": "int"
+          },
+          "created_by": "text",
+          "disabled_hash": "hash",
+          "framework_sha": "rev",
+          "image_digest": "digest",
+          "lane": "text",
+          "lane_arch": "text",
+          "lane_os": "text",
+          "malformed_lines": "int",
+          "p11lab_sha": "rev",
+          "planned_collection_hash": "hash",
+          "planned_count": "int",
+          "raw_stream_bytes": "int",
+          "raw_stream_sha256": "optional-hash",
+          "record": "text",
+          "schema_v": "int"
+        },
+        "observed_selected": [
+          "text"
+        ],
+        "role": "text",
+        "selected": [
+          "text"
+        ],
+        "sidecar": {
+          "build_manifest_sha256": "hash",
+          "installed_manifest_sha256": "hash",
+          "source_archive_sha256": "hash"
+        },
+        "unselected": "reasons"
+      },
+      "candidate": {
+        "artifacts": {
+          "checker": {
+            "installed_manifest_sha256": "hash",
+            "source_sha": "rev",
+            "wheel_sha256": "hash"
+          },
+          "consumer": {
+            "installed_manifest_sha256": "hash"
+          },
+          "derivative": {
+            "config_digest": "digest",
+            "layer_digests": [
+              "digest"
+            ],
+            "manifest_digest": "digest",
+            "parent_manifest_digest": "digest"
+          },
+          "provider": {
+            "build_key": "hash",
+            "config_digest": "digest",
+            "family": "text",
+            "layer_digests": [
+              "digest"
+            ],
+            "manifest_digest": "digest",
+            "platform": "text",
+            "recipe_sha256": "hash",
+            "source_sha": "rev"
+          },
+          "proxy": {
+            "build_key": "hash",
+            "cli_sha256": "hash",
+            "daemon_sha256": "hash",
+            "shim_sha256": "hash",
+            "source_sha": "rev"
+          }
+        },
+        "catalog": [
+          "text"
+        ],
+        "evidence": {
+          "catalog_sha256": "hash",
+          "coverage_sha256": "hash",
+          "ledger_sha256": "hash",
+          "obligations_sha256": "hash",
+          "raw_manifest_sha256": "hash",
+          "selected_sha256": "hash"
+        },
+        "frozen_controls": {
+          "config_policy": "hash",
+          "consumer_policy": "hash",
+          "dataset": "hash",
+          "obligation_policy": "hash",
+          "profile": "hash"
+        },
+        "header": {
+          "corpus_hash": "hash",
+          "counters": {
+            "child_crash": "int",
+            "child_timeout": "int",
+            "crash_limited": "int",
+            "crashed": "int",
+            "error": "int",
+            "failed": "int",
+            "incomplete": "int",
+            "missing": "int",
+            "passed": "int",
+            "skipped": "int",
+            "timeout": "int",
+            "xfailed": "int",
+            "xpassed": "int"
+          },
+          "created_by": "text",
+          "disabled_hash": "hash",
+          "framework_sha": "rev",
+          "image_digest": "digest",
+          "lane": "text",
+          "lane_arch": "text",
+          "lane_os": "text",
+          "malformed_lines": "int",
+          "p11lab_sha": "rev",
+          "planned_collection_hash": "hash",
+          "planned_count": "int",
+          "raw_stream_bytes": "int",
+          "raw_stream_sha256": "optional-hash",
+          "record": "text",
+          "schema_v": "int"
+        },
+        "observed_selected": [
+          "text"
+        ],
+        "role": "text",
+        "selected": [
+          "text"
+        ],
+        "sidecar": {
+          "build_manifest_sha256": "hash",
+          "installed_manifest_sha256": "hash",
+          "source_archive_sha256": "hash"
+        },
+        "unselected": "reasons"
+      }
+    },
+    "frozen_controls": {
+      "config_policy": "hash",
+      "consumer_policy": "hash",
+      "dataset": "hash",
+      "obligation_policy": "hash",
+      "profile": "hash"
+    },
+    "lane": "text",
+    "operation": "text",
+    "protected": {
+      "control_sha": "rev",
+      "evaluator_sha": "rev",
+      "policy_sha256": "hash",
+      "prepare_sha256": "hash",
+      "producer_authority_sha256": "hash",
+      "selected_candidate_source_sha": "rev",
+      "selected_lane": "text"
+    },
+    "reviewed_delta_refs": [
+      "digest"
+    ],
+    "schema_version": "int",
+    "selected_union": [
+      "text"
+    ]
+  },
+  "generated_from": "p11lab.round_core.inputs.COMPARISON_ENVELOPE_V1"
+}

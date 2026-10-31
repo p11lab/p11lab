@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "round-macos-full-v1",
+  "collection": "full",
+  "nodes": [],
+  "marker_expression": "",
+  "keyword_expression": "",
+  "destructive": false,
+  "key_injection": false,
+  "recovery": false,
+  "disabled_inventory": {
+    "sha256": null,
+    "reason": "W05 must freeze and disambiguate the candidate/lane disabled inventory."
+  }
+}

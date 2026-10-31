@@ -63,20 +63,13 @@ def test_select_fails_unknown_explicit_env():
         assert "needs.select.outputs.envs != '[]'" not in text, name
 
 
-def test_delivery_coverage_gates_match_lane_rosters():
-    # provider-delivery gates each reusable call on explicit coverage; the
-    # lists must equal the lane select rosters exactly.
-    import json
-    import re
+def test_source_delivery_does_not_claim_post_exposure_qualification():
+    # Source admission precedes image custody and later qualification.
     delivery = (WORKFLOWS / "provider-delivery.yml").read_text()
-    lanes = {"validate-direct": "checker-direct-validation.yml",
-             "validate-proxy": "checker-proxy-validation.yml"}
-    for job, lane in lanes.items():
-        gate = re.search(job + r":\n    needs: expose-binary\n    if: contains\(fromJSON\('(\[.*?\])'\), inputs\.environment\)", delivery)
-        assert gate, job
-        lane_envs = re.search(r'LANE_ENVS="([^"]+)"', _text(lane))
-        assert lane_envs, lane
-        assert sorted(json.loads(gate.group(1))) == sorted(lane_envs.group(1).split()), (job, lane)
+    assert 'expose-binary:' not in delivery
+    assert 'validate-direct:' not in delivery
+    assert 'validate-proxy:' not in delivery
+    assert 'p11lab image validate-local' in delivery
 
 
 def test_dispatch_inputs_never_interpolate_into_shell():

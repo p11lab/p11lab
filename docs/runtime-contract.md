@@ -1,5 +1,11 @@
 # Provider application execution
 
+The [published-image quickstart](published-images.md) runs the SoftHSM runtime
+with plain Docker, without installing P11Lab or building a provider. It documents
+the published digest, default-root permissions and compatible prebuilt application
+mounts. The controls and receipts below describe installed `p11lab run`; plain
+Docker does not automatically apply them.
+
 Direct/provider requires a same-host Docker daemon on a local Unix socket; SSH
 and TCP endpoints are rejected before resources are created. Host bind mounts and
 bind-backed owned volumes depend on that host filesystem.
@@ -30,6 +36,10 @@ but no processes: nothing persists between stages except the token store
 and the output directory, and daemon/emulator providers self-provision
 per stage over `--network none` loopback. Startup cost is paid once per
 stage container.
+Shutdown is container termination per stage
+(graceful exit or forced removal during bounded
+cleanup); there is no separate daemon-shutdown step
+beyond owned container and volume removal.
 
 The application receives literal arguments, its explicit `--cwd` mounted read/write
 at `/workspace`, and the new output directory at `/p11lab-output`.

@@ -1,0 +1,4 @@
+{"$report_type":"SessionStart"}
+{"$report_type":"IsolatedUnitReport","attempt":0,"target":"/executor/tests/test_a.py::test_one"}
+{"$report_type":"TestReport","duration":0.01,"nodeid":"/executor/tests/test_a.py::test_one","outcome":"failed","user_properties":[],"when":"call"}
+{"$report_type":"SessionFinish","exitstatus":1}

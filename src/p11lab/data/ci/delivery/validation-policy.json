@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "kind": "local-image-validation",
+  "environment": "softhsm2",
+  "channel": "release",
+  "platform": "linux/amd64",
+  "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+  "profile": "smoke-v1",
+  "shards": 1,
+  "outer_attempts": 1,
+  "destructive": false,
+  "catalog_counts": {
+    "test_interface.py": 11,
+    "test_session_info.py": 4,
+    "test_object.py": 16,
+    "test_digest.py": 21,
+    "test_sign.py": 18
+  },
+  "checker_revision": "9df03bd8b811966fa7856394b19e3f57ffcd8a40",
+  "checker_wheel_sha256": "58ac3451ae0dba207a48affa460309e4024c2ec7aefb04ef73062f420fdcffec",
+  "checker_runtime_lock_sha256": "98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab",
+  "comparison": null,
+  "promotable": false
+}

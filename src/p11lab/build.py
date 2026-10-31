@@ -51,7 +51,9 @@ def runtime_inputs(spec: dict) -> dict:
                 for a in lock['assets'] if a['role'] in {'adapter', 'adapter-common', 'notice'}]
     adapter = hashlib.sha256(json.dumps(adapters, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return {key: lock[key] for key in ('sources', 'dependencies', 'patches', 'base_images', 'packages', 'toolchain', 'features')} | {
-        'recipe': hashlib.sha256(json.dumps([a for a in lock['assets'] if a['role'] in {'recipe', 'build-helper'}], sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+        # Version the complete ordered build-context roster. Every declared asset is
+        # copied by prepare_context, including future roles and context paths.
+        'recipe': hashlib.sha256(json.dumps({'version': 2, 'lock_sha256': hashlib.sha256(packaged_asset(spec['id'], spec['channel_spec']['lock']).read_bytes()).hexdigest(), 'assets': lock['assets']}, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
         'adapter': adapter, 'metadata': hashlib.sha256(packaged_asset(spec['id'], 'provider.json').read_bytes()).hexdigest(),
         'platform': spec['runtime_platforms'][0],
         'features': lock['features'] | {'apt_snapshot': lock['apt_snapshot'], 'signed_index_inputs': lock['signed_index_inputs']},

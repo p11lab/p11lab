@@ -1,0 +1,10 @@
+{
+  "closure": "MECHANICS-COMPLETE / H-C-NOT-DEMONSTRATED",
+  "honest_control": "not-demonstrated",
+  "note": "Minted bridge-mechanics fixtures. The staged authority file combines the checked-in comparison envelope + witness bytes; parsing it never confers producer authority. All run IDs in derived tests are minted. Live honest-control proof waits on auth-gated enrollment + dispatch.",
+  "slice": "B-C2x",
+  "sources": [
+    "tests/fixtures/comparison/checker-direct/envelope.json",
+    "tests/fixtures/comparison/checker-direct/witness.json"
+  ]
+}

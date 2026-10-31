@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "round-pr-smoke-v1",
+  "collection": "exact-nodes",
+  "nodes": [
+    "test_interface.py::TestLibraryInfo::test_module_loads",
+    "test_interface.py::TestLibraryInfo::test_interface_version_reported",
+    "test_interface.py::TestLibraryInfo::test_library_has_slots",
+    "test_interface.py::TestSlotEnumeration::test_get_slots_with_token",
+    "test_interface.py::TestSlotEnumeration::test_slot_has_token_info",
+    "test_interface.py::TestInterfaceV30::test_v30_interface_negotiated",
+    "test_interface.py::TestInterfaceV30::test_v30_session_opens",
+    "test_interface.py::TestInterfaceV30::test_v30_get_interface_list",
+    "test_interface.py::TestInterfaceV30::test_v30_encrypt_decrypt_aes",
+    "test_interface.py::TestInterfaceV32::test_v32_interface_negotiated",
+    "test_interface.py::TestInterfaceV32::test_v32_session_opens",
+    "test_session_info.py::TestSessionInfo::test_rw_session_is_rw",
+    "test_session_info.py::TestSessionInfo::test_ro_session_is_not_rw",
+    "test_object.py::TestSessionObjects::test_create_secret_key_with_label",
+    "test_object.py::TestSessionObjects::test_find_objects_by_label",
+    "test_object.py::TestSessionObjects::test_key_attributes_readable",
+    "test_object.py::TestSessionObjects::test_destroy_session_object",
+    "test_object.py::TestSessionObjects::test_empty_search_returns_empty",
+    "test_digest.py::TestDigestLengths::test_digest_length[SHA-256]",
+    "test_digest.py::TestDigestProperties::test_sha256_empty_data",
+    "test_digest.py::TestDigestCrossVerify::test_cross_verify[SHA-256]",
+    "test_sign.py::TestECDSASignature::test_ecdsa_sign_verify",
+    "test_sign.py::TestECDSASignature::test_ecdsa_wrong_data_fails"
+  ],
+  "marker_expression": "",
+  "keyword_expression": "",
+  "destructive": false,
+  "key_injection": false,
+  "recovery": false,
+  "disabled_inventory": {
+    "sha256": null,
+    "reason": "W05 must freeze and disambiguate the candidate/lane disabled inventory."
+  }
+}

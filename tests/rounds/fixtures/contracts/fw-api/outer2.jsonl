@@ -1,0 +1,4 @@
+{"$report_type":"SessionStart","shard_id":"outer2/shard0"}
+{"$report_type":"IsolatedUnitReport","attempt":0,"shard_id":"outer2/shard0","target":"test_a.py"}
+{"$report_type":"TestReport","duration":0.01,"nodeid":"test_a.py::test_one","outcome":"passed","shard_id":"outer2/shard0","when":"call"}
+{"$report_type":"SessionFinish","exitstatus":0,"shard_id":"outer2/shard0"}

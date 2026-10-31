@@ -1,0 +1,2067 @@
+{
+  "api": [
+    "AdmissionVerdict",
+    "ComparisonVerdict",
+    "Delta",
+    "EMPTY_SHARD_SHA256",
+    "LEDGER_SCHEMA_VERSION",
+    "LedgerHeader",
+    "LedgerHeader.from_record",
+    "LedgerHeader.to_record",
+    "LedgerRow",
+    "LedgerRow.from_record",
+    "LedgerRow.sort_key",
+    "LedgerRow.to_record",
+    "ObligationInventory",
+    "Outcome",
+    "PredeclaredRoster",
+    "QuorumPolicy",
+    "Regression",
+    "RotationDeltas",
+    "SessionCompletionTracker.complete",
+    "SessionCompletionTracker.invalidate",
+    "SessionCompletionTracker.observe",
+    "SessionCompletionTracker.single_exitstatus",
+    "ShardExpectation",
+    "admit_lane",
+    "combine_attempts",
+    "compare_lanes",
+    "compile_obligations",
+    "core.report_log.SessionCompletionTracker",
+    "core.report_log.iter_report_log_records",
+    "export_ledger",
+    "fingerprint",
+    "load_ledger",
+    "row_blob",
+    "scripts/verify_round_receipt.py:compute_bundle_identity",
+    "scripts/verify_round_receipt.py:main",
+    "scripts/verify_round_receipt.py:validate_lock",
+    "scripts/verify_round_receipt.py:validate_receipt",
+    "shard_digest",
+    "validate_deltas"
+  ],
+  "api_contract": {
+    "AdmissionVerdict": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "admitted",
+          "type": "bool"
+        },
+        {
+          "default": "<required>",
+          "name": "failures",
+          "type": "list[str]"
+        },
+        {
+          "default": "<required>",
+          "name": "warnings",
+          "type": "list[str]"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.admit",
+      "signature": "(admitted: 'bool', failures: 'list[str]', warnings: 'list[str]') -> None"
+    },
+    "ComparisonVerdict": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "regressions",
+          "type": "list[Regression]"
+        },
+        {
+          "default": "<required>",
+          "name": "improvements",
+          "type": "list[Regression]"
+        },
+        {
+          "default": "<required>",
+          "name": "unstable",
+          "type": "list[str]"
+        },
+        {
+          "default": "<required>",
+          "name": "counts",
+          "type": "Mapping[str, int]"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(regressions: 'list[Regression]', improvements: 'list[Regression]', unstable: 'list[str]', counts: 'Mapping[str, int]') -> None"
+    },
+    "Delta": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "lane",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "case_id",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "phase",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "old_fp",
+          "type": "tuple[str, ...] | str"
+        },
+        {
+          "default": "<required>",
+          "name": "new_fp",
+          "type": "tuple[str, ...] | str"
+        },
+        {
+          "default": "<required>",
+          "name": "reason",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "ttl",
+          "type": "int"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(lane: 'str', case_id: 'str', phase: 'str', old_fp: 'tuple[str, ...] | str', new_fp: 'tuple[str, ...] | str', reason: 'str', ttl: 'int') -> None"
+    },
+    "EMPTY_SHARD_SHA256": {
+      "module": null,
+      "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "LEDGER_SCHEMA_VERSION": {
+      "module": null,
+      "value": 1
+    },
+    "LedgerHeader": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "schema_v",
+          "type": "int"
+        },
+        {
+          "default": "<required>",
+          "name": "lane",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "lane_os",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "lane_arch",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "framework_sha",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "p11lab_sha",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "image_digest",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "corpus_hash",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "disabled_hash",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "planned_collection_hash",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "planned_count",
+          "type": "int"
+        },
+        {
+          "default": "<required>",
+          "name": "raw_stream_bytes",
+          "type": "int"
+        },
+        {
+          "default": "<required>",
+          "name": "raw_stream_sha256",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "malformed_lines",
+          "type": "int"
+        },
+        {
+          "default": "<required>",
+          "name": "counters",
+          "type": "dict[str, int]"
+        },
+        {
+          "default": "<required>",
+          "name": "created_by",
+          "type": "str"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.schema",
+      "signature": "(schema_v: 'int', lane: 'str', lane_os: 'str', lane_arch: 'str', framework_sha: 'str', p11lab_sha: 'str', image_digest: 'str', corpus_hash: 'str', disabled_hash: 'str', planned_collection_hash: 'str', planned_count: 'int', raw_stream_bytes: 'int', raw_stream_sha256: 'str', malformed_lines: 'int', counters: 'dict[str, int]', created_by: 'str') -> None"
+    },
+    "LedgerHeader.from_record": {
+      "property": false,
+      "signature": "(record: 'Mapping[str, Any]', *, line_number: 'int') -> 'LedgerHeader'"
+    },
+    "LedgerHeader.to_record": {
+      "property": false,
+      "signature": "(self) -> 'dict[str, Any]'"
+    },
+    "LedgerRow": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "node_id",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "phase",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "attempt",
+          "type": "int"
+        },
+        {
+          "default": "<required>",
+          "name": "attempts_total",
+          "type": "int"
+        },
+        {
+          "default": "<required>",
+          "name": "shard_id",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "outcome",
+          "type": "Outcome"
+        },
+        {
+          "default": "<required>",
+          "name": "duration_ms",
+          "type": "int"
+        },
+        {
+          "default": "<required>",
+          "name": "reason",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "class_reason",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "category",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "ckr_expected",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "ckr_actual",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "mechanism",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "stimulus_rev",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "oracle_rev",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "reach",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "effect",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "cleanup",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "termination",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "flags",
+          "type": "list[str]"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.schema",
+      "signature": "(node_id: 'str', phase: 'str', attempt: 'int', attempts_total: 'int', shard_id: 'str', outcome: 'Outcome', duration_ms: 'int', reason: 'str', class_reason: 'str', category: 'str', ckr_expected: 'str', ckr_actual: 'str', mechanism: 'str', stimulus_rev: 'str', oracle_rev: 'str', reach: 'str', effect: 'str', cleanup: 'str', termination: 'str', flags: 'list[str]') -> None"
+    },
+    "LedgerRow.from_record": {
+      "property": false,
+      "signature": "(record: 'Mapping[str, Any]', *, line_number: 'int') -> 'LedgerRow'"
+    },
+    "LedgerRow.sort_key": {
+      "property": true,
+      "signature": "(self) -> 'tuple[str, str, int]'"
+    },
+    "LedgerRow.to_record": {
+      "property": false,
+      "signature": "(self) -> 'dict[str, Any]'"
+    },
+    "ObligationInventory": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "members",
+          "type": "frozenset[str]"
+        },
+        {
+          "default": "frozenset()",
+          "name": "unselected",
+          "type": "frozenset[str]"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.obligations",
+      "signature": "(members: 'frozenset[str]', unselected: 'frozenset[str]' = frozenset()) -> None"
+    },
+    "Outcome": {
+      "module": "pkcs11_check.core.evidence.schema",
+      "signature": "(*values)",
+      "values": [
+        "passed",
+        "failed",
+        "skipped",
+        "xfailed",
+        "xpassed",
+        "error",
+        "crashed",
+        "timeout",
+        "crash_limited",
+        "missing"
+      ]
+    },
+    "PredeclaredRoster": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "lane",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "shards",
+          "type": "Mapping[str, ShardExpectation]"
+        },
+        {
+          "default": "('lane', 'framework_sha')",
+          "name": "required_identity",
+          "type": "tuple[str, ...]"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.admit",
+      "signature": "(lane: 'str', shards: 'Mapping[str, ShardExpectation]', required_identity: 'tuple[str, ...]' = ('lane', 'framework_sha')) -> None"
+    },
+    "QuorumPolicy": {
+      "fields": [
+        {
+          "default": "3",
+          "name": "min_repeats",
+          "type": "int"
+        },
+        {
+          "default": "0.6666666666666666",
+          "name": "quorum_frac",
+          "type": "float"
+        },
+        {
+          "default": "True",
+          "name": "disagree_is_unstable",
+          "type": "bool"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(min_repeats: 'int' = 3, quorum_frac: 'float' = 0.6666666666666666, disagree_is_unstable: 'bool' = True) -> None"
+    },
+    "Regression": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "node_id",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "phase",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "old",
+          "type": "tuple[str, ...] | str"
+        },
+        {
+          "default": "<required>",
+          "name": "new",
+          "type": "tuple[str, ...] | str"
+        },
+        {
+          "default": "<required>",
+          "name": "axis",
+          "type": "str"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(node_id: 'str', phase: 'str', old: 'tuple[str, ...] | str', new: 'tuple[str, ...] | str', axis: 'str') -> None"
+    },
+    "RotationDeltas": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "version",
+          "type": "str"
+        },
+        {
+          "default": "<required>",
+          "name": "entries",
+          "type": "tuple[Delta, ...]"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(version: 'str', entries: 'tuple[Delta, ...]') -> None"
+    },
+    "SessionCompletionTracker.complete": {
+      "property": true,
+      "signature": "(self) -> 'bool'"
+    },
+    "SessionCompletionTracker.invalidate": {
+      "property": false,
+      "signature": "(self) -> 'None'"
+    },
+    "SessionCompletionTracker.observe": {
+      "property": false,
+      "signature": "(self, record: 'Mapping[str, Any]') -> 'None'"
+    },
+    "SessionCompletionTracker.single_exitstatus": {
+      "property": true,
+      "signature": "(self) -> 'int | None'"
+    },
+    "ShardExpectation": {
+      "fields": [
+        {
+          "default": "<required>",
+          "name": "records",
+          "type": "int"
+        },
+        {
+          "default": "<required>",
+          "name": "sha256",
+          "type": "str"
+        }
+      ],
+      "module": "pkcs11_check.core.evidence.admit",
+      "signature": "(records: 'int', sha256: 'str') -> None"
+    },
+    "admit_lane": {
+      "module": "pkcs11_check.core.evidence.admit",
+      "signature": "(header: 'LedgerHeader', rows: 'Sequence[LedgerRow]', roster: 'PredeclaredRoster', obligations: 'ObligationInventory') -> 'AdmissionVerdict'"
+    },
+    "combine_attempts": {
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(rows: 'Sequence[LedgerRow]', policy: 'QuorumPolicy') -> 'tuple[tuple[str, ...], list[str]]'"
+    },
+    "compare_lanes": {
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(baseline: 'tuple[LedgerHeader, list[LedgerRow]]', candidate: 'tuple[LedgerHeader, list[LedgerRow]]', deltas: 'RotationDeltas', quorum: 'QuorumPolicy') -> 'ComparisonVerdict'"
+    },
+    "compile_obligations": {
+      "module": "pkcs11_check.core.evidence.obligations",
+      "signature": "(catalog: 'Mapping[str, Any]', profile: 'Mapping[str, Any]') -> 'ObligationInventory'"
+    },
+    "core.report_log.SessionCompletionTracker": {
+      "fields": [
+        {
+          "default": "0",
+          "name": "starts",
+          "type": "int"
+        },
+        {
+          "default": "0",
+          "name": "finishes",
+          "type": "int"
+        },
+        {
+          "default": "False",
+          "name": "_active",
+          "type": "bool"
+        },
+        {
+          "default": "False",
+          "name": "_invalid",
+          "type": "bool"
+        },
+        {
+          "default": "None",
+          "name": "_exitstatuses",
+          "type": "list[int] | None"
+        }
+      ],
+      "signature": "(starts: 'int' = 0, finishes: 'int' = 0, _active: 'bool' = False, _invalid: 'bool' = False, _exitstatuses: 'list[int] | None' = None) -> None"
+    },
+    "core.report_log.iter_report_log_records": {
+      "signature": "(path: 'Path', *, on_invalid: 'Callable[[], None] | None' = None) -> 'Iterator[dict[str, Any]]'"
+    },
+    "export_ledger": {
+      "module": "pkcs11_check.core.evidence.export",
+      "signature": "(records: 'Iterable[Mapping[str, Any]]', identity: 'Mapping[str, str]', sink: 'TextIO', *, reader_invalid_lines: 'int | Callable[[], int] | None' = None) -> 'LedgerHeader'"
+    },
+    "fingerprint": {
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(row: 'LedgerRow') -> 'tuple[str, ...]'"
+    },
+    "load_ledger": {
+      "module": "pkcs11_check.core.evidence.export",
+      "signature": "(path: 'Path') -> 'tuple[LedgerHeader, list[LedgerRow]]'"
+    },
+    "row_blob": {
+      "module": "pkcs11_check.core.evidence.admit",
+      "signature": "(row: 'LedgerRow | Mapping[str, Any]') -> 'bytes'"
+    },
+    "scripts/verify_round_receipt.py:compute_bundle_identity": {
+      "signature": "(digests: 'Mapping[str, str]') -> 'str'"
+    },
+    "scripts/verify_round_receipt.py:main": {
+      "signature": "(argv: 'list[str] | None' = None) -> 'int'"
+    },
+    "scripts/verify_round_receipt.py:validate_lock": {
+      "signature": "(data: 'Any') -> 'list[str]'"
+    },
+    "scripts/verify_round_receipt.py:validate_receipt": {
+      "signature": "(receipt: 'Any', lock: 'dict[str, Any]', expect_fw: 'str') -> 'list[str]'"
+    },
+    "shard_digest": {
+      "module": "pkcs11_check.core.evidence.admit",
+      "signature": "(rows: 'Sequence[LedgerRow | Mapping[str, Any]]') -> 'str'"
+    },
+    "validate_deltas": {
+      "module": "pkcs11_check.core.evidence.compare",
+      "signature": "(deltas: 'RotationDeltas') -> 'list[str]'"
+    }
+  },
+  "attributes": [
+    "AdmissionVerdict.admitted",
+    "AdmissionVerdict.failures",
+    "AdmissionVerdict.warnings",
+    "ComparisonVerdict.counts",
+    "ComparisonVerdict.improvements",
+    "ComparisonVerdict.regressions",
+    "ComparisonVerdict.unstable",
+    "Delta.case_id",
+    "Delta.lane",
+    "Delta.new_fp",
+    "Delta.old_fp",
+    "Delta.phase",
+    "Delta.reason",
+    "Delta.ttl",
+    "LedgerHeader.corpus_hash",
+    "LedgerHeader.counters",
+    "LedgerHeader.created_by",
+    "LedgerHeader.disabled_hash",
+    "LedgerHeader.framework_sha",
+    "LedgerHeader.image_digest",
+    "LedgerHeader.lane",
+    "LedgerHeader.lane_arch",
+    "LedgerHeader.lane_os",
+    "LedgerHeader.malformed_lines",
+    "LedgerHeader.p11lab_sha",
+    "LedgerHeader.planned_collection_hash",
+    "LedgerHeader.planned_count",
+    "LedgerHeader.raw_stream_bytes",
+    "LedgerHeader.raw_stream_sha256",
+    "LedgerHeader.schema_v",
+    "LedgerRow.attempt",
+    "LedgerRow.attempts_total",
+    "LedgerRow.category",
+    "LedgerRow.ckr_actual",
+    "LedgerRow.ckr_expected",
+    "LedgerRow.class_reason",
+    "LedgerRow.cleanup",
+    "LedgerRow.duration_ms",
+    "LedgerRow.effect",
+    "LedgerRow.flags",
+    "LedgerRow.mechanism",
+    "LedgerRow.node_id",
+    "LedgerRow.oracle_rev",
+    "LedgerRow.outcome",
+    "LedgerRow.phase",
+    "LedgerRow.reach",
+    "LedgerRow.reason",
+    "LedgerRow.shard_id",
+    "LedgerRow.stimulus_rev",
+    "LedgerRow.termination",
+    "ObligationInventory.members",
+    "ObligationInventory.unselected",
+    "Outcome.CRASHED",
+    "Outcome.CRASH_LIMITED",
+    "Outcome.ERROR",
+    "Outcome.FAILED",
+    "Outcome.MISSING",
+    "Outcome.PASSED",
+    "Outcome.SKIPPED",
+    "Outcome.TIMEOUT",
+    "Outcome.XFAILED",
+    "Outcome.XPASSED",
+    "PredeclaredRoster.lane",
+    "PredeclaredRoster.required_identity",
+    "PredeclaredRoster.shards",
+    "QuorumPolicy.disagree_is_unstable",
+    "QuorumPolicy.min_repeats",
+    "QuorumPolicy.quorum_frac",
+    "Regression.axis",
+    "Regression.new",
+    "Regression.node_id",
+    "Regression.old",
+    "Regression.phase",
+    "RotationDeltas.entries",
+    "RotationDeltas.version",
+    "SessionCompletionTracker._active",
+    "SessionCompletionTracker._exitstatuses",
+    "SessionCompletionTracker._invalid",
+    "SessionCompletionTracker.finishes",
+    "SessionCompletionTracker.starts",
+    "ShardExpectation.records",
+    "ShardExpectation.sha256"
+  ],
+  "cli_signatures": {
+    "compare-coverage": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "baseline",
+          "nargs": 1,
+          "opts": [
+            "baseline"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "candidate",
+          "nargs": 1,
+          "opts": [
+            "candidate"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "summary",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "fail_on_loss",
+          "nargs": 1,
+          "opts": [
+            "--fail-on-loss"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    "evidence-admit": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "ledger",
+          "nargs": 1,
+          "opts": [
+            "ledger"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "roster",
+          "nargs": 1,
+          "opts": [
+            "--roster"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "obligations",
+          "nargs": 1,
+          "opts": [
+            "--obligations"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "summary",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "evidence-compare": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "baseline",
+          "nargs": 1,
+          "opts": [
+            "baseline"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "candidate",
+          "nargs": 1,
+          "opts": [
+            "candidate"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "deltas",
+          "nargs": 1,
+          "opts": [
+            "--deltas"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": 3,
+          "kind": "option",
+          "name": "quorum_min_repeats",
+          "nargs": 1,
+          "opts": [
+            "--quorum-min-repeats"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": 0.6666666666666666,
+          "kind": "option",
+          "name": "quorum_frac",
+          "nargs": 1,
+          "opts": [
+            "--quorum-frac"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "float"
+        },
+        {
+          "default": "summary",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "evidence-export": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "report",
+          "nargs": 1,
+          "opts": [
+            "report"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "ledger",
+          "nargs": 1,
+          "opts": [
+            "ledger"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "lane",
+          "nargs": 1,
+          "opts": [
+            "--lane"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "lane_os",
+          "nargs": 1,
+          "opts": [
+            "--lane-os"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "lane_arch",
+          "nargs": 1,
+          "opts": [
+            "--lane-arch"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "framework_sha",
+          "nargs": 1,
+          "opts": [
+            "--framework-sha"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "p11lab_sha",
+          "nargs": 1,
+          "opts": [
+            "--p11lab-sha"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "image_digest",
+          "nargs": 1,
+          "opts": [
+            "--image-digest"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "corpus_hash",
+          "nargs": 1,
+          "opts": [
+            "--corpus-hash"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "",
+          "kind": "option",
+          "name": "disabled_hash",
+          "nargs": 1,
+          "opts": [
+            "--disabled-hash"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "summary",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "fetch-data": {
+      "parameters": [
+        {
+          "default": "all",
+          "kind": "argument",
+          "name": "source",
+          "nargs": 1,
+          "opts": [
+            "source"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "status",
+          "nargs": 1,
+          "opts": [
+            "--status"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "checksums",
+          "nargs": 1,
+          "opts": [
+            "--checksums"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "data_dir",
+          "nargs": 1,
+          "opts": [
+            "--data-dir"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        }
+      ]
+    },
+    "list-tests": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "targets",
+          "nargs": -1,
+          "opts": [
+            "targets"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "match",
+          "nargs": 1,
+          "opts": [
+            "--match"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "marker",
+          "nargs": 1,
+          "opts": [
+            "--marker"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "category",
+          "nargs": 1,
+          "opts": [
+            "--category",
+            "-c"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "skip_slow",
+          "nargs": 1,
+          "opts": [
+            "--skip-slow"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "only_slow",
+          "nargs": 1,
+          "opts": [
+            "--only-slow"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "module",
+          "nargs": 1,
+          "opts": [
+            "--module",
+            "-m"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "choices": [
+            "auto",
+            "2.40",
+            "3.0",
+            "3.1",
+            "3.2"
+          ],
+          "default": "auto",
+          "kind": "option",
+          "name": "interface",
+          "nargs": 1,
+          "opts": [
+            "--interface",
+            "-i"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "choice"
+        },
+        {
+          "default": 0,
+          "kind": "option",
+          "name": "slot",
+          "nargs": 1,
+          "opts": [
+            "--slot"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "include_disabled",
+          "nargs": 1,
+          "opts": [
+            "--include-disabled"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    "merge-shards": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "shard_dirs",
+          "nargs": -1,
+          "opts": [
+            "shard_dirs"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        }
+      ]
+    },
+    "root": {
+      "commands": [
+        "test",
+        "doctor",
+        "info",
+        "list",
+        "list-tests",
+        "state",
+        "compliance-report",
+        "compare-coverage",
+        "compare-results",
+        "fetch-data",
+        "fetch-disabled",
+        "shard-units",
+        "merge-shards",
+        "crash-calls",
+        "differential",
+        "evidence-export",
+        "evidence-admit",
+        "evidence-compare",
+        "version"
+      ],
+      "parameters": [
+        {
+          "choices": [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR",
+            "CRITICAL"
+          ],
+          "default": "INFO",
+          "kind": "option",
+          "name": "log_level",
+          "nargs": 1,
+          "opts": [
+            "--log-level"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "choice"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "trace",
+          "nargs": 1,
+          "opts": [
+            "--trace"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "install_completion",
+          "nargs": 1,
+          "opts": [
+            "--install-completion"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "show_completion",
+          "nargs": 1,
+          "opts": [
+            "--show-completion"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    "shard-units": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "option",
+          "name": "shards",
+          "nargs": 1,
+          "opts": [
+            "--shards",
+            "-n"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": "PosixPath('src/pkcs11_check/testcases')",
+          "kind": "option",
+          "name": "testcases_dir",
+          "nargs": 1,
+          "opts": [
+            "--testcases"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "prior_results",
+          "nargs": 1,
+          "opts": [
+            "--prior-results"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "lines",
+          "kind": "option",
+          "name": "output_format",
+          "nargs": 1,
+          "opts": [
+            "--format"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "test": {
+      "parameters": [
+        {
+          "default": null,
+          "kind": "option",
+          "name": "module",
+          "nargs": 1,
+          "opts": [
+            "--module",
+            "-m"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "choices": [
+            "auto",
+            "2.40",
+            "3.0",
+            "3.1",
+            "3.2"
+          ],
+          "default": "auto",
+          "kind": "option",
+          "name": "interface",
+          "nargs": 1,
+          "opts": [
+            "--interface",
+            "-i"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "choice"
+        },
+        {
+          "default": 1,
+          "kind": "option",
+          "name": "sessions",
+          "nargs": 1,
+          "opts": [
+            "--sessions",
+            "-s"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": 180,
+          "kind": "option",
+          "name": "timeout",
+          "nargs": 1,
+          "opts": [
+            "--timeout",
+            "-t"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "category",
+          "nargs": 1,
+          "opts": [
+            "--category",
+            "-c"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "match",
+          "nargs": 1,
+          "opts": [
+            "--match"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "marker",
+          "nargs": 1,
+          "opts": [
+            "--marker"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "skip_slow",
+          "nargs": 1,
+          "opts": [
+            "--skip-slow"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "only_slow",
+          "nargs": 1,
+          "opts": [
+            "--only-slow"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "pin",
+          "nargs": 1,
+          "opts": [
+            "--pin"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "so_pin",
+          "nargs": 1,
+          "opts": [
+            "--so-pin"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": 0,
+          "kind": "option",
+          "name": "slot",
+          "nargs": 1,
+          "opts": [
+            "--slot"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "destructive",
+          "nargs": 1,
+          "opts": [
+            "--destructive"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": "rich",
+          "kind": "option",
+          "name": "output",
+          "nargs": 1,
+          "opts": [
+            "--output",
+            "-o",
+            "--format"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "output_file",
+          "nargs": 1,
+          "opts": [
+            "--output-file"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "verbose",
+          "nargs": 1,
+          "opts": [
+            "--verbose",
+            "-V"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "ignore_disabled_tests",
+          "nargs": 1,
+          "opts": [
+            "--ignore-disabled-tests"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": "auto",
+          "kind": "option",
+          "name": "isolation",
+          "nargs": 1,
+          "opts": [
+            "--isolation"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "no_collection_cache",
+          "nargs": 1,
+          "opts": [
+            "--no-collection-cache"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "resume",
+          "nargs": 1,
+          "opts": [
+            "--resume"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "stop_on_failure",
+          "nargs": 1,
+          "opts": [
+            "--stop-on-failure"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": "PosixPath('.pkcs11-check-isolation-state.json')",
+          "kind": "option",
+          "name": "state_file",
+          "nargs": 1,
+          "opts": [
+            "--state-file"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": "PosixPath('.pkcs11-check-isolation-policy.json')",
+          "kind": "option",
+          "name": "policy_file",
+          "nargs": 1,
+          "opts": [
+            "--policy-file"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": 10,
+          "kind": "option",
+          "name": "max_crashes_per_file",
+          "nargs": 1,
+          "opts": [
+            "--max-crashes-per-file"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer range"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "rv_trace",
+          "nargs": 1,
+          "opts": [
+            "--rv-trace"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "rv_trace_compact",
+          "nargs": 1,
+          "opts": [
+            "--rv-trace-compact"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": "off",
+          "kind": "option",
+          "name": "key_inject",
+          "nargs": 1,
+          "opts": [
+            "--key-inject"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "bootstrap",
+          "kind": "option",
+          "name": "wrap_key_source",
+          "nargs": 1,
+          "opts": [
+            "--wrap-key-source"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "wrap_key_label",
+          "nargs": 1,
+          "opts": [
+            "--wrap-key-label"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "wrap_key_handle",
+          "nargs": 1,
+          "opts": [
+            "--wrap-key-handle"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "wrap_key_value",
+          "nargs": 1,
+          "opts": [
+            "--wrap-key-value"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "wrap_mech",
+          "nargs": 1,
+          "opts": [
+            "--wrap-mech"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": 2048,
+          "kind": "option",
+          "name": "wrap_rsa_bits",
+          "nargs": 1,
+          "opts": [
+            "--wrap-rsa-bits"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "integer"
+        },
+        {
+          "default": "auto",
+          "kind": "option",
+          "name": "wrap_oaep_hash",
+          "nargs": 1,
+          "opts": [
+            "--wrap-oaep-hash"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": "off",
+          "kind": "option",
+          "name": "recover_mode",
+          "nargs": 1,
+          "opts": [
+            "--recover-mode"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "recover_cmd",
+          "nargs": 1,
+          "opts": [
+            "--recover-cmd"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "allow_external_provision",
+          "nargs": 1,
+          "opts": [
+            "--allow-external-provision"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "external_provision_cmd",
+          "nargs": 1,
+          "opts": [
+            "--external-provision-cmd"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "selection_manifest",
+          "nargs": 1,
+          "opts": [
+            "--selection-manifest"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "vendor_mechanism",
+          "nargs": 1,
+          "opts": [
+            "--vendor-mechanism"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        },
+        {
+          "default": false,
+          "kind": "option",
+          "name": "show_config",
+          "nargs": 1,
+          "opts": [
+            "--show-config"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "boolean"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "targets",
+          "nargs": -1,
+          "opts": [
+            "targets"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "text"
+        }
+      ]
+    },
+    "verify-round-receipt": {
+      "parameters": [
+        {
+          "default": "==SUPPRESS==",
+          "kind": "option",
+          "name": "help",
+          "nargs": 0,
+          "opts": [
+            "-h",
+            "--help"
+          ],
+          "required": false,
+          "secondary_opts": [],
+          "type": "str"
+        },
+        {
+          "default": null,
+          "kind": "argument",
+          "name": "receipt",
+          "nargs": null,
+          "opts": [],
+          "required": true,
+          "secondary_opts": [],
+          "type": "Path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "lock",
+          "nargs": null,
+          "opts": [
+            "--lock"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "Path"
+        },
+        {
+          "default": null,
+          "kind": "option",
+          "name": "expect_fw",
+          "nargs": null,
+          "opts": [
+            "--expect-fw"
+          ],
+          "required": true,
+          "secondary_opts": [],
+          "type": "str"
+        }
+      ]
+    }
+  },
+  "commands": [
+    "root",
+    "list-tests",
+    "shard-units",
+    "test",
+    "fetch-data",
+    "compare-coverage",
+    "evidence-export",
+    "evidence-admit",
+    "evidence-compare",
+    "merge-shards",
+    "verify-round-receipt"
+  ],
+  "comparison_limits": {
+    "effect_only": "retained in ledger; excluded from E3 fingerprint",
+    "failed_to_skip": "E3 improvement; W10 independently vetoes required coverage loss"
+  },
+  "coverage_fields": [
+    "advertised",
+    "accepted",
+    "attempted",
+    "rejected_cleanly",
+    "skipped_by_capability",
+    "crashed",
+    "timeout",
+    "selected",
+    "selection_rejected",
+    "invoked"
+  ],
+  "framework_sha": "09aabfec9fea7e424aabb991f6347349bfa84075",
+  "help_contract": [
+    {
+      "command": [
+        "pkcs11-check",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "2877bdb96b3ef72d6eba1a6c1d12027cbae154520ea3adc9f29ded89c2df85f0"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "list-tests",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "52f553728ea7ac2a0af39a3e775f01503530d7b1ba5c14bbfa1873bd6b0dde84"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "shard-units",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "3a424a47907e67f471cb9cfbd84e31dcd18e7128c69016e550633bfec1a4fdf1"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "test",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "03464ad8b4f9a80256d15b681c90060823298dd91d0c8a519f1e817ca2efebef"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "fetch-data",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "feb171734b70e9ca43b1813b45fd99abfb3c26074646605bb06726c021487e36"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "compare-coverage",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "7cbb028f474f19089ca411de4c52998dc7623069d14a308de018fee088899a34"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "evidence-export",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "ea26baf0dfce647339d996217f53c48933624c41e5af2a5a4f1af56c9bd202de"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "evidence-admit",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "e73576bb4d341db38f0740163e14ac94c34e6e8350af123d8528a6b02b59ec5a"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "evidence-compare",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "b7425b66963d59e86012e2d82d9b6a20942407259a50f039d8f6679a26eb47b4"
+    },
+    {
+      "command": [
+        "pkcs11-check",
+        "merge-shards",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "ee5f23140645699ee4a5a9c469a7a2283b93e860bede6e8b61471086da3a62dd"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/verify_round_receipt.py",
+        "--help"
+      ],
+      "returncode": 0,
+      "stderr_canonical_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_canonical_sha256": "a73300a8bebf3e7abf80fff844d60e04a6a08543f1d563fd4af3d94337220d0e"
+    }
+  ],
+  "release_dependencies": {
+    "EVID-STREAM-1": {
+      "reason": "N=2 fresh-stream occurrence collision at reviewed pin; public stream context API and accepted new pin required",
+      "status": "blocked"
+    }
+  },
+  "schema": 1
+}

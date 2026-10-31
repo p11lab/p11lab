@@ -7,6 +7,7 @@ consumer images. P11LAB_TEST_PROXY_CLIENTS maps channels to
 {"path": archive, "sha256": digest} native-client bundles. No reference
 workspace is mounted anywhere.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -20,7 +21,7 @@ from p11lab import run as run_module
 from p11lab import tls as tls_module
 from p11lab.catalog import package_data
 from p11lab.docker import CommandResult
-from p11lab.models import ArtifactRef, RunSpec
+from p11lab.models import ArtifactRef, ProxyBuildIdentityV1, RunSpec
 
 IMAGES = json.loads(os.environ.get('P11LAB_TEST_PROXY_IMAGES', '{}'))
 CALLER = os.environ.get('P11LAB_TEST_PROXY_CALLER_IMAGE', '')
@@ -31,14 +32,72 @@ NEEDS_DOCKER = not IMAGES or not CALLER or not CHECKERS or not CLIENTS
 DAEMON_IMAGE = ArtifactRef('docker-local', 'sha256:' + 'a' * 64, 'a' * 64, 'linux/amd64')
 CALLER_IMAGE = ArtifactRef('docker-local', 'sha256:' + 'b' * 64, 'b' * 64, 'linux/amd64')
 CLIENT_BUNDLE = ArtifactRef('bundle', '/tmp/client.tar.gz', 'c' * 64, 'linux/amd64')
+DAEMON_PATH = 'bin/pkcs11-proxy-ng'
+CLI_PATH = 'bin/pkcs11-proxy-ng-cli'
+SHIM_PATH = 'lib/libpkcs11_proxy_ng_shim.so'
+FAKE_SHIM_BYTES = b'fake-shim-bytes'
+FAKE_CLI_BYTES = b'fake-cli-bytes'
 
-DERIVATIVE_BUILD = {'schema_version': 1, 'source_revision': tls_module.PROXY_SOURCE_REVISION,
-                    'cargo_lock_sha256': tls_module.PROXY_CARGO_LOCK_SHA256,
-                    'binaries': {'pkcs11-proxy-ng': 'd' * 64, 'pkcs11-proxy-ng-cli': 'e' * 64,
-                                 'proxy-entrypoint.sh': 'f' * 64}}
-CLIENT_MANIFEST = {'source': {'proxy': {'source_revision': tls_module.PROXY_SOURCE_REVISION,
-                                        'cargo_lock_sha256': tls_module.PROXY_CARGO_LOCK_SHA256,
-                                        'shim_sha256': '9' * 64, 'cli_sha256': 'e' * 64}}}
+
+def _selected_fixture_record():
+    """Authored explicit-expected record for hermetic fixtures (B-style)."""
+    base = tls_module.DEFAULT_PROXY_BUILD_IDENTITY().to_dict()
+    paths = (DAEMON_PATH, CLI_PATH, SHIM_PATH)
+    base.update({
+        'source_commit': 'e' * 40, 'source_tree': 'e1' * 20,
+        'source_archive': {'sha256': 'e2' * 32, 'size': 222, 'prefix': 'pkcs11-proxy-ng-fixture-e'},
+        'source_members': {'count': 7, 'canonical_roster_sha256': 'e3' * 32},
+        'cargo_lock_sha256': 'e4' * 32,
+        'vendor_packages': [{'identity': 'fixture-a-1.0.0', 'sha256': 'e5' * 32}],
+        'daemon': {'path': DAEMON_PATH, 'size': 4343, 'mode': 0o755, 'sha256': 'e6' * 32},
+        'cli': {'path': CLI_PATH, 'size': len(FAKE_CLI_BYTES), 'mode': 0o755,
+                'sha256': hashlib.sha256(FAKE_CLI_BYTES).hexdigest()},
+        'shim': {'path': SHIM_PATH, 'size': len(FAKE_SHIM_BYTES), 'mode': 0o755,
+                 'sha256': hashlib.sha256(FAKE_SHIM_BYTES).hexdigest()},
+        'abi': {'decision': 'conforming-recorded', 'runtime_qualification': 'not-performed',
+                'floors': {path: {} for path in paths}, 'needed': {path: [] for path in paths},
+                'interpreters': {path: None for path in paths}, 'shim_exports': [],
+                'version_requirements': {path: [] for path in paths},
+                'symbol_versions': {path: [] for path in paths}},
+        'build_context_digest': 'e7' * 32,
+        'caller': {'origin': 'local-controller', 'run_id': 'fixture-run-e', 'job_id': 'fixture-job-e'},
+        'provider_parent': {'family': 'fixture-provider-e', 'platform': 'linux/amd64',
+                            'manifest_digest': 'e8' * 32, 'config_digest': 'e9' * 32},
+    })
+    return ProxyBuildIdentityV1.from_dict(base).to_dict()
+
+
+SELECTED = _selected_fixture_record()
+
+
+def _client_abi_observed(record):
+    abi = record['abi']
+    return {'decision': abi['decision'], 'runtime_qualification': abi['runtime_qualification'],
+            'floors': {path: dict(abi['floors'][path]) for path in (CLI_PATH, SHIM_PATH)},
+            'needed': {path: list(abi['needed'][path]) for path in (CLI_PATH, SHIM_PATH)},
+            'interpreters': {path: abi['interpreters'][path] for path in (CLI_PATH, SHIM_PATH)},
+            'shim_exports': list(abi['shim_exports']),
+            'version_requirements': {path: list(abi['version_requirements'][path])
+                                     for path in (CLI_PATH, SHIM_PATH)},
+            'symbol_versions': {path: list(abi['symbol_versions'][path])
+                                for path in (CLI_PATH, SHIM_PATH)}}
+
+
+DERIVATIVE_BUILD = {'schema_version': 1, 'source_revision': SELECTED['source_commit'],
+                    'cargo_lock_sha256': SELECTED['cargo_lock_sha256'],
+                    'binaries': {'pkcs11-proxy-ng': SELECTED['daemon']['sha256'],
+                                 'pkcs11-proxy-ng-cli': SELECTED['cli']['sha256'],
+                                 'proxy-entrypoint.sh': SELECTED['entrypoint_sha256']}}
+CLIENT_MANIFEST = {'source': {'proxy': {
+    'repository': 'https://github.com/mingulov/pkcs11-proxy-ng',
+    'source_revision': SELECTED['source_commit'],
+    'source_archive_sha256': SELECTED['source_archive']['sha256'],
+    'cargo_lock_sha256': SELECTED['cargo_lock_sha256'],
+    'shim_sha256': SELECTED['shim']['sha256'], 'cli_sha256': SELECTED['cli']['sha256'],
+    'identity': SELECTED, 'abi_observed': _client_abi_observed(SELECTED)}}}
+SELECTED_REHASHES = {'shim_sha256': SELECTED['shim']['sha256'],
+                     'cli_sha256': SELECTED['cli']['sha256']}
+SELECTED_NAMING = {'selected': DAEMON_IMAGE.reference, 'observed': DAEMON_IMAGE.reference}
 
 # Test-driver-only checker lane script, executed inside the checker consumer.
 # Mirrors p11lab.checker._main + execute_checker (same collection check, same
@@ -186,7 +245,8 @@ def proxy_spec(tmp_path, **overrides):
     values = dict(environment='softhsm2', channel='release', mode='proxy', artifact=DAEMON_IMAGE,
                   execution_location='container', consumer_artifact=CALLER_IMAGE, client_artifact=CLIENT_BUNDLE,
                   argv=('app', '--flag'), inputs={'P11LAB_LABEL': 'P11Lab'}, output_dir=tmp_path / 'out',
-                  cwd=tmp_path, timeout_seconds=60, installed_prefix=None)
+                  cwd=tmp_path, timeout_seconds=60, installed_prefix=None,
+                  expected_proxy_identity=ProxyBuildIdentityV1.from_dict(SELECTED))
     return RunSpec(**(values | overrides))
 
 
@@ -221,21 +281,27 @@ def test_prepare_proxy_host_rejects_consumer_image(tmp_path):
 
 
 def test_check_proxy_identities_matches_exact_build():
-    assert run_module.check_proxy_identities(DERIVATIVE_BUILD, CLIENT_MANIFEST) == DERIVATIVE_BUILD
+    assert run_module.check_proxy_identities(
+        DERIVATIVE_BUILD, CLIENT_MANIFEST, expected=ProxyBuildIdentityV1.from_dict(SELECTED),
+        launch_rehashes=dict(SELECTED_REHASHES), daemon_image=dict(SELECTED_NAMING)) == DERIVATIVE_BUILD
 
 
 @pytest.mark.parametrize('derivative', [
-    {'schema_version': 1, 'source_revision': '0' * 40, 'cargo_lock_sha256': tls_module.PROXY_CARGO_LOCK_SHA256,
+    {'schema_version': 1, 'source_revision': '0' * 40, 'cargo_lock_sha256': SELECTED['cargo_lock_sha256'],
      'binaries': DERIVATIVE_BUILD['binaries']},
-    {'schema_version': 1, 'source_revision': tls_module.PROXY_SOURCE_REVISION, 'cargo_lock_sha256': '0' * 64,
+    {'schema_version': 1, 'source_revision': SELECTED['source_commit'], 'cargo_lock_sha256': '0' * 64,
      'binaries': DERIVATIVE_BUILD['binaries']},
-    {'schema_version': 1, 'source_revision': tls_module.PROXY_SOURCE_REVISION,
-     'cargo_lock_sha256': tls_module.PROXY_CARGO_LOCK_SHA256,
-     'binaries': {'pkcs11-proxy-ng-cli': '0' * 64}},
+    {'schema_version': 1, 'source_revision': SELECTED['source_commit'],
+     'cargo_lock_sha256': SELECTED['cargo_lock_sha256'],
+     'binaries': {'pkcs11-proxy-ng': SELECTED['daemon']['sha256'],
+                  'pkcs11-proxy-ng-cli': '0' * 64,
+                  'proxy-entrypoint.sh': SELECTED['entrypoint_sha256']}},
 ])
 def test_check_proxy_identities_rejects_component_change(derivative):
     with pytest.raises(ValueError):
-        run_module.check_proxy_identities(derivative, CLIENT_MANIFEST)
+        run_module.check_proxy_identities(
+            derivative, CLIENT_MANIFEST, expected=ProxyBuildIdentityV1.from_dict(SELECTED),
+            launch_rehashes=dict(SELECTED_REHASHES), daemon_image=dict(SELECTED_NAMING))
 
 
 def test_client_build_rejects_foreign_proxy(tmp_path):
@@ -262,6 +328,7 @@ class FakeEngine:
         self.removed = []
         self.commands = []
         self.networks = set()
+        self.stopped = set()
 
     def image(self, artifact):
         return {'Id': artifact.reference, 'Os': 'linux', 'Architecture': 'amd64',
@@ -295,7 +362,13 @@ class FakeEngine:
             return CommandResult(0, json.dumps([{'Name': name, 'Labels': {}}]), '', False)
         if args[0] in {'start', 'port', 'logs'}:
             return CommandResult(0, '127.0.0.1:32768\n' if args[0] == 'port' else '', '', False)
+        if args[0] == 'inspect':
+            return CommandResult(0, json.dumps({'Running': args[-1] not in self.stopped,
+                                               'ExitCode': 0}), '')
         raise AssertionError('unexpected command: ' + ' '.join(args))
+
+    def stop(self, identity, labels):
+        self.stopped.add(identity)
 
     def remove(self, kind, identity, labels):
         self.removed.append((kind, identity))
@@ -303,29 +376,44 @@ class FakeEngine:
 
 class FakeInstalled:
     def __init__(self, prefix):
-        from p11lab.native import CLIENT_MODULE
+        from p11lab.native import CLIENT_CLI, CLIENT_HOST_REQUIREMENTS, CLIENT_MODULE, CLIENT_TARGET
         self.artifact = CLIENT_BUNDLE
         self.prefix = prefix
-        self.manifest = CLIENT_MANIFEST | {'environment': 'softhsm2', 'channel': 'release'}
+        self.manifest = CLIENT_MANIFEST | {'environment': 'softhsm2', 'channel': 'release',
+                                            'role': 'native-client', 'target': CLIENT_TARGET,
+                                            'module': CLIENT_MODULE,
+                                            'host_requirements': CLIENT_HOST_REQUIREMENTS,
+                                            'files': [
+                                                {'path': SHIM_PATH,
+                                                 'sha256': SELECTED['shim']['sha256']},
+                                                {'path': CLI_PATH,
+                                                 'sha256': SELECTED['cli']['sha256']}]}
         self.manifest_sha256 = '1' * 64
         self.receipt_path = prefix / '.p11lab-install.json'
         self.receipt_sha256 = '2' * 64
         shim = prefix / 'payload' / CLIENT_MODULE
         shim.parent.mkdir(parents=True)
-        shim.write_bytes(b'fake-shim')
+        shim.write_bytes(FAKE_SHIM_BYTES)
+        cli = prefix / 'payload' / CLIENT_CLI
+        cli.parent.mkdir(parents=True, exist_ok=True)
+        cli.write_bytes(FAKE_CLI_BYTES)
 
 
 def fake_client(monkeypatch, tmp_path):
     import p11lab.native as native
 
-    def install(artifact, prefix, *, environment, channel):
+    def install(artifact, prefix, *, environment, channel, expected_proxy_identity=None):
         assert artifact == CLIENT_BUNDLE
-        return FakeInstalled(Path(prefix))
+        installed = FakeInstalled(Path(prefix))
+        native._validate_client_manifest(installed.manifest, environment, channel,
+                                         expected_proxy_identity=expected_proxy_identity)
+        return installed
 
     monkeypatch.setattr(native, 'install_native_client_bundle', install)
     monkeypatch.setattr(native, 'preflight_native_client',
-                        lambda prefix, manifest: {'loader': '/lib64/ld-linux-x86-64.so.2', 'architecture': 'x86_64',
-                                                  'closure': {'shim': {'resolved': []}}, 'cli_version': 'test'})
+                        lambda prefix, manifest, expected_proxy_identity=None: {
+                            'loader': '/lib64/ld-linux-x86-64.so.2', 'architecture': 'x86_64',
+                            'closure': {'shim': {'resolved': []}}, 'cli_version': 'test'})
 
 
 def mounts_of(entry):
@@ -383,7 +471,7 @@ def test_orchestration_mounts_endpoints_and_cleanup(monkeypatch, tmp_path):
     assert record['proxy']['tls']['server']['sans'] == ['127.0.0.1', 'localhost', 'provider-daemon']
     assert [stage['phase'] for stage in record['stages']] == [
         'proxy-build', 'init', 'daemon-start', 'proxy-health', 'application',
-        'daemon-stop', 'post-health']
+        'daemon-diagnosis', 'daemon-stop', 'post-health']
     assert record['stages'][-2] == {
         'phase': 'daemon-stop', 'container_id': daemon['id'], 'stopped': True}
 

@@ -167,7 +167,7 @@ def test_cli_only_exposes_implemented_resolve(resolved_fixture, tmp_path, capsys
     from p11lab.cli import main
     assert main(['tools', 'resolve', 'consumer', '--target', 'debian13-amd64', '--output-dir', str(tmp_path/'ok')]) == 0
     assert json.loads(capsys.readouterr().out)['admission'] == 'unreviewed'
-    assert main(['tools', 'resolve', 'checker', '--target', 'debian13-amd64', '--output-dir', str(tmp_path/'bad')]) == 2
+    assert main(['tools', 'resolve', 'proxy', '--target', 'debian13-amd64', '--output-dir', str(tmp_path/'bad')]) == 2
     assert not (tmp_path/'bad').exists()
     with pytest.raises(SystemExit) as error: main(['tools', 'build'])
     assert error.value.code == 2

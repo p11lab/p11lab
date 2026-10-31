@@ -27,8 +27,15 @@ MODULE=/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so
 TOOL=/usr/bin/pkcs11-tool
 CHILD_USER=obs-child
 CHILD_UID=10001
-TOKENDIR=/tmp/obs-tokens
-CONF=/tmp/obs-softhsm.conf
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/obs-XXXXXX")
+: "${SCRATCH:?mktemp failed to create scratch}"
+chown "$CHILD_UID:$CHILD_UID" "$SCRATCH"
+chmod 700 "$SCRATCH"
+# Ordering invariant: SCRATCH is always set where this trap is installed (set -u enforced).
+trap 'rm -rf "$SCRATCH"' EXIT
+TOKENDIR="$SCRATCH/tokens"
+CONF="$SCRATCH/softhsm.conf"
+PROFILE="$SCRATCH/observed-profile.json"
 
 log() {
     printf '%s\n' "$*"
@@ -50,7 +57,6 @@ mountpoint -q /sys/fs/bpf 2>/dev/null || mount -t bpf bpf /sys/fs/bpf 2>>"$WORK/
 } | tee -a "$WORK/mounts.txt"
 
 log "== disposable observed token (owned by $CHILD_USER) =="
-rm -rf "$TOKENDIR"
 mkdir -p "$TOKENDIR"
 chown "$CHILD_UID:$CHILD_UID" "$TOKENDIR"
 chmod 700 "$TOKENDIR"
@@ -89,13 +95,13 @@ log "== own-process capture of a PKCS#11 slot/mechanism listing =="
 export SUDO_UID=$CHILD_UID SUDO_GID=$CHILD_UID
 set +e
 timeout 300 "$P11SCOPE" run --module "$MODULE" --pause auto \
-    -o /tmp/observed-profile.json -- \
+    -o "$PROFILE" -- \
     /usr/bin/env SOFTHSM2_CONF="$CONF" "$TOOL" --module "$MODULE" -L -M >"$WORK/run-transcript.txt" 2>&1
 RUN_RC=$?
 set -e
 printf 'run_rc=%s\n' "$RUN_RC" | tee "$WORK/run-rc.txt"
 [ "$RUN_RC" = "0" ] || { echo "capture failed, see run-transcript.txt" >&2; chown -R "$HOST_UID:$HOST_GID" "$WORK"; exit 1; }
-cp /tmp/observed-profile.json "$WORK/observed-profile.json"
+cp "$PROFILE" "$WORK/observed-profile.json"
 python3 - "$WORK/observed-profile.json" >"$WORK/capture-summary.json" <<'EOF'
 import json, sys
 doc = json.load(open(sys.argv[1]))

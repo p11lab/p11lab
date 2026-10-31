@@ -38,7 +38,7 @@ def test_curated_parent_matches_supported_softhsm_release_runtime():
     assert lock['base_image'] == parent['base_images'][0]
 
 
-@pytest.mark.parametrize('toolset,target', [('checker', 'debian13-amd64'), ('proxy', 'debian13-amd64'),
+@pytest.mark.parametrize('toolset,target', [('checker', 'windows-amd64'), ('proxy', 'debian13-amd64'),
                                            ('../consumer', 'debian13-amd64'), ('consumer', 'windows-amd64')])
 def test_tool_lock_rejects_unsupported_selection_before_output(toolset, target):
     with pytest.raises(ValueError, match='unsupported'):
@@ -189,3 +189,143 @@ def test_nested_provenance_structure_is_checked_even_when_resealed(monkeypatch, 
     m = alter_authority(monkeypatch, change)
     with pytest.raises(ValueError):
         m.load_tool_input_lock('consumer', target='debian13-amd64')
+
+@pytest.mark.parametrize('toolset,stage,roots', [
+    ('checker', 'checker', {'python3.13', 'python3.13-venv'}),
+    ('oracle', 'oracle', {'python3.13', 'openssl'}),
+])
+def test_fixed_executor_and_independent_oracle_have_protected_input_selection(toolset, stage, roots):
+    lock = module().load_tool_input_lock(toolset, target='debian13-amd64')
+    assert lock['schema_version'] == 2
+    assert lock['toolset'] == toolset
+    assert roots <= {r.split('=')[0] for r in lock['stages'][stage]['roots']}
+    assert lock['license_status'] == 'unreviewed'
+    assert lock['readiness']['installation'] == 'not-executed'
+    assert lock['readiness']['qualification'] == 'blocked'
+    if toolset == 'checker':
+        assert lock['execution']['source_revision'] == '9df03bd8b811966fa7856394b19e3f57ffcd8a40'
+        assert lock['execution']['expected_outputs'][0]['sha256'] == '58ac3451ae0dba207a48affa460309e4024c2ec7aefb04ef73062f420fdcffec'
+        assert len(lock['execution']['runtime_wheels']) == 33
+        assert len(lock['execution']['build_wheels']) == 7
+        assert lock['execution']['reproduction'] == 'blocked-unreproduced-output'
+    else:
+        assert lock['execution']['provider_state'] == 'absent'
+        assert lock['execution']['environment']['OPENSSL_CONF'] == '/opt/p11lab-oracle/openssl.cnf'
+
+
+def test_authenticated_index_member_mismatch_fails_even_with_declared_archive_hash():
+    m = module()
+    fields = b'Package: example\nVersion: 1\nArchitecture: amd64\nFilename: pool/main/e/example/example.deb\nSize: 3\nSHA256: ' + b'a'*64 + b'\n'
+    record = dict(name='example', version='1', architecture='amd64', filename='pool/main/e/example/example.deb',
+                  size=3, sha256='a'*64, index='trixie.Packages', stanza_sha256=hashlib.sha256(fields).hexdigest(),
+                  source_package='example', source_version='1', relations={})
+    lock = {'packages': [record], 'sources': []}
+    proof = {'parent_package_evidence': []}
+    m._verify_index_records(lock, proof, {'trixie.Packages': fields + b'\n'})
+    for altered in [fields.replace(b'Size: 3', b'Size: 4'), fields.replace(b'Architecture: amd64', b'Architecture: arm64'), fields + b'Depends: injected\n']:
+        with pytest.raises(ValueError, match='index|member|stanza'):
+            m._verify_index_records(lock, proof, {'trixie.Packages': altered + b'\n'})
+
+
+def alter_fixed_authority(monkeypatch, toolset, change):
+    m = module()
+    original = m.package_data
+    name = f'tool-inputs/{toolset}.debian13-amd64.lock.json'
+    lock = json.loads(original(name).read_bytes())
+    proof_name = lock['provenance']['path']
+    proof = json.loads(original(proof_name).read_bytes())
+    assets = {}
+    change(lock, proof, assets)
+    for record in lock['resources']:
+        if record['asset'] in assets:
+            record.update(sha256=m._digest(assets[record['asset']]), size=len(assets[record['asset']]))
+    proof['lock_binding_sha256'] = m._digest(m._canonical({k: v for k, v in lock.items() if k != 'provenance'}))
+    assets[proof_name] = json.dumps(proof).encode()
+    lock['provenance']['sha256'] = m._digest(assets[proof_name])
+    assets[name] = json.dumps(lock).encode()
+    class Asset:
+        def __init__(self, raw): self.raw = raw
+        def read_bytes(self): return self.raw
+    monkeypatch.setattr(m, 'package_data', lambda name: Asset(assets[name]) if name in assets else original(name))
+    return m
+
+
+@pytest.mark.parametrize('change', [
+    lambda l,p,a: l.update(extra=True),
+    lambda l,p,a: l['readiness'].update(installation='installed'),
+    lambda l,p,a: l['execution'].update(source_revision='09a'+'0'*37),
+    lambda l,p,a: l['execution']['expected_outputs'][0].update(sha256='0'*64),
+    lambda l,p,a: l['execution']['runtime_wheels'].pop(),
+    lambda l,p,a: l['execution']['runtime_wheels'].append(l['execution']['runtime_wheels'][0]),
+    lambda l,p,a: l['execution']['build_wheels'].pop(),
+    lambda l,p,a: l['execution'].update(reproduction='accepted'),
+    lambda l,p,a: l['python_inputs'][0].update(size=True),
+    lambda l,p,a: l['python_inputs'][0].update(kind='binary'),
+    lambda l,p,a: l['python_inputs'][0].update(url='https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/file.whl'),
+    lambda l,p,a: l['python_inputs'][0].update(version='999'),
+    lambda l,p,a: l['python_inputs'][0].update(sha256='0'*64),
+    lambda l,p,a: l['packages'][0].update(kind='python-wheel'),
+    lambda l,p,a: l['checker_source'].update(url='https://codeload.github.com/mingulov/pkcs11-check/tar.gz/main'),
+    lambda l,p,a: l['checker_source'].update(manifest_asset='consumer/verify.py'),
+    lambda l,p,a: p['relations']['checker'].pop(),
+    lambda l,p,a: l['stages']['checker']['roots'].pop(),
+])
+def test_fixed_executor_mutants_fail_when_curated_binding_is_resealed(monkeypatch, change):
+    m = alter_fixed_authority(monkeypatch, 'checker', change)
+    with pytest.raises(ValueError): m.load_tool_input_lock('checker', target='debian13-amd64')
+
+
+@pytest.mark.parametrize('field', ['mode', 'git_blob', 'missing', 'extra', 'revision', 'tree', 'commit'])
+def test_complete_git_provenance_rejects_source_and_build_metadata_mutants(monkeypatch, field):
+    def change(lock, proof, assets):
+        asset = lock['execution']['source_manifest']
+        manifest = json.loads(module().package_data(asset).read_bytes())
+        if field in {'revision', 'tree', 'commit'}: manifest[field] += '0'
+        elif field == 'missing': manifest['files'].pop()
+        elif field == 'extra': manifest['files'].append(dict(manifest['files'][0], path='injected.py'))
+        else:
+            record = next(p for p in manifest['files'] if p['path'] == 'pyproject.toml')
+            record[field] = '100755' if field == 'mode' else '0'*40
+        assets[asset] = json.dumps(manifest).encode()
+    m = alter_fixed_authority(monkeypatch, 'checker', change)
+    with pytest.raises(ValueError): m.load_tool_input_lock('checker', target='debian13-amd64')
+
+
+@pytest.mark.parametrize('change', [
+    lambda l,p,a: l['execution'].update(provider_state='mounted'),
+    lambda l,p,a: l['execution']['environment'].update(OPENSSL_CONF='/etc/ssl/openssl.cnf'),
+    lambda l,p,a: l['execution']['environment'].update(LD_PRELOAD='/provider/module.so'),
+    lambda l,p,a: l['execution']['argv'].append('--provider-module'),
+    lambda l,p,a: l['resources'].pop(),
+    lambda l,p,a: l['stages']['oracle']['roots'].pop(),
+    lambda l,p,a: l.update(checker_source={}),
+])
+def test_oracle_rejects_provider_host_configuration_and_incomplete_runtime(monkeypatch, change):
+    m = alter_fixed_authority(monkeypatch, 'oracle', change)
+    with pytest.raises(ValueError): m.load_tool_input_lock('oracle', target='debian13-amd64')
+
+
+@pytest.mark.parametrize('change', ['missing-source', 'orphan-resource'])
+def test_checker_requires_complete_published_source_roster_and_no_orphan_resources(monkeypatch, change):
+    def mutate(lock, proof, assets):
+        if change == 'missing-source':
+            index = next(i for i,p in enumerate(lock['python_inputs']) if p['kind']=='python-source')
+            lock['python_inputs'].pop(index)
+        else:
+            from p11lab.catalog import package_data
+            raw = package_data('consumer/verify.py').read_bytes()
+            lock['resources'].append(dict(asset='consumer/verify.py',path='resources/orphan.py',sha256=hashlib.sha256(raw).hexdigest(),size=len(raw)))
+    m = alter_fixed_authority(monkeypatch, 'checker', mutate)
+    with pytest.raises(ValueError): m.load_tool_input_lock('checker', target='debian13-amd64')
+
+
+def test_resolution_receipt_separates_missing_build_output_from_acquired_inputs():
+    m = module()
+    lock = m.load_tool_input_lock('checker', target='debian13-amd64')
+    records = m._records(lock)
+    receipt = m._receipt(lock, 'a'*64, records, [], 0)
+    assert receipt['expected_outputs'] == lock['execution']['expected_outputs']
+    assert receipt['readiness'] == lock['readiness']
+    assert receipt['reproduction'] == 'blocked-unreproduced-output'
+    assert not {p['path'] for p in receipt['expected_outputs']} & {p['path'] for p in receipt['records']}
+    assert receipt['installation'] == 'not-executed'

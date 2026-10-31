@@ -24,6 +24,31 @@ A proxy component change invalidates both identities: a run refuses a daemon
 derivative or client bundle that does not match the pinned source, lock and
 CLI bytes. Distribution admission is separate for every artifact.
 
+Runs select one expected proxy-build identity before anything else: the
+pinned default record (the live-observed producer build: source, lock,
+vendored closure, toolchain, target, daemon/CLI/shim bytes, ABI, daemon
+config, entrypoint, hooks, build context, caller, and provider parent
+naming) or an explicit `--proxy-build-manifest` record. The daemon claim,
+recorded client identity, launch-byte rehashes, and observed client ABI must
+all equal the selection exactly; any mismatch refuses the run before the
+init container, and launch bytes are re-verified immediately before the
+application starts. The receipt records the selection (`expected_proxy_identity`,
+or the `{"selected": "fixed-default"}` marker on the default path) plus the
+post-install and pre-launch rehash digests.
+
+The daemon image must also descend from the selected unchanged provider
+image: the run verifies that the daemon's observed DiffIDs start with the
+protected six-layer roster for softhsm2/release on linux/amd64 and binds
+the distribution manifest digest (`sha256:69cdeb9a…`) and config digest
+(`sha256:e59ab297…`) into the provider-parent naming. Explicit records
+verify the observed parent against their bound F28 exactly; default runs
+record the observed binding without failing on it. The receipt carries the
+outcome as `proxy.derivative_parent` (family, platform, manifest and config
+digests, parent layers, prefix flag), explicit when absent or unverified.
+Offline limitation: "retained RepoDigest equality (manifest corroboration)
++ config digest + DiffID prefix is SUFFICIENT for this slice.
+Manifest-fetch (network) deferred."
+
 ## Selecting a proxy run
 
 Proxy runs use the library API or the CLI: `prepare_proxy(spec)` validates
@@ -34,6 +59,13 @@ and the native-client bundle as `--client-artifact` plus its
 `--client-sha256`; `prepare_proxy` still requires the `bundle` kind with a
 full SHA-256 on `linux/amd64`, and a reused client installation
 (`installed_prefix` for `proxy/host`) stays library-only.
+`--proxy-build-manifest PATH` selects an explicit expected identity record
+instead of the pinned default; the manifest is strict JSON (unknown or
+missing fields reject), and a missing, unreadable, or invalid manifest, or
+the flag on a non-proxy mode, is a usage error (exit 2). Manifests larger
+than 1 MiB are usage errors: the loader reads at most 1 MiB + 1 byte. The
+manifest stays caller-authored until the workflow slice mints sealed
+selections.
 
 `proxy/container` needs an exact daemon image, an explicit exact caller image
 and an exact native-client bundle. The consumer container runs precisely the
@@ -91,6 +123,30 @@ application observes native errors such as `CKR_GENERAL_ERROR` on connect
 or `CKR_HOST_MEMORY` at the context limit. Direct/provider and transport
 outcomes are recorded separately and never merged.
 
+Every created, identified daemon gets a terminal diagnostic attempt before
+removal, including successful runs, startup or application failure, timeouts,
+and cancellation. `receipt.json` records `proxy.daemon_terminal`: Docker
+state before a requested stop, state after that stop when attempted, readiness
+and stop facts, and diagnostic availability. The state fields retain Docker's
+exit code, running status, OOM flag, error, and timestamps; unavailable facts
+are null. An encoded signal candidate (for example exit 137 suggesting signal
+9) is an inference from the exit-code convention, never an observed signal or
+proof of termination cause. A stop request is recorded separately from a
+daemon found already exited. Death observed after readiness is a lifecycle
+failure even when the application returned zero or fresh post-health succeeds.
+
+`daemon.stdout.log` and `daemon.stderr.log` retain bounded prefixes through the
+same credential-snapshot redactor as other engine logs, with truncation flags
+in the receipt. Only allowlisted Docker state fields are retained; container
+configuration, environment, mounts, and TLS key material are excluded. Failed
+inspect/log attempts record unavailable evidence and available raw diagnostic
+status separately from application return codes and cleanup errors. Such a
+diagnostic failure cannot produce a successful run. Application nonzero return
+codes retain their existing precedence. A requested stop and owned removal
+complete before the fresh post-health container takes the token-state lease;
+stop or removal failure skips post-health. These observations establish run
+evidence, not provider or proxy qualification.
+
 Residual bridge exposure (STRIDE S2/D4): the daemon and a
 `proxy/container` consumer share one owned bridge network, so daemon-side
 listeners that cannot bind loopback stay reachable from the consumer. The
@@ -116,3 +172,30 @@ payload file, checks the Linux x86_64 host, resolves the shim closure with
 the system loader and launches the CLI before publishing the prefix. It
 installs no prerequisites and changes no loader settings. Archive hash and
 installed placement stay separate identities with their own receipts.
+
+Proxy container bind mounts preserve literal double quotes, spaces, and shell
+metacharacters in caller paths through Docker's CSV mount format. Existing
+comma-path restrictions and single-line input validation still apply. The
+consumer's workspace and output remain writable; the shim, TLS material, and
+configuration remain read-only, and token state stays on the daemon side.
+
+After the application can write output, controller log creation refuses an
+existing path, including symlinks, hardlinks, and ordinary files, instead of
+following or truncating it. A refused application, daemon, or post-health log
+makes evidence incomplete and prevents success. Completed application status
+keeps its normal precedence, and daemon status capture and owned cleanup still
+run. Host application captures also record stream-specific `log_errors` without
+losing process status, timeout, truncation, or supervision facts. This protects
+controller writes; a host application already runs with the caller's privileges.
+
+## Pinned transport-control roster
+
+The diagnostic tier's required transport controls are pinned in
+`src/p11lab/data/ci/proxy-policy.json` (tier `proxy-diagnostic-v1`): seven
+stimuli with expected CK_RV, backend-effect and termination contracts that
+run on both accepted and candidate proxies, with strict loading and a pure
+truth-table verdict in `src/p11lab/proxy_policy.py`. The roster is
+diagnostic-only — budgets are unqualified targets and the PX-LIMIT rejection
+value stays unbound until the live slice qualifies it — so any missing
+control, failed accepted control or lost terminal evidence yields an
+incomplete verdict, never a smaller success.

@@ -1,8 +1,29 @@
 # Integration validation status
 
-Status: **2026-10-20, after reviewed integration**. Current baseline:
+Availability update: **2026-10-28**. Anonymous fresh manifest and config readback
+confirmed seven `linux/amd64` alpha pins: softhsm2, kryoptic, bouncyhsm, haskoki,
+freehsm, nss and opencryptoki. Their roots are single-platform Docker schema-2
+manifests, with separately recorded config digests; they have no image-index
+digest. Exact pins, dated evidence pointers and unresolved provenance are in the
+packaged [image policy](../src/p11lab/data/ci/images.json). The readback downloaded
+no layers and executed no providers. It establishes metadata availability only.
+
+A separate local Docker 29 observation on 2026-10-28 exercised the SoftHSM2 pin:
+anonymous pull with cached layers, default metadata, explicit disposable
+initialization, health, bundled tool execution, compatible persistent state and
+independent state volumes. It used Linux amd64, glibc 2.41 and default root;
+other platforms/users, cold-cache pulls and public CI remain unverified. The
+observed engine ID is the root manifest digest, distinct from the config digest.
+Only this pin has that narrow runtime evidence. No source/handoff readback or
+actual-content rights admission was established; all seven policy records remain
+distribution/acquisition ineligible. This adds no provider-wide qualification,
+certification, release, or cache-export claim.
+
+The sections below are the **historical 2026-10-20 integration snapshot**.
+Its baseline, PR states, counts and runtime gaps are facts as of that date,
+not refreshed current status. Historical baseline:
 [`main` at 4507bc85](https://github.com/mingulov/p11lab/commit/4507bc855919dcbbace4ddd719da907376d1b30b).
-The catalogue contains 24 locked provider candidates. Current integration work
+The catalogue contains 24 locked provider candidates. At that date integration work
 focuses on SoftHSM2 and Haskoki, not catalogue expansion.
 
 This is a contributor evidence snapshot and roadmap, not provider certification.
@@ -81,7 +102,7 @@ combined-tree result.
 Fresh hosted cumulative checks passed before each landing from #4 onward.
 The [final pre-merge hosted run](https://github.com/mingulov/p11lab/actions/runs/39484924716)
 recorded **2507 passed, 1000 skipped, 0 failed**. The tested rebased #9 tree is
-byte-identical to current `main` and the locally tested cumulative tree:
+byte-identical to `main` at that snapshot and the locally tested cumulative tree:
 `a47bab8406393a4117fc744a02daed3f5fe43748`. This is verified pre-merge evidence
 for that exact final tree, not a claim of a separate post-merge workflow run.
 

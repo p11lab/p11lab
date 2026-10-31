@@ -26,6 +26,18 @@ inputs:
   handoff-digest:
     description: 'Immutable handoff digest (sha256:<hex>).'
     required: true
+  transport-evidence-digest:
+    description: 'Immutable transport-evidence digest (sha256:<hex>); gated acquisition needs both evidence digests.'
+    required: false
+    default: ''
+  promotion-evidence-digest:
+    description: 'Immutable promotion-evidence digest (sha256:<hex>); gated acquisition needs both evidence digests.'
+    required: false
+    default: ''
+  evidence-registry:
+    description: 'Registry repository holding the evidence packages (default: the handoff registry).'
+    required: false
+    default: ''
   command:
     description: 'Application argv as a JSON array of strings.'
     required: true
@@ -38,7 +50,7 @@ inputs:
     required: false
     default: ''
   timeout:
-    description: 'Run timeout in seconds.'
+    description: 'Shared application lifecycle timeout in seconds; acquisition calls have separate bounds.'
     required: false
     default: '300'
   working-directory:
@@ -67,7 +79,7 @@ runs:
       uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
 
       with:
-        python-version: '3.12.10'
+        python-version: '3.12.14'
 
     - name: Install P11Lab from the action revision
       shell: bash
@@ -104,6 +116,9 @@ runs:
         P11LAB_ACTION_MODE: ${{ inputs.mode }}
         P11LAB_ACTION_REGISTRY: ${{ inputs.registry }}
         P11LAB_ACTION_HANDOFF_DIGEST: ${{ inputs.handoff-digest }}
+        P11LAB_ACTION_TRANSPORT_EVIDENCE_DIGEST: ${{ inputs.transport-evidence-digest }}
+        P11LAB_ACTION_PROMOTION_EVIDENCE_DIGEST: ${{ inputs.promotion-evidence-digest }}
+        P11LAB_ACTION_EVIDENCE_REGISTRY: ${{ inputs.evidence-registry }}
         P11LAB_ACTION_COMMAND: ${{ inputs.command }}
         P11LAB_ACTION_INPUTS: ${{ inputs.inputs }}
         P11LAB_ACTION_STATE_DIR: ${{ inputs.state-dir }}
@@ -127,11 +142,15 @@ runs:
           --mode "$P11LAB_ACTION_MODE" \
           --registry "$P11LAB_ACTION_REGISTRY" \
           --handoff-digest "$P11LAB_ACTION_HANDOFF_DIGEST" \
+          --transport-evidence-digest "$P11LAB_ACTION_TRANSPORT_EVIDENCE_DIGEST" \
+          --promotion-evidence-digest "$P11LAB_ACTION_PROMOTION_EVIDENCE_DIGEST" \
+          --evidence-registry "$P11LAB_ACTION_EVIDENCE_REGISTRY" \
           --command "$P11LAB_ACTION_COMMAND" \
           --inputs "$P11LAB_ACTION_INPUTS" \
           --state-dir "$P11LAB_ACTION_STATE_DIR" \
           --timeout "$P11LAB_ACTION_TIMEOUT" \
-          --working-directory "$GITHUB_WORKSPACE/$P11LAB_ACTION_WORKING_DIRECTORY" \
+          --workspace "$GITHUB_WORKSPACE" \
+          --working-directory "$P11LAB_ACTION_WORKING_DIRECTORY" \
           --oras "$P11LAB_ORAS" \
           --run-dir "$run_dir"
 
@@ -142,12 +161,5 @@ runs:
       env:
         P11LAB_ACTION_RUN_DIR: ${{ steps.run.outputs['run-dir'] }}
       run: |
-        f="$P11LAB_ACTION_RUN_DIR/action-outputs.env"
-        if [ -n "$P11LAB_ACTION_RUN_DIR" ] && [ -f "$f" ]; then
-          while IFS='=' read -r k v; do
-            [ -n "$k" ] || continue
-            echo "$k=$v" >> "$GITHUB_OUTPUT"
-          done < "$f"
-        else
-          echo "exit-code=1" >> "$GITHUB_OUTPUT"
-        fi
+        python "${{ github.action_path }}/src/p11lab/data/delivery/action-run.py" \
+          --collect "$P11LAB_ACTION_RUN_DIR"

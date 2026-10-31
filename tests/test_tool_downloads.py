@@ -391,3 +391,139 @@ def test_preexisting_or_unsafe_destinations_rejected_before_network(monkeypatch,
     with pytest.raises((ValueError, FileExistsError)):
         m.download_locked_file(record(), path)
     assert not contacted
+
+@pytest.mark.parametrize('url', [
+    'https://codeload.github.com/mingulov/pkcs11-check/tar.gz/9df03bd8b811966fa7856394b19e3f57ffcd8a40',
+    'https://files.pythonhosted.org/packages/ab/cd/' + 'a'*60 + '/package-1.0-py3-none-any.whl',
+])
+def test_transport_allows_only_narrow_official_upstream_artifact_paths(url):
+    from p11lab.tool_downloads import _target
+    _target(url)
+
+
+@pytest.mark.parametrize('url', [
+    'https://files.pythonhosted.org.evil/packages/ab/cd/' + 'a'*60 + '/x.whl',
+    'https://user@files.pythonhosted.org/packages/ab/cd/' + 'a'*60 + '/x.whl',
+    'http://files.pythonhosted.org/packages/ab/cd/' + 'a'*60 + '/x.whl',
+    'https://files.pythonhosted.org/packages/ab/cd/' + 'a'*60 + '/x.whl?x=1',
+    'https://codeload.github.com/mingulov/pkcs11-check/tar.gz/main',
+    'https://codeload.github.com/other/project/tar.gz/' + 'a'*40,
+    'https://files.pythonhosted.org/simple/package/',
+])
+def test_transport_rejects_credential_mutable_or_cross_origin_upstream_redirect(url):
+    from p11lab.tool_downloads import _target
+    with pytest.raises(ValueError): _target(url)
+
+
+def test_debian_record_cannot_be_relabelled_as_an_upstream_wheel(monkeypatch, tmp_path):
+    m, contacted = fake_transport(monkeypatch)
+    rec = record() | {'url': 'https://files.pythonhosted.org/packages/ab/cd/' + 'a'*60 + '/x.whl'}
+    with pytest.raises(ValueError): m.download_locked_file(rec, tmp_path/'bad')
+    assert not contacted
+
+
+def test_approved_origins_cannot_redirect_between_artifact_families(monkeypatch, tmp_path):
+    url = 'https://files.pythonhosted.org/packages/ab/cd/' + 'a'*60 + '/x.whl'
+    m, contacted = fake_transport(monkeypatch, redirects=[url])
+    with pytest.raises(ValueError, match='cross-family'): m.download_locked_file(record(), tmp_path/'bad')
+    assert contacted == [URL]
+
+
+def test_proxy_download_hard_deadline_kills_blocked_dns_without_network(
+    monkeypatch, tmp_path
+):
+    import os
+    import socket
+    import time
+    from p11lab.tool_downloads import ProxyInputRecord, download_proxy_file
+
+    marker = tmp_path / "dns-pid"
+
+    def blocked(*args):
+        marker.write_text(str(os.getpid()))
+        time.sleep(10)
+        raise AssertionError("DNS resumed")
+
+    monkeypatch.setattr(socket, "getaddrinfo", blocked)
+    record = ProxyInputRecord(
+        "rust/rustc.tar.xz",
+        "https://static.rust-lang.org/dist/2026-09-03/rustc-1.98.1-x86_64-unknown-linux-gnu.tar.xz",
+        "a" * 64,
+        1,
+        "proxy-rust-dist",
+    )
+    start = time.monotonic()
+    with pytest.raises(TimeoutError):
+        download_proxy_file(record, tmp_path / "out", deadline=start + 0.5)
+    assert time.monotonic() - start < 3
+    pid = int(marker.read_text())
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+    with pytest.raises(ChildProcessError):
+        os.waitpid(pid, os.WNOHANG)
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize('deadline', [float('nan'), float('inf'), -float('inf'), True])
+def test_proxy_download_rejects_invalid_deadline_before_start(tmp_path, deadline):
+    from p11lab.tool_downloads import ProxyInputRecord, download_proxy_file
+    record = ProxyInputRecord('rust/rustc.tar.xz',
+        'https://static.rust-lang.org/dist/2026-09-03/rustc-1.98.1-x86_64-unknown-linux-gnu.tar.xz',
+        'a' * 64, 1, 'proxy-rust-dist')
+    with pytest.raises(ValueError):
+        download_proxy_file(record, tmp_path/'out', deadline=deadline)
+    assert not (tmp_path/'out').exists()
+
+
+def test_direct_proxy_download_does_not_hide_reaper_cleanup_uncertainty(
+    tmp_path, monkeypatch
+):
+    import threading
+    import time
+    from p11lab import process
+    from p11lab.proxy_supervisor import ProxyCleanupUnconfirmed
+    from p11lab.tool_downloads import ProxyInputRecord, download_proxy_file
+
+    initial = process._reaper_users
+    marker, held = tmp_path / "worker-ready", tmp_path / "lock-held"
+    release = threading.Event()
+
+    def holder():
+        end = time.monotonic() + 2
+        while not marker.exists() and time.monotonic() < end:
+            time.sleep(0.005)
+        with process._reaper_lock:
+            held.write_text("held")
+            release.wait(0.8)
+
+    thread = threading.Thread(target=holder)
+    thread.start()
+
+    def download(record, destination, *, deadline):
+        marker.write_text("ready")
+        end = time.monotonic() + 2
+        while not held.exists() and time.monotonic() < end:
+            time.sleep(0.005)
+        return {"size": 1, "sha256": "a" * 64, "final_url": record["url"]}
+
+    monkeypatch.setattr(module(), "download_locked_file", download)
+    record = ProxyInputRecord(
+        "rust/rustc.tar.xz",
+        "https://static.rust-lang.org/dist/2026-09-03/rustc-1.98.1-x86_64-unknown-linux-gnu.tar.xz",
+        "a" * 64,
+        1,
+        "proxy-rust-dist",
+    )
+    try:
+        with pytest.raises(ProxyCleanupUnconfirmed) as error:
+            download_proxy_file(record, tmp_path / "out", deadline=time.monotonic() + 2)
+        assert (
+            error.value.worker_reaped is True
+            and error.value.operation_category == "completed"
+        )
+    finally:
+        release.set()
+        thread.join(timeout=2)
+        if process._reaper_users == initial + 1:
+            process._subreaper(False)
+    assert not thread.is_alive() and process._reaper_users == initial

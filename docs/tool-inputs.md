@@ -1,99 +1,146 @@
-# Installed consumer tool inputs
+# Fixed tool input acquisition
 
-P11Lab can acquire a fixed public input roster for its planned Debian 13 amd64
-consumer image, without a provider checkout or private artifact cache:
+P11Lab acquires protected input sets for Debian 13 Linux amd64 without a provider
+checkout, project backend execution or private artifact cache:
 
 ```sh
 p11lab tools resolve consumer --target debian13-amd64 --output-dir ./consumer-inputs
+p11lab tools resolve checker --target debian13-amd64 --output-dir ./checker-inputs
+p11lab tools resolve oracle --target debian13-amd64 --output-dir ./oracle-inputs
 ```
 
-The output directory must not exist. A successful command writes
-`resolved-inputs.json` after every input has been checked against the installed
-package's curated lock. It retains opaque `.deb` files, complete corresponding
-source sets, original signed-snapshot metadata, and copies of the installed
-consumer source/notice resources. Nothing is extracted, installed or executed.
-There is no `tools build` command in this increment. `checker` and `proxy` input
-acquisition remain unsupported, with explicit errors rather than placeholder
-success. Existing provider build/run commands and publication gates are unchanged.
+Each output directory must be fresh. A successful operation writes
+`resolved-inputs.json` only after checking the complete file roster against the
+installed lock. It retains opaque archives and copies protected resources. The
+checker source archive is read to verify its complete Git tree and modes, without
+extracting or importing it. No metadata hook, backend, installation, `.pth` file,
+checker, provider or oracle is executed. `proxy` fails as unsupported; there is no
+`tools build` operation.
 
-## Exact supported inputs
+## Selection and trust
 
-The roster uses snapshot `20260918T000000Z` and the pinned Debian base
+All three selectors use snapshot `20260918T000000Z` and base
 `docker.io/library/debian@sha256:7792b1f7702a86946cd518db72b6a407302c3e9bc1635634368b878189e8221c`.
-It binds a complete 78-package parent inventory, shared by the current SoftHSM
-release and the separately prepared Haskoki release candidate. The package set is
-provider-neutral; its inventory does not by itself identify a provider image.
-A later builder must verify both the selected provider and the actual parent.
+The protected 78-package parent inventory is shared with the existing consumer
+selection. It is provider neutral. A later builder must authenticate the actual
+parent image and installed package files, including loader and libraries.
 
-- Compiler: `gcc=4:14.2.0-1`, `libc6-dev=2.41-12+deb13u4`, and their fixed dependency
-  additions, for 114 total installed packages in the planned compiler stage.
-- OpenSC: `opensc=0.26.1-2` and seven additions, for 86 total packages in the
-  planned consumer image. Recommends/Suggests, including `pcscd`, are excluded.
-- Unique acquired binaries: 43 files, 60,235,540 bytes.
-- Corresponding sources: 16 source sets, 48 files, 317,014,868 bytes.
-- Signed-snapshot metadata: nine files, 20,947,810 bytes.
-- Network total: 100 files, 398,198,218 bytes; owned resources add 190,630 bytes.
+The installed provenance binds authenticated InRelease bytes, compressed and
+expanded Packages/Sources hashes, recorded Debian signature verification and
+exact binary/source stanzas. Resolution uses these installed pins rather than
+accepting a caller lock, URL, receipt or signature declaration. The new checker
+and oracle sets additionally check acquired index members against the complete
+protected package/source stanzas. They use fixed dependency witnesses, with no
+live package solver or automatic retries. Debian metadata authentication was
+performed during curation; resolving does not launch a fresh PGP verifier.
 
-These are declared sizes, not measured download time or peak resource use.
-Allow additional space for metadata/receipts and partial failed attempts. No
-shared cache, automatic retry, live package solver, or mutable package selection
-is used. The per-file bound is 256 MiB and aggregate bound is 512 MiB. Requests
-have a 60-second I/O timeout, a 900-second monotonic payload deadline and a
-3600-second monotonic attempt deadline. Redirects are limited to five and must
-stay on the approved HTTPS snapshot origin; they are checked before following.
-Deadline checks cover address attempts, TLS/request transitions, HTTP headers and
-chunk framing, not just payload reads.
-These request/stream budgets cannot preempt arbitrary stuck operating-system
-DNS or filesystem calls; they are not process-isolation guarantees.
+Python artifacts have a separate type and origin policy. Packaged original PyPI
+version metadata binds each selected filename, version, size, SHA256 and wheel or
+source type to its official `files.pythonhosted.org` URL. This is recorded
+HTTPS/package-index provenance, not Debian signature authentication. The checker
+source uses only the official immutable GitHub codeload URL. The packaged commit,
+complete path/mode/blob roster and Git tree are checked against revision
+`9df03bd8b811966fa7856394b19e3f57ffcd8a40`. Each acquired source member must match
+both its SHA256 and Git blob identity. No signed-commit claim is made.
 
-The installed provenance binds the original published InRelease and compressed
-and uncompressed Packages/Sources hashes, signature verification records, exact
-binary/source selectors and curated dependency witnesses. Resolve verifies
-content hashes against those installed pins; it does not run a fresh PGP verifier
-or decide Debian dependency versions. Full indexes are acquired as evidence, not
-bundled into the P11Lab wheel. An edited receipt cannot authorize different hashes,
-URLs, source identities or rosters.
+## Checker executor and independent oracle
+
+The checker selector fixes Debian CPython `3.13.5-2+deb13u5`, its stdlib, venv,
+Debian pip/setuptools bootstrap wheels, loader/library dependency closure and
+16 additional binary packages (94 packages including the declared parent).
+Its portable Python inputs select 32 runtime dependency wheels, seven build/
+bootstrap wheels (two shared with runtime), and their published source archives.
+The runtime lock remains SHA256
+`98a0341351b410b8ba6d732ae82ffef14442cded33caf8ab55e3958a0c407cab`.
+The complete runtime roster has 33 wheels only **after** producing the fixed
+checker output.
+
+That output is the retained local `pkcs11_check-0.2.3-py3-none-any.whl`, SHA256
+`58ac3451ae0dba207a48affa460309e4024c2ec7aefb04ef73062f420fdcffec`.
+It has no observed public URL and is explicitly absent from the acquisition
+roster. The source archive and sealed build inputs provide a portable route to a
+later build. Reproducing the exact output, or deciding a different output variant,
+remains blocked pending actual build evidence and review. The old local source
+tar SHA256 `895f74063dda5ba97776906e0dae86cd3a2c68bc9254ae2cc84be07abc64f502`
+is preserved separately: all 1,301 files, including project/version/build metadata,
+match official Git objects; Git archive adds group-write permission while retaining
+executable status. Complete retained wheel distribution metadata is recorded.
+None of this substitutes the distinct sealed evaluator or a Python 3.12 install.
+
+The oracle selector is independent of provider modules and token state. It adds
+12 binary packages (90 including parent), fixing CPython and stdlib plus OpenSSL
+`3.5.7-1~deb13u2`. Parent `libssl3t64`, loader, libc and transitive packages remain
+bound by the parent inventory and signed-index evidence. The protected invocation
+uses `/usr/bin/python3.13 -I`, packaged `consumer/verify.py`, `/usr/bin/openssl`,
+`PYTHONNOUSERSITE=1`, `PYTHONSAFEPATH=1` and `LC_ALL=C`. `OPENSSL_CONF` points to the
+packaged default-provider-only configuration; `OPENSSL_MODULES` fixes the Debian
+module directory. The later runner must replace the environment with that exact
+map, without inheriting host OpenSSL, loader or Python overrides. The legacy module is present in the parent package inventory
+but is not activated by that configuration. A later independent image must prove
+the actual executable/stdlib/libcrypto/loader/module/config bytes and environment;
+resolution does not invent an installed or executed manifest.
+
+## Preserved consumer inputs and subsequent builds
+
+The consumer v1 lock and provenance bytes are unchanged: 43 unique binary archives,
+16 source sets/48 files, nine metadata files and eight resources, 108 files total.
+Its planned compiler roots are `gcc=4:14.2.0-1` and
+`libc6-dev=2.41-12+deb13u4`; consumer utility root is `opensc=0.26.1-2`.
+The compiler and consumer stage rosters contain 114 and 86 packages respectively.
+The acquired consumer closure is not the oracle closure.
+
+The next builder must consume verified input rosters, install offline, retain
+actual package/ELF/loader manifests, record the compiler and complete command,
+hash the resulting C executable and bind each derivative to its unchanged exact
+parent. The C command is `cc -std=c11 -O2 -Wall -Wextra -Werror -pedantic smoke.c
+p256.c -ldl`. Its binary and source/build relationship require new evidence;
+historical images cannot qualify newly built artifacts. Checker wheel production,
+its actual 33-wheel installation, and independent oracle positive/altered-message
+negative controls are also subsequent work.
 
 ## Rechecking retained inputs
 
-The Python API reselects installed authority and rejects altered receipts,
-missing/extra files, unsafe paths and changed contents:
-
 ```python
 from pathlib import Path
-from p11lab.tool_inputs import resolve_tool_inputs, verify_resolved_tool_inputs
+from p11lab.tool_inputs import verify_resolved_tool_inputs
 
 result = verify_resolved_tool_inputs(
-    "consumer", target="debian13-amd64",
-    receipt_path=Path("consumer-inputs/resolved-inputs.json"),
+    "checker", target="debian13-amd64",
+    receipt_path=Path("checker-inputs/resolved-inputs.json"),
 )
 ```
 
-Reverification is a Python API, not an additional CLI command. It requires the
-same exact installed lock bytes, not merely the same toolset name. Keep successful
-inputs and their receipt together. The receipt records relative paths and does
-not constitute an artifact reference, image identity or origin attestation.
+This offline Python API reselects installed authority and rehashes every file.
+Missing or extra files/directories, special members, symlinks, edited receipts,
+changed bytes and wrong source/type selectors fail. Keep inputs and receipt
+together. The exact installed lock bytes are required; a toolset name alone is
+insufficient. Receipts record relative paths and explicit `installation=not-executed`
+and `admission=unreviewed`, never an installed tool or image identity.
 
-## Failure and evidence limits
+Fixed-tool builds copy public inputs into owned staging trees. Before read-only
+mounts, staged directories are made traversable and regular files readable by
+the sandbox; executable inputs retain their executable distinction. The generated
+launcher is also readable by the sandbox. These modes are recorded in the input
+context evidence and do not change cached inputs, source files or private
+attempt directories.
 
-On failure, the attempt is retained for diagnosis and must not be reused. Retry
-with a different fresh output directory. A checksum/size failure, interruption or
-receipt-write error is not successful resolution. The resolver removes a receipt
-if its write fails after replacement; if the filesystem also refuses that
-cleanup, the original error is preserved with a cleanup diagnostic. Do not treat
-a receipt from an operation that reported failure as success. These guarantees
-assume an ordinary functioning local filesystem, not an adversarial concurrent
-writer or a host capable of changing the installed authority.
+## Bounds and remaining gates
 
-All license and publication admission remains unreviewed. Source references and
-expected copyright paths are not inspection of actual embedded notices. The
-parent's `sqv` incorporated-source obligations remain inherited, not silently
-covered by this tool acquisition. No redistribution permission is granted.
+The per-file limit is 256 MiB and aggregate limit 512 MiB. Requests have a
+60-second I/O timeout, 900-second monotonic payload deadline, 3600-second attempt
+deadline and at most five redirects. Redirects stay within the selected approved
+HTTPS origin. Checks cover address attempts, TLS/request transitions, headers and
+chunk framing. These budgets cannot preempt arbitrary stuck OS DNS or filesystem
+calls. Allow extra space for receipts and retained partial failed attempts.
 
-Metadata closure is not proof that package maintainer scripts install cleanly,
-that the compiler works, that ELF/loader dependencies are correct, or that a
-provider passes any test. The planned consumer builder and its four direct
-crypto/persistence cases require separate implementation and real bounded
-execution evidence. Editing the existing consumer recipe also triggers the
-currently configured Windows workflow, so that later PR needs a separate CI-cost
-decision. This command neither changes that workflow nor consumes its budget.
+Failures retain diagnostics without a success receipt; retry in a fresh directory.
+Receipt-write failure invalidates a replaced receipt where filesystem cleanup
+succeeds and preserves the original error if cleanup also fails. These guarantees
+assume a functioning filesystem and no concurrent adversarial writer or change to
+the installed authority.
+
+All source/license/artifact distribution status remains unreviewed. Metadata,
+source archives and expected notice paths do not supply rights approval. Inherited
+parent sources and `sqv` incorporated sources remain actual-content obligations.
+Acquisition does not qualify installation, build reproducibility, usability,
+provider behavior, CI custody or publication. No existing gate is enabled.

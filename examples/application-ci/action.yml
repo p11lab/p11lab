@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: Apache-2.0
+# CALLER WORKFLOW TEMPLATE: copy to the caller's .github/workflows/ directory.
+# Required before use:
+# 1. Replace REQUIRED_PUBLISHED_ACTION_COMMIT with the reviewed published 40-hex
+#    Action commit containing this source (no such final identity exists yet).
+# 2. Replace REQUIRED_ELIGIBLE_HANDOFF_MANIFEST_SHA256 with a genuinely eligible
+#    handoff's 64-hex OCI manifest digest. Current alpha images are ineligible.
+# 3. Supply your prebuilt Linux amd64/glibc app/test closure in ci-application/;
+#    ./run-tests must consume the adapter's P11LAB_MODULE environment variable.
+# This template is intentionally incomplete until these identities exist.
+name: Caller application with P11Lab
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          path: caller
+          sparse-checkout: ci-application
+      - name: Create disposable provider inputs outside the application mount
+        shell: bash
+        run: |
+          umask 077
+          mkdir "$RUNNER_TEMP/p11lab-credentials"
+          printf '1234' > "$RUNNER_TEMP/p11lab-credentials/pin"
+          printf '12345678' > "$RUNNER_TEMP/p11lab-credentials/so-pin"
+      - uses: p11lab/p11lab@REQUIRED_PUBLISHED_ACTION_COMMIT
+        id: provider
+        with:
+          environment: softhsm2
+          channel: release
+          handoff-digest: sha256:REQUIRED_ELIGIBLE_HANDOFF_MANIFEST_SHA256
+          working-directory: caller/ci-application
+          command: '["./run-tests"]'
+          timeout: '300'
+          inputs: |
+            P11LAB_PIN_FILE=${{ runner.temp }}/p11lab-credentials/pin
+            P11LAB_SO_PIN_FILE=${{ runner.temp }}/p11lab-credentials/so-pin
+      - name: Label unavailable evidence
+        if: ${{ always() && steps.provider.outputs['receipt-path'] == '' }}
+        shell: bash
+        run: echo 'Evidence incomplete — no validated lifecycle receipt was produced.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ always() && steps.provider.outputs['receipt-path'] != '' }}
+        with:
+          name: application-receipt
+          path: ${{ steps.provider.outputs['receipt-path'] }}
+          if-no-files-found: error
+          retention-days: 1

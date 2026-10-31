@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "evaluator_revision": "09aabfec9fea7e424aabb991f6347349bfa84075",
+  "evaluator_contract_sha256": "aa2cf9f1ef72ad021fa42d47f9e8ae660f54d47be85c184532e0d2e6fe3f0eed",
+  "checker_candidate": "caller-selected-immutable-revision",
+  "image_pins": {
+    "path": "ci/images.json",
+    "sha256": "310a561cb217bafc6c28d038d9934d5c74f5a3666a8b9de6a44cce3d3749e636",
+    "authority": "discovery-only; acquisition and admission remain separately gated"
+  },
+  "baseline": {
+    "index": "baselines/index.json",
+    "compatibility": "round-baseline-v1",
+    "epoch": null
+  },
+  "pins": {
+    "softhsm2-runtime": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "softhsm2-handoff": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "softhsm2-provider-source": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "softhsm2-recipe": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "kryoptic-runtime": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "kryoptic-handoff": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "kryoptic-provider-source": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "kryoptic-recipe": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "nss-runtime": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "nss-handoff": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "nss-provider-source": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "nss-recipe": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "tpm2-runtime": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "tpm2-handoff": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "tpm2-provider-source": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "tpm2-recipe": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "opencryptoki-runtime": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "opencryptoki-handoff": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "opencryptoki-provider-source": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "opencryptoki-recipe": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "proxy-daemon": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "proxy-client": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "checker-build-lock": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "checker-runtime-lock": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "corpus": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "runner-image": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "runner-resources": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    },
+    "baseline-index": {
+      "sha256": null,
+      "reason": "Unresolved: protected acquisition/qualification must bind and verify these exact bytes."
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "kind": "local-proxy-toolchain-v1",
+  "target": "x86_64-unknown-linux-gnu",
+  "rust_prefix": "/opt/rust",
+  "protoc_prefix": "/opt/protoc",
+  "limits": {
+    "archive_bytes": 1073741824,
+    "regular_bytes": 1073741824,
+    "file_bytes": 268435456,
+    "entries": 32768,
+    "whole_attempt_seconds": 600,
+    "canary_seconds": 120,
+    "canary_memory_bytes": 1073741824,
+    "canary_pids": 128,
+    "canary_tmp_bytes": 134217728,
+    "canary_output_bytes": 268435456,
+    "xz_decoder_memory_bytes": 134283928,
+    "canary_output_mount": "tmpfs-exec-nosuid-nodev"
+  },
+  "rights": "unreviewed",
+  "authority": "not-established",
+  "candidate_build": "not-run",
+  "qualification": "not-performed"
+}

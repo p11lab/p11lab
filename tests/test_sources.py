@@ -247,3 +247,14 @@ def test_checked_readback_failure_is_a_build_error_with_attempt_and_stderr(tmp_p
         _checked([sys.executable, '-c', 'import sys; sys.stderr.write("readback unavailable"); sys.exit(29)'], tmp_path)
     text = str(raised.value)
     assert '29' in text and 'readback unavailable' in text and str(tmp_path) in text
+
+
+@pytest.mark.parametrize('member', ['inventory.json', 'sbom.spdx.json'])
+@pytest.mark.parametrize('damage', ['duplicate', 'nested-duplicate', 'NaN', 'Infinity', '-Infinity', '1e999'])
+def test_companion_verifier_rejects_ambiguous_inner_json_before_inventory_use(tmp_path, member, damage):
+    from p11lab.sources import verify_source_bundle
+    from test_source_delivery import content_fixture, rewrite_content, malformed_inner_json
+    args = content_fixture(tmp_path)
+    rewrite_content(args, lambda files: malformed_inner_json(files, member, damage, args['artifact']))
+    with pytest.raises(SourceError, match='duplicate|nonfinite'):
+        verify_source_bundle(args['pulled_dir'] / 'source-companion.tar.gz', tmp_path / 'extract')

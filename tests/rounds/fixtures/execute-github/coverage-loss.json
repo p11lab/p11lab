@@ -1,0 +1,1 @@
+{"has_loss": true, "lost_by_state": {"attempted": ["CKM_AES_ECB", "CKM_SHA256"]}, "states_compared": ["attempted", "accepted"]}

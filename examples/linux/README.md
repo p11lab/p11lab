@@ -1,5 +1,15 @@
 # Direct Linux application smoke
 
+For a first run with Docker alone, use the
+[published SoftHSM quickstart](../../docs/published-images.md). It exercises shipped
+provider tools and shows how to mount your own compatible prebuilt application;
+no provider build or P11Lab installation is required.
+
+The following is an optional application packaging example using the installed
+P11Lab tools and a separate consumer derivative. Building this application is not
+a prerequisite for using the published provider. There is no public prebuilt
+`p11lab-smoke` download implied by this example.
+
 Install the P11Lab wheel in a Python 3.12+ environment. The basic provider runtime
 has no compiler, checker, Python or tracing dependency. Use the artifact from
 `p11lab build softhsm2 --channel release --output-dir runtime-build`, or another
@@ -33,8 +43,9 @@ application, its sources and notices; build tools remain in the builder stage.
 The provider is not recompiled. Caller supplied derivatives and upstream package
 contents need their own distribution review before publication.
 
-Create private PIN and SO PIN files holding one line each (at most one final
-newline, which frames the file and is not part of the PIN). Run from your own
+Create private PIN and SO PIN files with no trailing newline for compatibility
+with applications that read raw file bytes. The adapter also accepts one optional
+final LF, but individual applications may differ. Run from your own
 application working directory, with a new output directory:
 
 ```sh

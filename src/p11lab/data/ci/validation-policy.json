@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "kind": "provider-image-validation",
+  "source_revisions": {
+    "checker": "9df03bd8b811966fa7856394b19e3f57ffcd8a40",
+    "proxy": "a348a5f59b535b1ca309ea9f0a722e3bec692f72"
+  },
+  "fixed_tools": {
+    "checker": {
+      "source": "unqualified:no-accepted-source-manifest",
+      "build": "unqualified:no-accepted-build-manifest",
+      "dependencies": "unqualified:no-accepted-dependencies-manifest",
+      "installed": "unqualified:no-accepted-installed-manifest"
+    },
+    "proxy": {
+      "source": "unqualified:no-accepted-source-manifest",
+      "build": "unqualified:no-accepted-build-manifest",
+      "dependencies": "unqualified:no-accepted-dependencies-manifest",
+      "installed": "unqualified:no-accepted-installed-manifest"
+    },
+    "consumer": {
+      "source": "unqualified:no-accepted-source-manifest",
+      "build": "unqualified:no-accepted-build-manifest",
+      "dependencies": "unqualified:no-accepted-dependencies-manifest",
+      "installed": "unqualified:no-accepted-installed-manifest"
+    },
+    "oracle": {
+      "source": "unqualified:no-accepted-source-manifest",
+      "build": "unqualified:no-accepted-build-manifest",
+      "dependencies": "unqualified:no-accepted-dependencies-manifest",
+      "installed": "unqualified:no-accepted-installed-manifest"
+    }
+  },
+  "evaluator": {
+    "receipt_sha256": "unqualified:no-designated-evaluator-receipt"
+  },
+  "control": {
+    "profile": "smoke-v1",
+    "profile_sha256": "57ffa60750dbf76f21e72ad20fb9d3c43a6270c821dd7628115fd63dcb86cc56",
+    "control_commit": "unqualified:no-sealed-control-commit",
+    "catalog": {
+      "test_interface.py": 11,
+      "test_session_info.py": 4,
+      "test_object.py": 16,
+      "test_digest.py": 21,
+      "test_sign.py": 18
+    }
+  },
+  "providers": {
+    "allowlist": [
+      "softhsm2"
+    ],
+    "mode": "explicit-allowlist"
+  },
+  "rounds": {
+    "framework_sha": "9df03bd8b811966fa7856394b19e3f57ffcd8a40",
+    "proxy_sha": "a348a5f59b535b1ca309ea9f0a722e3bec692f72",
+    "proxy_tier": "proxy-diagnostic-v1",
+    "checker_tier": "unqualified:no-accepted-checker-tier"
+  }
+}

@@ -1,0 +1,297 @@
+# SPDX-License-Identifier: Apache-2.0
+# Diagnostic only: this workflow does not execute or qualify a proxy round.
+name: proxy-round
+on:
+  workflow_call:
+    inputs:
+      proxy_sha:
+        required: true
+        type: string
+      tier:
+        required: true
+        type: string
+      p11lab_ref:
+        required: true
+        type: string
+    outputs:
+      result-artifact:
+        value: "${{ jobs.aggregate.outputs['result-artifact'] }}"
+      result-sha256:
+        value: "${{ jobs.aggregate.outputs['result-sha256'] }}"
+      experiment-positive:
+        value: "${{ jobs.aggregate.outputs['experiment-positive'] }}"
+permissions: {}
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Validate input identities
+        id: inputs
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          case "$PROXY_SHA" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#PROXY_SHA}" -eq 40
+          case "$P11LAB_REF" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#P11LAB_REF}" -eq 40
+          case "$TIER" in proxy-diagnostic-v1) ;; *) exit 1 ;; esac
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Validate policy and write diagnostic manifest
+        id: result
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from p11lab import proxy_policy
+          loaded = proxy_policy.load_proxy_policy(os.environ['TIER'])
+          assert loaded.tier_qualified is False, 'diagnostic tier must stay unqualified'
+          assert loaded.activation_state == 'diagnostic', 'diagnostic activation only'
+          manifest = {
+              'schema': 'p11lab-proxy-diagnostic-v1',
+              'diagnostic_only': True,
+              'proxy_sha': os.environ['PROXY_SHA'],
+              'p11lab_ref': os.environ['P11LAB_REF'],
+              'tier': os.environ['TIER'],
+              'tier_qualified': False,
+              'unqualified_cause': 'tier-unqualified',
+              'unqualified_detail': 'PX-LIMIT pinned rejection unbound; budgets are unqualified targets',
+              'policy_digest': loaded.policy_digest,
+              'provider': dict(loaded.provider),
+              'expected_same_run_artifact': 'p11lab-proxy-dist-' + os.environ['PROXY_SHA'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'],
+              'result_artifact': None,
+              'result_sha256': None,
+              'experiment_positive': False,
+          }
+          (Path(os.environ['RUNNER_TEMP']) / 'proxy-diagnostic.json').write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+          PY
+      - name: Upload diagnostic manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-diagnostic.json
+          if-no-files-found: error
+          retention-days: 14
+  direct:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Emit not-executed cell diagnostic
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          manifest = {
+              'schema': 'p11lab-proxy-cell-diagnostic-v1',
+              'diagnostic_only': True,
+              'cell': 'direct',
+              'status': 'not-executed',
+              'proxy_sha': os.environ['PROXY_SHA'],
+              'tier': os.environ['TIER'],
+          }
+          (Path(os.environ['RUNNER_TEMP']) / 'proxy-cell-direct.json').write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+          PY
+      - name: Upload cell manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-cell-direct-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-cell-direct.json
+          if-no-files-found: error
+          retention-days: 14
+  accepted-proxy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Emit not-executed cell diagnostic
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          manifest = {
+              'schema': 'p11lab-proxy-cell-diagnostic-v1',
+              'diagnostic_only': True,
+              'cell': 'accepted-proxy',
+              'status': 'not-executed',
+              'proxy_sha': os.environ['PROXY_SHA'],
+              'tier': os.environ['TIER'],
+          }
+          (Path(os.environ['RUNNER_TEMP']) / 'proxy-cell-accepted-proxy.json').write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+          PY
+      - name: Upload cell manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-cell-accepted-proxy-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-cell-accepted-proxy.json
+          if-no-files-found: error
+          retention-days: 14
+  candidate-proxy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Emit not-executed cell diagnostic
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          manifest = {
+              'schema': 'p11lab-proxy-cell-diagnostic-v1',
+              'diagnostic_only': True,
+              'cell': 'candidate-proxy',
+              'status': 'not-executed',
+              'proxy_sha': os.environ['PROXY_SHA'],
+              'tier': os.environ['TIER'],
+          }
+          (Path(os.environ['RUNNER_TEMP']) / 'proxy-cell-candidate-proxy.json').write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+          PY
+      - name: Upload cell manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-cell-candidate-proxy-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-cell-candidate-proxy.json
+          if-no-files-found: error
+          retention-days: 14
+  aggregate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    if: always()
+    needs:
+      - validate
+      - direct
+      - accepted-proxy
+      - candidate-proxy
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      result-artifact: "${{ steps.result.outputs['result-artifact'] }}"
+      result-sha256: "${{ steps.result.outputs['result-sha256'] }}"
+      experiment-positive: "${{ steps.result.outputs['experiment-positive'] }}"
+    steps:
+      - name: Write diagnostic capsule
+        id: result
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          capsule = {
+              'schema': 'p11lab-proxy-experiment-result-v1',
+              'diagnostic_only': True,
+              'experiment_kind': 'proxy-round',
+              'proxy_sha': os.environ['PROXY_SHA'],
+              'tier': os.environ['TIER'],
+              'p11lab_ref': os.environ['P11LAB_REF'],
+              'tier_qualified': False,
+              'unqualified_cause': 'tier-unqualified',
+              'unqualified_detail': 'PX-LIMIT pinned rejection unbound; budgets are unqualified targets',
+              'caller': {'repository_id': None, 'repository_full_name': None},
+              'run_id': None,
+              'run_attempt': None,
+              'job_id': None,
+              'control_sha': None,
+              'candidate_sha': None,
+              'evaluator_id': None,
+              'policy_digest': None,
+              'input_hashes': {},
+              'provider': {'family': None, 'channel': None, 'platform': None, 'manifest_digest': None, 'config_digest': None, 'index': None},
+              'local_engine_ids': [],
+              'derivative_identity': None,
+              'client_identity': None,
+              'source_identities': [],
+              'profile': None,
+              'shard_roster': [],
+              'attempt_roster': [],
+              'cells': {
+                  'direct': {'status': 'not-executed'},
+                  'accepted-proxy': {'status': 'not-executed'},
+                  'candidate-proxy': {'status': 'not-executed'},
+              },
+              'raw_artifacts': [],
+              'raw_status': None,
+              'raw_findings': [],
+              'raw_skips': [],
+              'image_usable': None,
+              'lifecycle_complete': False,
+              'evidence_complete': False,
+              'evidence_admitted': False,
+              'comparison_positive': None,
+              'within_budget': None,
+              'distribution_eligible': False,
+              'experiment_positive': False,
+              'bounds': {'raw_bytes_max': 2147483648, 'diagnostics_bytes_max': 16777216, 'bounds_qualified': False},
+              'queue_seconds': None,
+              'queue_note': 'queue time is measured and reported separately; timeout-minutes never bounds queue',
+              'reproduction_command': None,
+              'evidence_urls': [],
+              'evidence_expiry': None,
+              'limitations': ['diagnostic-only: no cell executed; no release gate satisfied'],
+              'run_receipt_ref': None,
+              'run_receipt_note': 'run receipt v1 stays authoritative; this result references its bytes rather than mutating it',
+              'result_artifact': None,
+              'result_sha256': None,
+          }
+          (Path(os.environ['RUNNER_TEMP']) / 'proxy-capsule.json').write_text(json.dumps(capsule, sort_keys=True, indent=2) + '\n')
+          PY
+          {
+            echo 'result-artifact='
+            echo 'result-sha256='
+            echo 'experiment-positive=false'
+          } >> "$GITHUB_OUTPUT"
+      - name: Upload diagnostic capsule
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-capsule-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-capsule.json
+          if-no-files-found: error
+          retention-days: 14

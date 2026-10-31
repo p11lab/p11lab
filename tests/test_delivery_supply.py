@@ -59,7 +59,7 @@ def test_all_git_sources_carry_archive_hashes():
 def test_action_pins_patch_python():
     """action.yml python must be patch-pinned like the workflows."""
     text = (ROOT / "action.yml").read_text()
-    assert "python-version: '3.12.10'" in text
+    assert "python-version: '3.12.14'" in text
 
 
 def _write_server_ready_script(tmp_path, http_stub, native_stub):

@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "id": "linux-amd64-round-v1",
+  "activation_state": "diagnostic",
+  "commission": "linux-amd64",
+  "tiers": {
+    "pr-smoke": {
+      "mandatory_lanes": [
+        "softhsm2"
+      ],
+      "outer_attempts": 1,
+      "profile": "round-pr-smoke-v1",
+      "leg_target_minutes": 20,
+      "durable_retention_days": 14,
+      "raw_transfer_days": 1
+    },
+    "nightly": {
+      "mandatory_lanes": [
+        "softhsm2",
+        "kryoptic",
+        "nss"
+      ],
+      "outer_attempts": 1,
+      "profile": "round-linux-v1",
+      "leg_target_minutes": 90,
+      "durable_retention_days": 30,
+      "raw_transfer_days": 3
+    },
+    "release": {
+      "mandatory_lanes": [
+        "softhsm2",
+        "kryoptic",
+        "nss",
+        "tpm2",
+        "opencryptoki"
+      ],
+      "outer_attempts": 2,
+      "profile": "round-linux-v1",
+      "leg_target_minutes": 90,
+      "durable_retention_days": 90,
+      "raw_transfer_days": 3
+    }
+  },
+  "lanes": [
+    {
+      "id": "softhsm2",
+      "provider": "softhsm2",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "runner": "ubuntu-24.04",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "linux-amd64",
+      "requirement": "mandatory",
+      "reason": "Active Linux commission; qualification is pending."
+    },
+    {
+      "id": "kryoptic",
+      "provider": "kryoptic",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "runner": "ubuntu-24.04",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "linux-amd64",
+      "requirement": "mandatory",
+      "reason": "Active Linux commission; qualification is pending."
+    },
+    {
+      "id": "nss",
+      "provider": "nss",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "runner": "ubuntu-24.04",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "linux-amd64",
+      "requirement": "mandatory",
+      "reason": "Active Linux commission; qualification is pending."
+    },
+    {
+      "id": "tpm2",
+      "provider": "tpm2",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "runner": "ubuntu-24.04",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "linux-amd64",
+      "requirement": "mandatory",
+      "reason": "Active Linux commission; qualification is pending."
+    },
+    {
+      "id": "opencryptoki",
+      "provider": "opencryptoki",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "runner": "ubuntu-24.04",
+      "transport": "pkcs11-proxy-ng",
+      "emulated": false,
+      "cohort": "linux-amd64",
+      "requirement": "mandatory",
+      "reason": "Active Linux commission; qualification is pending."
+    },
+    {
+      "id": "linux-bouncyhsm",
+      "provider": "bouncyhsm",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "runner": "ubuntu-24.04",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "deferred-linux",
+      "requirement": "optional",
+      "reason": "OQ4: deferred protected rotation after Linux trio qualification."
+    },
+    {
+      "id": "windows-softhsm2",
+      "provider": "softhsm2",
+      "channel": "release",
+      "platform": "windows/amd64",
+      "runner": "windows-2025-vs2026",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "future-native",
+      "requirement": "future-mandatory",
+      "reason": "Native delivery and qualification postponed; outside the active Linux commission."
+    },
+    {
+      "id": "windows-bouncyhsm",
+      "provider": "bouncyhsm",
+      "channel": "release",
+      "platform": "windows/amd64",
+      "runner": "windows-2025-vs2026",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "future-native",
+      "requirement": "future-mandatory",
+      "reason": "Native delivery and qualification postponed; outside the active Linux commission."
+    },
+    {
+      "id": "windows-nss",
+      "provider": "nss",
+      "channel": "release",
+      "platform": "windows/amd64",
+      "runner": "windows-2025-vs2026",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "future-native",
+      "requirement": "optional",
+      "reason": "Native delivery and qualification postponed; outside the active Linux commission."
+    },
+    {
+      "id": "macos-softhsm2",
+      "provider": "softhsm2",
+      "channel": "release",
+      "platform": "macos/arm64",
+      "runner": "macos-26",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "future-native",
+      "requirement": "future-mandatory",
+      "reason": "Native delivery and qualification postponed; outside the active Linux commission."
+    },
+    {
+      "id": "macos-bouncyhsm",
+      "provider": "bouncyhsm",
+      "channel": "release",
+      "platform": "macos/arm64",
+      "runner": "macos-26",
+      "transport": "direct",
+      "emulated": false,
+      "cohort": "future-native",
+      "requirement": "optional",
+      "reason": "Native delivery and qualification postponed; outside the active Linux commission."
+    }
+  ],
+  "scope": {
+    "visibility": "baseline-candidate-catalog-union",
+    "enforcement": "frozen-tier-selection",
+    "unselected_obligations": "W05 must report every unselected/disabled obligation with its reason; selected omission is fatal."
+  },
+  "qualification": {
+    "fresh_rounds": 3,
+    "identical_semantic_projections": true,
+    "authenticated_receipts": [],
+    "policy_self_authorizes": false
+  },
+  "retries": {
+    "pre_provider_infra_retries": 1,
+    "backoff_seconds": 10,
+    "after_provider_start": false,
+    "verdict_negative": false
+  },
+  "budgets": {
+    "status": "targets-unmeasured",
+    "nightly_failed_raw_days": 30,
+    "quota_stop_fraction": 0.8
+  }
+}

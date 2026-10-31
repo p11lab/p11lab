@@ -16,9 +16,13 @@ validation and orchestration. Public CI integrations must use the same supported
 operations as local users and work without development-workspace mounts.
 
 The catalogue, lanes, demos, and delivery pipeline are implemented and under
-frozen-cohort audit; five provider runtimes are published as alpha images
-under per-provider `ghcr.io/p11lab/<environment>` repositories (digests are
-identities, tags are aliases). No releases or cache exports exist yet.
+frozen-cohort audit. Anonymous manifest/config readback on 2026-10-28 confirmed
+seven alpha pins under per-provider `ghcr.io/p11lab/<environment>` repositories:
+softhsm2, kryoptic, bouncyhsm, haskoki, freehsm, nss and opencryptoki. Only
+SoftHSM2 has a narrow local Docker pull/lifecycle observation in this update;
+the other six remain metadata-only. All seven remain distribution/acquisition
+ineligible in the packaged policy pending bound provenance and admission.
+Digests are identities and tags are aliases. No releases or cache exports exist yet.
 `prd.md` remains an initial draft, not an
 approved implementation specification. Current user decisions and verified
 component behavior take precedence over assumptions in that draft.
@@ -115,6 +119,12 @@ retain their applicable licenses; the root license does not relicense them.
 - Pin provider, patch, recipe, base-image, package, checker, proxy, and dataset
   inputs. Record artifact digests and actual resolved inputs. Mutable tags and
   branch names are discovery aliases, not sufficient run identities.
+- Reuse `p11lab.ci_inputs.load_image_pin` and packaged `data/ci/images.json`
+  for new image-pin consumers; freeze its exact bytes/SHA256 separately from
+  `policy_revision`. Existing workflow constants migrate separately. The resolver
+  validates declared inputs only; observation bytes still require OCI/build/run
+  verification. Use `p11lab.results.validate_result` for ExperimentResultV1;
+  missing provenance or comparison never defaults from process success.
 - Separate image rebuild decisions from test scheduling. Checker, proxy,
   dataset, profile, and configuration changes can require retesting an unchanged
   provider image. Failed attempts remain retryable.

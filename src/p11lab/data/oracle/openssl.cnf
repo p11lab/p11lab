@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# Fixed independent verifier: default provider only; no host configuration.
+config_diagnostics = 1
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = providers
+
+[providers]
+default = default_provider
+
+[default_provider]
+activate = 1

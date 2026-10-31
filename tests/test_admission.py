@@ -970,3 +970,79 @@ def test_rootfs_link_before_regular_file_uses_no_stale_content(monkeypatch):
     from p11lab.licenses import inspect_artifact
     artifact, _ = mock_docker(monkeypatch, {'alias': (tarfile.SYMTYPE, 'file'), 'file': b'content'})
     assert inspect_artifact(artifact)['files'][0]['link'] == 'file'
+
+
+@pytest.mark.parametrize('member', ['inventory.json', 'sbom.spdx.json'])
+@pytest.mark.parametrize('damage', ['duplicate', 'nested-duplicate', 'NaN', 'Infinity', '-Infinity', '1e999'])
+def test_rehashed_inner_json_ambiguity_blocks_local_assessment(tmp_path, member, damage):
+    import shutil
+    from p11lab.licenses import assess_distribution
+    from test_source_delivery import content_fixture, rewrite_content, malformed_inner_json
+    args = content_fixture(tmp_path)
+    rewrite_content(args, lambda files: malformed_inner_json(files, member, damage, args['artifact']))
+    evidence = args['expected_receipt_path'].parent
+    for name in ('source-companion.tar.gz', 'source-companion.json', 'sbom.spdx.json'):
+        shutil.copyfile(args['pulled_dir'] / name, evidence / name)
+    result = assess_distribution(args['artifact'], evidence)
+    assert result['status'] == 'blocked'
+    assert any('duplicate' in reason or 'nonfinite' in reason for reason in result['blockers'])
+    assert result['publication_status'] == 'blocked'
+
+
+def test_collection_and_assessment_forward_bounded_inspection_policy(tmp_path, monkeypatch):
+    """Delivery callers can require the supervised inspector in both passes."""
+    from p11lab import licenses
+    from p11lab.inspection_bounded import InspectionPolicy
+
+    artifact, inventory = fixture_inventory(tmp_path)
+    policy = InspectionPolicy(max_bytes=1048576, timeout_seconds=3)
+    journals = [tmp_path / 'collection-journal.json', tmp_path / 'assessment-journal.json']
+    calls = []
+
+    def inspected(candidate, *, inspection_policy, journal_path):
+        assert candidate == artifact
+        calls.append((inspection_policy, journal_path))
+        return inventory['observation']
+
+    monkeypatch.setattr(licenses, 'inspect_artifact', inspected)
+    evidence = tmp_path / 'evidence'
+    sources.collect_source_bundle(artifact, inventory, evidence,
+                                  inspection_policy=policy, journal_path=journals[0])
+    result = licenses.assess_distribution(artifact, evidence,
+                                          inspection_policy=policy, journal_path=journals[1])
+    assert result['status'] == 'eligible'
+    assert calls == [(policy, journals[0]), (policy, journals[1])]
+
+
+def test_assess_admission_record_matches_returned_bytes(tmp_path):
+    """Forensic fidelity: admission.json bytes equal the serialized verdict."""
+    from p11lab.licenses import assess_distribution
+    artifact, inventory, output, archive = assemble(tmp_path)
+    result = assess_distribution(artifact, output)
+    assert result['status'] == 'eligible'
+    expected = (json.dumps(result, sort_keys=True, indent=2) + '\n').encode()
+    assert (output / 'admission.json').read_bytes() == expected
+
+
+def test_assess_admission_overwrite_is_deterministic(tmp_path):
+    """Second sequential call with same inputs writes identical bytes."""
+    from p11lab.licenses import assess_distribution
+    artifact, inventory, output, archive = assemble(tmp_path)
+    first = assess_distribution(artifact, output)
+    before = (output / 'admission.json').read_bytes()
+    second = assess_distribution(artifact, output)
+    assert second == first
+    assert (output / 'admission.json').read_bytes() == before
+
+
+def test_assess_missing_dir_returns_blocked_and_records_verdict(tmp_path):
+    """Missing dir: blocked naming the missing companion, verdict recorded."""
+    from p11lab.licenses import assess_distribution
+    artifact, inventory = fixture_inventory(tmp_path)
+    missing = tmp_path / 'absent' / 'evidence'
+    assert not missing.exists()
+    result = assess_distribution(artifact, missing)  # must not raise
+    assert result['status'] == 'blocked'
+    assert any('source-companion.json' in reason for reason in result['blockers'])
+    expected = (json.dumps(result, sort_keys=True, indent=2) + '\n').encode()
+    assert (missing / 'admission.json').read_bytes() == expected

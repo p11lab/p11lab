@@ -1,0 +1,524 @@
+# SPDX-License-Identifier: Apache-2.0
+# Execution path: invokes `p11lab proxy execute-cell` (one cell per job)
+# and `p11lab proxy aggregate`, uploading real per-cell observations plus
+# the verdict row and capsule. Values stay scaffold-scoped:
+# experiment_positive is always false; refusals exit 1/2 after upload.
+name: proxy-round-execution
+on:
+  workflow_call:
+    inputs:
+      proxy_sha:
+        required: true
+        type: string
+      tier:
+        required: true
+        type: string
+      p11lab_ref:
+        required: true
+        type: string
+    outputs:
+      result-artifact:
+        value: "${{ jobs.aggregate.outputs['result-artifact'] }}"
+      result-sha256:
+        value: "${{ jobs.aggregate.outputs['result-sha256'] }}"
+      experiment-positive:
+        value: "${{ jobs.aggregate.outputs['experiment-positive'] }}"
+permissions: {}
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Validate input identities
+        id: inputs
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          case "$PROXY_SHA" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#PROXY_SHA}" -eq 40
+          case "$P11LAB_REF" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#P11LAB_REF}" -eq 40
+          case "$TIER" in proxy-diagnostic-v1) ;; *) exit 1 ;; esac
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Validate execution policy
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python - <<'PY'
+          import os
+          from p11lab import proxy_policy
+          loaded = proxy_policy.load_proxy_policy(os.environ['TIER'])
+          assert loaded.tier_qualified is False, 'diagnostic tier must stay unqualified'
+          assert loaded.activation_state == 'diagnostic', 'diagnostic activation only'
+          print('policy_digest=' + loaded.policy_digest)
+          print('provider=' + loaded.provider['family'] + '/' + loaded.provider['channel'] + '/' + loaded.provider['platform'])
+          print('expected_same_run_artifact=' + 'p11lab-proxy-dist-' + os.environ['PROXY_SHA'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
+          PY
+  direct:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Validate input identities
+        id: inputs
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          case "$PROXY_SHA" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#PROXY_SHA}" -eq 40
+          case "$P11LAB_REF" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#P11LAB_REF}" -eq 40
+          case "$TIER" in proxy-diagnostic-v1) ;; *) exit 1 ;; esac
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Download producer artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: p11lab-proxy-dist-${{ inputs.proxy_sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-producer
+      - name: Execute one proxy cell
+        id: result
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CELL: direct
+        run: |
+          CELL_DIR="$RUNNER_TEMP/proxy-cell-$CELL"
+          ARTIFACT_DIR="$RUNNER_TEMP/proxy-producer/p11lab-proxy-dist-$PROXY_SHA-$RUN_ATTEMPT"
+          code=0
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python -m p11lab proxy execute-cell --cell "$CELL" --artifact "$ARTIFACT_DIR" --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --cell-payload "$ARTIFACT_DIR/cell-payload-$CELL.json" --output-dir "$CELL_DIR" --output-json "$CELL_DIR/row.json" >"$RUNNER_TEMP/cell-$CELL.log" 2>&1 || code=$?
+          CELL_EXIT="$code" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          cell = os.environ['CELL']
+          code = int(os.environ['CELL_EXIT'])
+          cause = 'missing-row'
+          row_path = temp / ('proxy-cell-' + cell) / 'row.json'
+          if row_path.exists():
+              row = json.loads(row_path.read_text())
+              cause = row.get('typed_cause') or row['cause']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:
+              handle.write('cell_exit=%d\n' % code)
+              handle.write('cell_cause=%s\n' % cause)
+          if code != 0:
+              print((temp / ('cell-' + cell + '.log')).read_text())
+          PY
+          if test -d "$CELL_DIR"; then mv "$RUNNER_TEMP/cell-$CELL.log" "$CELL_DIR/cell-$CELL.log"; fi
+      - name: Upload cell observation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-cell-direct-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-cell-direct
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report cell verdict
+        shell: sh
+        env:
+          CELL_EXIT: ${{ steps.result.outputs.cell_exit }}
+          CELL_CAUSE: ${{ steps.result.outputs.cell_cause }}
+        run: |
+          case "$CELL_EXIT" in
+            0) exit 0 ;;
+            1) echo "refused: $CELL_CAUSE" >&2; exit 1 ;;
+            2) echo "refused: $CELL_CAUSE" >&2; exit 2 ;;
+            *) echo "unexpected cell exit: $CELL_EXIT ($CELL_CAUSE)" >&2; exit 2 ;;
+          esac
+  accepted-proxy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Validate input identities
+        id: inputs
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          case "$PROXY_SHA" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#PROXY_SHA}" -eq 40
+          case "$P11LAB_REF" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#P11LAB_REF}" -eq 40
+          case "$TIER" in proxy-diagnostic-v1) ;; *) exit 1 ;; esac
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Download producer artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: p11lab-proxy-dist-${{ inputs.proxy_sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-producer
+      - name: Execute one proxy cell
+        id: result
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CELL: accepted-proxy
+        run: |
+          CELL_DIR="$RUNNER_TEMP/proxy-cell-$CELL"
+          ARTIFACT_DIR="$RUNNER_TEMP/proxy-producer/p11lab-proxy-dist-$PROXY_SHA-$RUN_ATTEMPT"
+          code=0
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python -m p11lab proxy execute-cell --cell "$CELL" --artifact "$ARTIFACT_DIR" --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --cell-payload "$ARTIFACT_DIR/cell-payload-$CELL.json" --output-dir "$CELL_DIR" --output-json "$CELL_DIR/row.json" >"$RUNNER_TEMP/cell-$CELL.log" 2>&1 || code=$?
+          CELL_EXIT="$code" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          cell = os.environ['CELL']
+          code = int(os.environ['CELL_EXIT'])
+          cause = 'missing-row'
+          row_path = temp / ('proxy-cell-' + cell) / 'row.json'
+          if row_path.exists():
+              row = json.loads(row_path.read_text())
+              cause = row.get('typed_cause') or row['cause']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:
+              handle.write('cell_exit=%d\n' % code)
+              handle.write('cell_cause=%s\n' % cause)
+          if code != 0:
+              print((temp / ('cell-' + cell + '.log')).read_text())
+          PY
+          if test -d "$CELL_DIR"; then mv "$RUNNER_TEMP/cell-$CELL.log" "$CELL_DIR/cell-$CELL.log"; fi
+      - name: Upload cell observation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-cell-accepted-proxy-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-cell-accepted-proxy
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report cell verdict
+        shell: sh
+        env:
+          CELL_EXIT: ${{ steps.result.outputs.cell_exit }}
+          CELL_CAUSE: ${{ steps.result.outputs.cell_cause }}
+        run: |
+          case "$CELL_EXIT" in
+            0) exit 0 ;;
+            1) echo "refused: $CELL_CAUSE" >&2; exit 1 ;;
+            2) echo "refused: $CELL_CAUSE" >&2; exit 2 ;;
+            *) echo "unexpected cell exit: $CELL_EXIT ($CELL_CAUSE)" >&2; exit 2 ;;
+          esac
+  candidate-proxy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Validate input identities
+        id: inputs
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          case "$PROXY_SHA" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#PROXY_SHA}" -eq 40
+          case "$P11LAB_REF" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#P11LAB_REF}" -eq 40
+          case "$TIER" in proxy-diagnostic-v1) ;; *) exit 1 ;; esac
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Download producer artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: p11lab-proxy-dist-${{ inputs.proxy_sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-producer
+      - name: Execute one proxy cell
+        id: result
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CELL: candidate-proxy
+        run: |
+          CELL_DIR="$RUNNER_TEMP/proxy-cell-$CELL"
+          ARTIFACT_DIR="$RUNNER_TEMP/proxy-producer/p11lab-proxy-dist-$PROXY_SHA-$RUN_ATTEMPT"
+          code=0
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python -m p11lab proxy execute-cell --cell "$CELL" --artifact "$ARTIFACT_DIR" --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --cell-payload "$ARTIFACT_DIR/cell-payload-$CELL.json" --output-dir "$CELL_DIR" --output-json "$CELL_DIR/row.json" >"$RUNNER_TEMP/cell-$CELL.log" 2>&1 || code=$?
+          CELL_EXIT="$code" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          cell = os.environ['CELL']
+          code = int(os.environ['CELL_EXIT'])
+          cause = 'missing-row'
+          row_path = temp / ('proxy-cell-' + cell) / 'row.json'
+          if row_path.exists():
+              row = json.loads(row_path.read_text())
+              cause = row.get('typed_cause') or row['cause']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:
+              handle.write('cell_exit=%d\n' % code)
+              handle.write('cell_cause=%s\n' % cause)
+          if code != 0:
+              print((temp / ('cell-' + cell + '.log')).read_text())
+          PY
+          if test -d "$CELL_DIR"; then mv "$RUNNER_TEMP/cell-$CELL.log" "$CELL_DIR/cell-$CELL.log"; fi
+      - name: Upload cell observation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-cell-candidate-proxy-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-cell-candidate-proxy
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report cell verdict
+        shell: sh
+        env:
+          CELL_EXIT: ${{ steps.result.outputs.cell_exit }}
+          CELL_CAUSE: ${{ steps.result.outputs.cell_cause }}
+        run: |
+          case "$CELL_EXIT" in
+            0) exit 0 ;;
+            1) echo "refused: $CELL_CAUSE" >&2; exit 1 ;;
+            2) echo "refused: $CELL_CAUSE" >&2; exit 2 ;;
+            *) echo "unexpected cell exit: $CELL_EXIT ($CELL_CAUSE)" >&2; exit 2 ;;
+          esac
+  aggregate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    if: always()
+    needs:
+      - validate
+      - direct
+      - accepted-proxy
+      - candidate-proxy
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      result-artifact: "${{ steps.result.outputs['result-artifact'] }}"
+      result-sha256: "${{ steps.result.outputs['result-sha256'] }}"
+      experiment-positive: "${{ steps.result.outputs['experiment-positive'] }}"
+    steps:
+      - name: Validate input identities
+        id: inputs
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          TIER: ${{ inputs.tier }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          case "$PROXY_SHA" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#PROXY_SHA}" -eq 40
+          case "$P11LAB_REF" in ''|*[!0-9a-f]*) exit 1 ;; esac
+          test "${#P11LAB_REF}" -eq 40
+          case "$TIER" in proxy-diagnostic-v1) ;; *) exit 1 ;; esac
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Download producer artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: p11lab-proxy-dist-${{ inputs.proxy_sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-producer
+      - name: Download cell observations
+        id: cells
+        shell: sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          command -v gh >/dev/null || { echo 'proxy downloads require gh' >&2; exit 2; }
+          CELLS_DIR="$RUNNER_TEMP/proxy-cells"
+          missing=""
+          mkdir -p "$CELLS_DIR"
+          for cell in direct accepted-proxy candidate-proxy; do
+            dest="$RUNNER_TEMP/proxy-downloads/$cell"
+            mkdir -p "$dest"
+            if gh run download "$RUN_ID" --name "p11lab-proxy-cell-$cell-$RUN_ID-$RUN_ATTEMPT" --dir "$dest" >/dev/null 2>&1; then
+              matches=$(find "$dest" -name "$cell.json" | sort)
+              count=$(printf '%s\n' "$matches" | grep -c .)
+              if test "$count" -eq 0; then
+                echo "warning: cell $cell uploaded no observation" >&2
+                missing="$missing $cell"
+              elif test "$count" -gt 1; then
+                echo "ambiguous evidence for cell $cell" >&2
+                exit 2
+              else
+                cp "$matches" "$CELLS_DIR/$cell.json"
+              fi
+            else
+              echo "warning: cell $cell artifact missing (skipped, cancelled, or failed before upload)" >&2
+              missing="$missing $cell"
+            fi
+          done
+          missing=$(echo $missing)
+          echo "missing=$missing" >> "$GITHUB_OUTPUT"
+      - name: Aggregate proxy observations
+        id: result
+        shell: sh
+        env:
+          PROXY_SHA: ${{ inputs.proxy_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CELL_RESULTS: ${{ needs.direct.result }}/${{ needs.accepted-proxy.result }}/${{ needs.candidate-proxy.result }}
+          MISSING: ${{ steps.cells.outputs.missing }}
+        run: |
+          ARTIFACT_DIR="$RUNNER_TEMP/proxy-producer/p11lab-proxy-dist-$PROXY_SHA-$RUN_ATTEMPT"
+          OUTPUT_DIR="$RUNNER_TEMP/proxy-aggregate"
+          set --
+          case "$CELL_RESULTS" in *cancelled*) set -- "$@" --cancelled ;; esac
+          case "$MISSING" in ?*) set -- "$@" --uploads-incomplete ;; esac
+          code=0
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python -m p11lab proxy aggregate --cells-dir "$RUNNER_TEMP/proxy-cells" --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --comparison "$ARTIFACT_DIR/comparison.json" --budgets "$ARTIFACT_DIR/budgets.json" "$@" --output-dir "$OUTPUT_DIR" --output-json "$OUTPUT_DIR/verdict-row.json" >"$RUNNER_TEMP/aggregate.log" 2>&1 || code=$?
+          VERDICT_EXIT="$code" python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          code = int(os.environ['VERDICT_EXIT'])
+          outputs = {'verdict_exit': str(code), 'typed_cause': 'missing-row',
+                     'evidence_complete': 'false', 'result_artifact': '',
+                     'result_sha256': '', 'experiment_positive': 'false'}
+          row_path = temp / 'proxy-aggregate' / 'verdict-row.json'
+          capsule_path = temp / 'proxy-aggregate' / 'proxy-capsule.json'
+          if row_path.exists() and capsule_path.exists():
+              row = json.loads(row_path.read_text())
+              capsule_bytes = capsule_path.read_bytes()
+              capsule = json.loads(capsule_bytes.decode('utf-8'))
+              if row['experiment_positive'] is not False:
+                  raise SystemExit('positive must stay unclaimed')
+              if capsule['experiment_positive'] is not False:
+                  raise SystemExit('positive must stay unclaimed')
+              cause = row['verdict']['typed_cause']
+              outputs['typed_cause'] = 'null' if cause is None else cause
+              outputs['evidence_complete'] = 'true' if row['evidence_complete'] else 'false'
+              outputs['result_artifact'] = 'p11lab-proxy-capsule-' + os.environ['RUN_ID'] + '-' + os.environ['RUN_ATTEMPT']
+              outputs['result_sha256'] = hashlib.sha256(capsule_bytes).hexdigest()
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:
+              for key in ('verdict_exit', 'typed_cause', 'evidence_complete',
+                          'result_artifact', 'result_sha256', 'experiment_positive'):
+                  handle.write(key + '=' + outputs[key] + '\n')
+          if code != 0:
+              print((temp / 'aggregate.log').read_text())
+          PY
+          if test -d "$OUTPUT_DIR"; then mv "$RUNNER_TEMP/aggregate.log" "$OUTPUT_DIR/aggregate.log"; fi
+      - name: Upload verdict row
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-verdict-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-aggregate/verdict-row.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload proxy capsule
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-proxy-capsule-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/proxy-aggregate/proxy-capsule.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report proxy verdict
+        shell: sh
+        env:
+          VERDICT_EXIT: ${{ steps.result.outputs.verdict_exit }}
+          VERDICT_CAUSE: ${{ steps.result.outputs.typed_cause }}
+          EVIDENCE_COMPLETE: ${{ steps.result.outputs.evidence_complete }}
+        run: |
+          case "$VERDICT_EXIT" in
+            0) exit 0 ;;
+            1) echo "refused: $VERDICT_CAUSE (evidence_complete=$EVIDENCE_COMPLETE)" >&2; exit 1 ;;
+            2) echo "refused: $VERDICT_CAUSE (evidence_complete=$EVIDENCE_COMPLETE)" >&2; exit 2 ;;
+            *) echo "unexpected verdict exit: $VERDICT_EXIT ($VERDICT_CAUSE)" >&2; exit 2 ;;
+          esac

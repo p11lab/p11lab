@@ -1,0 +1,519 @@
+{
+  "schema_version": 1,
+  "kind": "image-pins",
+  "policy_revision": "2026-10-28.1",
+  "images": [
+    {
+      "environment": "softhsm2",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "repository": "ghcr.io/p11lab/softhsm2",
+      "root": {
+        "kind": "manifest",
+        "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+        "digest": "sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16",
+        "index_digest": null,
+        "index_absence_reason": "Anonymous readback identified a single-platform manifest root, not an index."
+      },
+      "platform_manifest_digest": "sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16",
+      "config_digest": "sha256:e59ab297033cedfd8049f76bcf6d9e9c86f8df262be1c80ccbd7c1731437d24f",
+      "local_engine_id": "sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16",
+      "provenance": {
+        "source_seal": null,
+        "content_companion": null,
+        "handoff": null,
+        "recipe_sha256": null,
+        "provider_build_key": null,
+        "patches": null
+      },
+      "semantics": {
+        "modified": null,
+        "simulated": null,
+        "transport_limitations": [
+          "Published patch/simulation provenance is unresolved; current recipe metadata does not bind historical image bytes.",
+          "A shared network does not expose a native PKCS#11 module; remote use requires a compatible proxy client and transport."
+        ]
+      },
+      "observations": {
+        "metadata": {
+          "observed_at": "2026-10-28T10:47:25.392206+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "softhsm2/manifest.json",
+              "bytes": 1574,
+              "sha256": "69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16",
+              "url": "https://ghcr.io/v2/p11lab/softhsm2/manifests/sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16",
+              "expires_at": null
+            },
+            {
+              "path": "softhsm2/config.json",
+              "bytes": 2792,
+              "sha256": "e59ab297033cedfd8049f76bcf6d9e9c86f8df262be1c80ccbd7c1731437d24f",
+              "url": "https://ghcr.io/v2/p11lab/softhsm2/blobs/sha256:e59ab297033cedfd8049f76bcf6d9e9c86f8df262be1c80ccbd7c1731437d24f",
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Fresh anonymous manifest/config readback; no layer downloads, runtime execution or distribution admission."
+          ]
+        },
+        "pull": {
+          "observed_at": "2026-10-28T10:48:00+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "softhsm2/docker-quickstart-observation.md",
+              "bytes": 13100,
+              "sha256": "0f2b0f1617c32d4ee1955b166664b4f3f71eda2a0add8871c6077e33ac4fe730",
+              "url": null,
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Narrow local Docker 29 Linux amd64 observation; evidence report is locally retained, not publicly hosted.",
+            "Anonymous pull succeeded with cached layers; no cold-cache download proof.",
+            "Disposable init/health/tool execution, compatible persistence and independent state observed; no provider-wide or public-CI qualification.",
+            "Default-root glibc 2.41 only; engine ID observed separately from config digest. No source/handoff/distribution admission."
+          ]
+        },
+        "runtime": {
+          "observed_at": "2026-10-28T10:48:00+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "softhsm2/docker-quickstart-observation.md",
+              "bytes": 13100,
+              "sha256": "0f2b0f1617c32d4ee1955b166664b4f3f71eda2a0add8871c6077e33ac4fe730",
+              "url": null,
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Narrow local Docker 29 Linux amd64 observation; evidence report is locally retained, not publicly hosted.",
+            "Anonymous pull succeeded with cached layers; no cold-cache download proof.",
+            "Disposable init/health/tool execution, compatible persistence and independent state observed; no provider-wide or public-CI qualification.",
+            "Default-root glibc 2.41 only; engine ID observed separately from config digest. No source/handoff/distribution admission."
+          ]
+        },
+        "qualification": null
+      },
+      "eligibility": {
+        "distribution_eligible": false,
+        "acquisition_eligible": false,
+        "blockers": [
+          "No bound complete-content source companion/readback and reviewed actual-content rights evidence.",
+          "No eligible schema-v2 handoff, qualified observation or proven recipe/build-key/ordered patch binding."
+        ]
+      }
+    },
+    {
+      "environment": "kryoptic",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "repository": "ghcr.io/p11lab/kryoptic",
+      "root": {
+        "kind": "manifest",
+        "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+        "digest": "sha256:f7398f42e70141f2b321cfbd97f71ef5d7cf401c80ff26e2de9056a45bcb96c9",
+        "index_digest": null,
+        "index_absence_reason": "Anonymous readback identified a single-platform manifest root, not an index."
+      },
+      "platform_manifest_digest": "sha256:f7398f42e70141f2b321cfbd97f71ef5d7cf401c80ff26e2de9056a45bcb96c9",
+      "config_digest": "sha256:0d526f5dcb4ce901c6f8deb0f5eec9ce3b134a941844940216473539da58d2f3",
+      "local_engine_id": null,
+      "provenance": {
+        "source_seal": null,
+        "content_companion": null,
+        "handoff": null,
+        "recipe_sha256": null,
+        "provider_build_key": null,
+        "patches": null
+      },
+      "semantics": {
+        "modified": null,
+        "simulated": null,
+        "transport_limitations": [
+          "Published patch/simulation provenance is unresolved; current recipe metadata does not bind historical image bytes.",
+          "A shared network does not expose a native PKCS#11 module; remote use requires a compatible proxy client and transport."
+        ]
+      },
+      "observations": {
+        "metadata": {
+          "observed_at": "2026-10-28T10:47:26.125666+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "kryoptic/manifest.json",
+              "bytes": 1366,
+              "sha256": "f7398f42e70141f2b321cfbd97f71ef5d7cf401c80ff26e2de9056a45bcb96c9",
+              "url": "https://ghcr.io/v2/p11lab/kryoptic/manifests/sha256:f7398f42e70141f2b321cfbd97f71ef5d7cf401c80ff26e2de9056a45bcb96c9",
+              "expires_at": null
+            },
+            {
+              "path": "kryoptic/config.json",
+              "bytes": 2919,
+              "sha256": "0d526f5dcb4ce901c6f8deb0f5eec9ce3b134a941844940216473539da58d2f3",
+              "url": "https://ghcr.io/v2/p11lab/kryoptic/blobs/sha256:0d526f5dcb4ce901c6f8deb0f5eec9ce3b134a941844940216473539da58d2f3",
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Fresh anonymous manifest/config readback; no layer downloads, runtime execution or distribution admission."
+          ]
+        },
+        "pull": null,
+        "runtime": null,
+        "qualification": null
+      },
+      "eligibility": {
+        "distribution_eligible": false,
+        "acquisition_eligible": false,
+        "blockers": [
+          "No bound complete-content source companion/readback and reviewed actual-content rights evidence.",
+          "No eligible schema-v2 handoff, qualified observation or proven recipe/build-key/ordered patch binding."
+        ]
+      }
+    },
+    {
+      "environment": "bouncyhsm",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "repository": "ghcr.io/p11lab/bouncyhsm",
+      "root": {
+        "kind": "manifest",
+        "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+        "digest": "sha256:809ab1985931c7356f53e3675d26632870c06aedaf961987e7e92b1c5496c08e",
+        "index_digest": null,
+        "index_absence_reason": "Anonymous readback identified a single-platform manifest root, not an index."
+      },
+      "platform_manifest_digest": "sha256:809ab1985931c7356f53e3675d26632870c06aedaf961987e7e92b1c5496c08e",
+      "config_digest": "sha256:7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf",
+      "local_engine_id": null,
+      "provenance": {
+        "source_seal": null,
+        "content_companion": null,
+        "handoff": null,
+        "recipe_sha256": null,
+        "provider_build_key": null,
+        "patches": null
+      },
+      "semantics": {
+        "modified": null,
+        "simulated": null,
+        "transport_limitations": [
+          "Published patch/simulation provenance is unresolved; current recipe metadata does not bind historical image bytes.",
+          "A shared network does not expose a native PKCS#11 module; remote use requires a compatible proxy client and transport."
+        ]
+      },
+      "observations": {
+        "metadata": {
+          "observed_at": "2026-10-28T10:47:26.872153+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "bouncyhsm/manifest.json",
+              "bytes": 1576,
+              "sha256": "809ab1985931c7356f53e3675d26632870c06aedaf961987e7e92b1c5496c08e",
+              "url": "https://ghcr.io/v2/p11lab/bouncyhsm/manifests/sha256:809ab1985931c7356f53e3675d26632870c06aedaf961987e7e92b1c5496c08e",
+              "expires_at": null
+            },
+            {
+              "path": "bouncyhsm/config.json",
+              "bytes": 3164,
+              "sha256": "7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf",
+              "url": "https://ghcr.io/v2/p11lab/bouncyhsm/blobs/sha256:7e9dffe070dfbb0723c3714b6ffd2d21b3885769ec955e4718673d3e4008e6cf",
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Fresh anonymous manifest/config readback; no layer downloads, runtime execution or distribution admission."
+          ]
+        },
+        "pull": null,
+        "runtime": null,
+        "qualification": null
+      },
+      "eligibility": {
+        "distribution_eligible": false,
+        "acquisition_eligible": false,
+        "blockers": [
+          "No bound complete-content source companion/readback and reviewed actual-content rights evidence.",
+          "No eligible schema-v2 handoff, qualified observation or proven recipe/build-key/ordered patch binding."
+        ]
+      }
+    },
+    {
+      "environment": "haskoki",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "repository": "ghcr.io/p11lab/haskoki",
+      "root": {
+        "kind": "manifest",
+        "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+        "digest": "sha256:dc7086e2b831f47223460d9ac3afd8cd8106deb9c135d4084d963cd0b7f84daa",
+        "index_digest": null,
+        "index_absence_reason": "Anonymous readback identified a single-platform manifest root, not an index."
+      },
+      "platform_manifest_digest": "sha256:dc7086e2b831f47223460d9ac3afd8cd8106deb9c135d4084d963cd0b7f84daa",
+      "config_digest": "sha256:05c9996306fdafe3352d638cfcc27260d606bcc305701b1a9ed40118371155b5",
+      "local_engine_id": null,
+      "provenance": {
+        "source_seal": null,
+        "content_companion": null,
+        "handoff": null,
+        "recipe_sha256": null,
+        "provider_build_key": null,
+        "patches": null
+      },
+      "semantics": {
+        "modified": null,
+        "simulated": null,
+        "transport_limitations": [
+          "Published patch/simulation provenance is unresolved; current recipe metadata does not bind historical image bytes.",
+          "A shared network does not expose a native PKCS#11 module; remote use requires a compatible proxy client and transport."
+        ]
+      },
+      "observations": {
+        "metadata": {
+          "observed_at": "2026-10-28T10:47:27.640727+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "haskoki/manifest.json",
+              "bytes": 1576,
+              "sha256": "dc7086e2b831f47223460d9ac3afd8cd8106deb9c135d4084d963cd0b7f84daa",
+              "url": "https://ghcr.io/v2/p11lab/haskoki/manifests/sha256:dc7086e2b831f47223460d9ac3afd8cd8106deb9c135d4084d963cd0b7f84daa",
+              "expires_at": null
+            },
+            {
+              "path": "haskoki/config.json",
+              "bytes": 4636,
+              "sha256": "05c9996306fdafe3352d638cfcc27260d606bcc305701b1a9ed40118371155b5",
+              "url": "https://ghcr.io/v2/p11lab/haskoki/blobs/sha256:05c9996306fdafe3352d638cfcc27260d606bcc305701b1a9ed40118371155b5",
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Fresh anonymous manifest/config readback; no layer downloads, runtime execution or distribution admission."
+          ]
+        },
+        "pull": null,
+        "runtime": null,
+        "qualification": null
+      },
+      "eligibility": {
+        "distribution_eligible": false,
+        "acquisition_eligible": false,
+        "blockers": [
+          "No bound complete-content source companion/readback and reviewed actual-content rights evidence.",
+          "No eligible schema-v2 handoff, qualified observation or proven recipe/build-key/ordered patch binding."
+        ]
+      }
+    },
+    {
+      "environment": "freehsm",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "repository": "ghcr.io/p11lab/freehsm",
+      "root": {
+        "kind": "manifest",
+        "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+        "digest": "sha256:559127e1c3f73ded28f708518dd90d376951781863e4112a6185e1b646047197",
+        "index_digest": null,
+        "index_absence_reason": "Anonymous readback identified a single-platform manifest root, not an index."
+      },
+      "platform_manifest_digest": "sha256:559127e1c3f73ded28f708518dd90d376951781863e4112a6185e1b646047197",
+      "config_digest": "sha256:07600aea94336d6648913f4c1aae8436ba8206cd312aad7d543a72d68f0bb217",
+      "local_engine_id": null,
+      "provenance": {
+        "source_seal": null,
+        "content_companion": null,
+        "handoff": null,
+        "recipe_sha256": null,
+        "provider_build_key": null,
+        "patches": null
+      },
+      "semantics": {
+        "modified": null,
+        "simulated": null,
+        "transport_limitations": [
+          "Published patch/simulation provenance is unresolved; current recipe metadata does not bind historical image bytes.",
+          "A shared network does not expose a native PKCS#11 module; remote use requires a compatible proxy client and transport."
+        ]
+      },
+      "observations": {
+        "metadata": {
+          "observed_at": "2026-10-28T10:47:28.556001+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "freehsm/manifest.json",
+              "bytes": 1575,
+              "sha256": "559127e1c3f73ded28f708518dd90d376951781863e4112a6185e1b646047197",
+              "url": "https://ghcr.io/v2/p11lab/freehsm/manifests/sha256:559127e1c3f73ded28f708518dd90d376951781863e4112a6185e1b646047197",
+              "expires_at": null
+            },
+            {
+              "path": "freehsm/config.json",
+              "bytes": 2888,
+              "sha256": "07600aea94336d6648913f4c1aae8436ba8206cd312aad7d543a72d68f0bb217",
+              "url": "https://ghcr.io/v2/p11lab/freehsm/blobs/sha256:07600aea94336d6648913f4c1aae8436ba8206cd312aad7d543a72d68f0bb217",
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Fresh anonymous manifest/config readback; no layer downloads, runtime execution or distribution admission."
+          ]
+        },
+        "pull": null,
+        "runtime": null,
+        "qualification": null
+      },
+      "eligibility": {
+        "distribution_eligible": false,
+        "acquisition_eligible": false,
+        "blockers": [
+          "No bound complete-content source companion/readback and reviewed actual-content rights evidence.",
+          "No eligible schema-v2 handoff, qualified observation or proven recipe/build-key/ordered patch binding."
+        ]
+      }
+    },
+    {
+      "environment": "nss",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "repository": "ghcr.io/p11lab/nss",
+      "root": {
+        "kind": "manifest",
+        "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+        "digest": "sha256:42e6095ac865cf6c183c20fda489e3bbe5ac2c6522685f4db8a95adb56017e01",
+        "index_digest": null,
+        "index_absence_reason": "Anonymous readback identified a single-platform manifest root, not an index."
+      },
+      "platform_manifest_digest": "sha256:42e6095ac865cf6c183c20fda489e3bbe5ac2c6522685f4db8a95adb56017e01",
+      "config_digest": "sha256:4437936f71de1d04b844b21ace5721d2f2ada7e29ecbfe1117091968a32ad525",
+      "local_engine_id": null,
+      "provenance": {
+        "source_seal": null,
+        "content_companion": null,
+        "handoff": null,
+        "recipe_sha256": null,
+        "provider_build_key": null,
+        "patches": null
+      },
+      "semantics": {
+        "modified": null,
+        "simulated": null,
+        "transport_limitations": [
+          "Published patch/simulation provenance is unresolved; current recipe metadata does not bind historical image bytes.",
+          "A shared network does not expose a native PKCS#11 module; remote use requires a compatible proxy client and transport."
+        ]
+      },
+      "observations": {
+        "metadata": {
+          "observed_at": "2026-10-28T10:47:29.329459+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "nss/manifest.json",
+              "bytes": 1575,
+              "sha256": "42e6095ac865cf6c183c20fda489e3bbe5ac2c6522685f4db8a95adb56017e01",
+              "url": "https://ghcr.io/v2/p11lab/nss/manifests/sha256:42e6095ac865cf6c183c20fda489e3bbe5ac2c6522685f4db8a95adb56017e01",
+              "expires_at": null
+            },
+            {
+              "path": "nss/config.json",
+              "bytes": 3410,
+              "sha256": "4437936f71de1d04b844b21ace5721d2f2ada7e29ecbfe1117091968a32ad525",
+              "url": "https://ghcr.io/v2/p11lab/nss/blobs/sha256:4437936f71de1d04b844b21ace5721d2f2ada7e29ecbfe1117091968a32ad525",
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Fresh anonymous manifest/config readback; no layer downloads, runtime execution or distribution admission."
+          ]
+        },
+        "pull": null,
+        "runtime": null,
+        "qualification": null
+      },
+      "eligibility": {
+        "distribution_eligible": false,
+        "acquisition_eligible": false,
+        "blockers": [
+          "No bound complete-content source companion/readback and reviewed actual-content rights evidence.",
+          "No eligible schema-v2 handoff, qualified observation or proven recipe/build-key/ordered patch binding."
+        ]
+      }
+    },
+    {
+      "environment": "opencryptoki",
+      "channel": "release",
+      "platform": "linux/amd64",
+      "repository": "ghcr.io/p11lab/opencryptoki",
+      "root": {
+        "kind": "manifest",
+        "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+        "digest": "sha256:b4bc9b9a3afc617bf6c956cac3c34fbcbaa391fdd6d386b1e53ec3bfbe65f924",
+        "index_digest": null,
+        "index_absence_reason": "Anonymous readback identified a single-platform manifest root, not an index."
+      },
+      "platform_manifest_digest": "sha256:b4bc9b9a3afc617bf6c956cac3c34fbcbaa391fdd6d386b1e53ec3bfbe65f924",
+      "config_digest": "sha256:7d71236ed81bdab93fe39714463dff193d50601fd9f8787652e74fb0af22b2a4",
+      "local_engine_id": null,
+      "provenance": {
+        "source_seal": null,
+        "content_companion": null,
+        "handoff": null,
+        "recipe_sha256": null,
+        "provider_build_key": null,
+        "patches": null
+      },
+      "semantics": {
+        "modified": null,
+        "simulated": null,
+        "transport_limitations": [
+          "Published patch/simulation provenance is unresolved; current recipe metadata does not bind historical image bytes.",
+          "A shared network does not expose a native PKCS#11 module; remote use requires a compatible proxy client and transport."
+        ]
+      },
+      "observations": {
+        "metadata": {
+          "observed_at": "2026-10-28T10:47:30.072810+00:00",
+          "source_revision": "10017b195e46ffd152a398970ed5412ae8c37f0a",
+          "evidence": [
+            {
+              "path": "opencryptoki/manifest.json",
+              "bytes": 1365,
+              "sha256": "b4bc9b9a3afc617bf6c956cac3c34fbcbaa391fdd6d386b1e53ec3bfbe65f924",
+              "url": "https://ghcr.io/v2/p11lab/opencryptoki/manifests/sha256:b4bc9b9a3afc617bf6c956cac3c34fbcbaa391fdd6d386b1e53ec3bfbe65f924",
+              "expires_at": null
+            },
+            {
+              "path": "opencryptoki/config.json",
+              "bytes": 3414,
+              "sha256": "7d71236ed81bdab93fe39714463dff193d50601fd9f8787652e74fb0af22b2a4",
+              "url": "https://ghcr.io/v2/p11lab/opencryptoki/blobs/sha256:7d71236ed81bdab93fe39714463dff193d50601fd9f8787652e74fb0af22b2a4",
+              "expires_at": null
+            }
+          ],
+          "limitations": [
+            "Fresh anonymous manifest/config readback; no layer downloads, runtime execution or distribution admission."
+          ]
+        },
+        "pull": null,
+        "runtime": null,
+        "qualification": null
+      },
+      "eligibility": {
+        "distribution_eligible": false,
+        "acquisition_eligible": false,
+        "blockers": [
+          "No bound complete-content source companion/readback and reviewed actual-content rights evidence.",
+          "No eligible schema-v2 handoff, qualified observation or proven recipe/build-key/ordered patch binding."
+        ]
+      }
+    }
+  ]
+}

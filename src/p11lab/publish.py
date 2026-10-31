@@ -1,17 +1,11 @@
-"""Source-first delivery gates: sealed sources, anonymous readback, admission, handoff.
+"""Source delivery byte checks and fail-closed acquisition boundaries.
 
-Pure local verification over bytes on disk: no network access and no registry
-writes. Transport (docker/ORAS push and pull) lives in the delivery workflows
-and scripts; this module decides whether each gate passes and binds catalogue
-entries to artifact digests. Every gate raises PublishError with the reason on
-failure; callers must stop binary upload/cache export when a gate fails.
-
-Sequence: seal licensed sources -> publish the sealed source -> read it back
-anonymously -> build/test the exact binary -> admit actual content -> write the
-binary handoff. The handoff is a factual digest binding plus the admission
-verdict; it never authorizes publication by itself. Public exposure additionally
-requires admission status ``eligible``. Digests are identities; registry tags
-are recorded only as discovery aliases.
+These operations verify local receipts, manifests, archives and acquired artifact
+identities. They never perform network or registry writes. Caller transcripts
+are bound evidence, not authenticated anonymous availability. Protected source
+transport and full image promotion remain unavailable: admission stays blocked,
+expose cannot emit a new handoff, and public acquisition remains shut. Historical
+schema1 handoffs remain displayable; new eligibility requires handoff schema2.
 """
 
 import hashlib
@@ -24,6 +18,7 @@ from pathlib import Path
 from .catalog import locked_asset, packaged_asset, validate_build_inputs
 from .receipts import write_receipt
 from .sources import checksum
+from .jsonutil import loads as strict_json_loads
 
 
 class PublishError(ValueError):
@@ -31,6 +26,10 @@ class PublishError(ValueError):
 
 
 SCHEMA_VERSION = 1
+HANDOFF_SCHEMA_VERSION = 2
+SEAL_FILES = {"sealed-source.tar.gz": "application/gzip", "sealed-source.json": "application/json"}
+CONTENT_FILES = {"source-companion.tar.gz": "application/gzip",
+                 "source-companion.json": "application/json", "sbom.spdx.json": "application/spdx+json"}
 REGISTRY_NAMESPACE = "ghcr.io/p11lab"
 
 
@@ -79,9 +78,30 @@ ORAS_PIN = {
     },
 }
 
+# Pinned attestation verifier for the acquisition gate. The installer script
+# embeds these same values; tests enforce parity. Linux/amd64 only: the
+# executable digest must equal delivery_authority.GH_EXECUTABLE_SHA256 and
+# the gate enforces it before execution. Windows packaging is a recorded
+# B-G2c follow-up.
+GH_PIN = {
+    "version": "2.103.2",
+    "source": {
+        "url": "https://github.com/cli/cli.git",
+    },
+    "artifacts": {
+        "linux/amd64": {
+            "url": "https://github.com/cli/cli/releases/download/v2.103.2/gh_2.103.2_linux_amd64.tar.gz",
+            "sha256": "62ccf747115ddc61237efffdde66a3c8f70ba249433dc64f70801089b59c59c8",
+            "size": 15031001,
+            "executable_sha256": "cbfdc94f3a5c0713c0d6df3e0a1d88a59a76b0c52332aad7d21d112f9da2cc0e",
+        },
+    },
+}
+
 # Pinned GitHub Actions for T13-owned workflows (tag tips resolved 2026-10-05).
 # Tests require the exact `uses: repo@sha` form in every listed workflow.
 ACTION_PINS = {
+    "actions/attest": {"tag": "v4.2.2", "sha": "1e69f48acb82d1966a394da916b4c1698aa569d6"},
     "actions/checkout": {"tag": "v4", "sha": "11d5960a326750d5838078e36cf38b85af677262"},
     "actions/setup-python": {"tag": "v5", "sha": "a26af69be951a213d495a4c3e4e4022e16d87065"},
     "actions/upload-artifact": {"tag": "v4", "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02"},
@@ -118,6 +138,12 @@ ACTION_INPUTS = {
     "registry": {"required": False, "default": "",
                  "description": "Registry repository holding the handoff (default ghcr.io/p11lab/<environment>)."},
     "handoff-digest": {"required": True, "description": "Immutable handoff digest (sha256:<hex>)."},
+    "transport-evidence-digest": {"required": False, "default": "",
+        "description": "Immutable transport-evidence digest (sha256:<hex>); gated acquisition needs both evidence digests."},
+    "promotion-evidence-digest": {"required": False, "default": "",
+        "description": "Immutable promotion-evidence digest (sha256:<hex>); gated acquisition needs both evidence digests."},
+    "evidence-registry": {"required": False, "default": "",
+        "description": "Registry repository holding the evidence packages (default: the handoff registry)."},
     "command": {"required": True, "description": "Application argv as a JSON array of strings."},
     "inputs": {"required": False, "default": "", "description": "Newline-separated NAME=VALUE provider inputs."},
     "state-dir": {"required": False, "default": "", "description": "Caller-owned persistent state directory (else ephemeral)."},
@@ -139,8 +165,8 @@ def _need(mapping, key, message):
 
 def _read_json(path: Path):
     try:
-        result = json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, ValueError) as error:
+        result = strict_json_loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError, RecursionError) as error:
         raise PublishError(f"invalid JSON document: {path}") from error
     _require(isinstance(result, dict), f"JSON document must be an object: {path}")
     return result
@@ -260,7 +286,9 @@ def validate_action_inputs(values: dict) -> dict:
     for name, spec in ACTION_INPUTS.items():
         value = values.get(name, spec.get("default", ""))
         _require(isinstance(value, str), f"action input must be a string: {name}")
-        value = value.strip()
+        # Directory names are literal filesystem names, including edge spaces.
+        if name != "working-directory":
+            value = value.strip()
         if spec.get("required"):
             _require(bool(value), f"action input is required: {name}")
         normalized[name] = value
@@ -269,6 +297,19 @@ def validate_action_inputs(values: dict) -> dict:
     _require(normalized["mode"] in {"direct", "native"}, "action mode must be direct or native")
     normalized["registry"] = effective_registry(normalized["registry"], normalized["environment"])
     _require(re.fullmatch(r"sha256:[0-9a-f]{64}", normalized["handoff-digest"]), "action handoff-digest must be sha256:<hex>")
+    # Empty evidence digests stay empty: the wrapper maps them to None so the
+    # gate refuses with its typed texts (R10); only non-empty values must parse.
+    for _evidence_key in ("transport-evidence-digest", "promotion-evidence-digest"):
+        if normalized[_evidence_key]:
+            _require(re.fullmatch(r"sha256:[0-9a-f]{64}", normalized[_evidence_key]),
+                     f"action {_evidence_key} must be sha256:<hex>")
+    if normalized["evidence-registry"]:
+        try:
+            normalized["evidence_registry"] = require_repository(normalized["evidence-registry"])
+        except PublishError as error:
+            raise PublishError("action evidence-registry must be a repository path") from error
+    else:
+        normalized["evidence_registry"] = normalized["registry"]
     try:
         command = json.loads(normalized["command"])
     except ValueError as error:
@@ -531,19 +572,151 @@ def verify_sealed_archive(archive: Path, output_dir: Path) -> dict:
         raise PublishError("invalid sealed source: " + str(error)) from error
 
 
-def verify_readback(sealed_receipt_path: Path, pulled_dir: Path, *, transcript_path: Path,
-                    extract_dir: Path) -> dict:
-    """Verify anonymously pulled bytes against the sealed receipt, byte for byte.
+def _regular_file(path: Path, description: str) -> Path:
+    import stat
+    path = Path(path)
+    try:
+        status = path.lstat()
+        mode = status.st_mode
+    except OSError as error:
+        raise PublishError(description + " is missing") from error
+    _require(stat.S_ISREG(mode) and status.st_nlink == 1, description + " must be a safe single-link regular file")
+    return path
 
-    The transcript must show the anonymous transport (fresh empty credential
-    directories plus the pull output). This function binds the transcript bytes
-    to the proof; reviewers inspect the transcript itself for the anonymity
-    evidence. A missing, private, expired, or altered companion fails here.
+
+def verify_artifact_roster(source_manifest_path: Path, source_manifest_digest: str,
+                           expected: dict, *, pulled_dir: Path | None = None) -> dict:
+    """Verify immutable OCI manifest bytes and a protected exact layer roster.
+
+    Each expected filename maps to sha256, size_bytes and media_type supplied
+    by the producer. When pulled_dir is supplied, rehash only that exact flat
+    roster of regular files. This proves bytes, not transport authentication.
+    """
+    _require(isinstance(source_manifest_digest, str) and _SHA256.fullmatch(source_manifest_digest),
+             "source manifest requires a full SHA256 digest")
+    path = _regular_file(source_manifest_path, "source manifest")
+    _require(checksum(path) == source_manifest_digest, "source manifest bytes differ from their digest")
+    value = _read_json(path)
+    layers = value.get("layers")
+    _require(value.get("schemaVersion") == 2 and isinstance(layers, list), "source manifest shape mismatch")
+    _require(value.get("mediaType") == "application/vnd.oci.image.manifest.v1+json",
+             "source manifest media type mismatch")
+    _require(isinstance(expected, dict) and expected, "protected expected layer roster is missing")
+    for name, record in expected.items():
+        _require(isinstance(name, str) and re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", name)
+                 and isinstance(record, dict) and isinstance(record.get("sha256"), str)
+                 and _SHA256.fullmatch(record["sha256"])
+                 and type(record.get("size_bytes")) is int and record["size_bytes"] >= 0
+                 and isinstance(record.get("media_type"), str) and record["media_type"],
+                 "unsafe or incomplete protected layer roster")
+    seen = set()
+    digests = set()
+    for layer in layers:
+        _require(isinstance(layer, dict) and isinstance(layer.get("annotations"), dict),
+                 "source layer descriptor requires a title")
+        title = layer["annotations"].get("org.opencontainers.image.title")
+        _require(isinstance(title, str) and title in expected and title not in seen,
+                 "source layer roster has duplicate/extra/unsafe title")
+        record = expected[title]
+        _require(layer.get("digest") == "sha256:" + record["sha256"], "source layer digest mismatch: " + title)
+        _require(layer["digest"] not in digests, "source layer duplicate digest")
+        _require(type(layer.get("size")) is int and layer["size"] == record["size_bytes"],
+                 "source layer size mismatch: " + title)
+        _require(layer.get("mediaType") == record["media_type"], "source layer media type mismatch: " + title)
+        _require("urls" not in layer and "data" not in layer, "source layer external/embedded content refused")
+        seen.add(title)
+        digests.add(layer["digest"])
+    _require(seen == set(expected), "source layer roster is missing expected files")
+    if pulled_dir is not None:
+        directory = Path(pulled_dir)
+        _require(directory.is_dir() and not directory.is_symlink(), "pulled directory must be a safe directory")
+        _require({entry.name for entry in directory.iterdir()} == set(expected), "pulled file roster mismatch")
+        for name, record in expected.items():
+            file = _regular_file(directory / name, "pulled " + name)
+            _require(file.stat().st_size == record["size_bytes"] and checksum(file) == record["sha256"],
+                     "pulled file checksum/size mismatch: " + name)
+    return {"manifest_sha256": source_manifest_digest, "files": expected}
+
+
+def _seal_roster(receipt_path: Path, receipt: dict) -> dict:
+    _require(receipt.get("archive") == "sealed-source.tar.gz", "sealed receipt archive name mismatch")
+    return {"sealed-source.tar.gz": {"sha256": receipt.get("archive_sha256"),
+                "size_bytes": receipt.get("size_bytes"), "media_type": SEAL_FILES["sealed-source.tar.gz"]},
+            "sealed-source.json": {"sha256": checksum(_regular_file(receipt_path, "sealed receipt")),
+                "size_bytes": Path(receipt_path).stat().st_size, "media_type": SEAL_FILES["sealed-source.json"]}}
+
+
+def _transcript(path: Path) -> dict:
+    file = _regular_file(path, "transport transcript")
+    _require(0 < file.stat().st_size <= 16 * 1024**2, "transport transcript is empty or exceeds 16 MiB")
+    return {"transcript_sha256": checksum(file), "transcript_bytes": file.stat().st_size,
+            "transport_authentication": "unverified", "publication_status": "blocked"}
+
+
+def verify_content_readback(expected_receipt_path: Path, pulled_dir: Path, *,
+                            source_manifest_path: Path, source_manifest_digest: str,
+                            registry: str, artifact, transcript_path: Path, extract_dir: Path) -> dict:
+    """Verify complete source bytes against a protected producer receipt/ArtifactRef.
+
+    This local proof binds a caller transcript without authenticating a GitHub
+    job, anonymous availability, review authority or publication permission.
+    """
+    from .sources import verify_source_bundle, verify_source_receipt
+    from .licenses import _same_artifact
+    receipt = _read_json(_regular_file(expected_receipt_path, "expected companion receipt"))
+    _require(type(receipt.get("schema_version")) is int and receipt["schema_version"] == 1 and receipt.get("role") == "source-companion",
+             "content readback requires a schema1 source-companion receipt")
+    _require(receipt.get("archive") == "source-companion.tar.gz", "content companion archive name mismatch")
+    _require(isinstance(receipt.get("matched_artifact"), dict) and _same_artifact(receipt["matched_artifact"], artifact),
+             "content companion ArtifactRef/platform mismatch")
+    require_repository(registry)
+    _require(isinstance(receipt.get("artifact"), dict), "content companion archive identity missing")
+    expected = {"source-companion.tar.gz": {"sha256": receipt["artifact"].get("sha256"),
+                   "size_bytes": receipt.get("size_bytes"), "media_type": CONTENT_FILES["source-companion.tar.gz"]},
+                "source-companion.json": {"sha256": checksum(expected_receipt_path),
+                   "size_bytes": Path(expected_receipt_path).stat().st_size, "media_type": CONTENT_FILES["source-companion.json"]}}
+    archive = _regular_file(Path(pulled_dir) / "source-companion.tar.gz", "pulled content archive")
+    _require(archive.stat().st_size == receipt.get("size_bytes") and checksum(archive) == receipt["artifact"].get("sha256"),
+             "pulled content archive checksum/size mismatch")
+    pulled_receipt = _regular_file(Path(pulled_dir) / "source-companion.json", "pulled companion receipt")
+    _require(pulled_receipt.read_bytes() == Path(expected_receipt_path).read_bytes(),
+             "pulled companion receipt differs from protected producer bytes")
+    spdx = _regular_file(Path(pulled_dir) / "sbom.spdx.json", "pulled SPDX")
+    try:
+        inventory = verify_source_bundle(archive, extract_dir)
+        verify_source_receipt(artifact, receipt, archive, Path(extract_dir), spdx, inventory)
+    except (ValueError, KeyError, TypeError, OSError) as error:
+        raise PublishError("invalid content companion: " + str(error)) from error
+    # Derive SPDX length from the embedded file in the producer-hash-protected
+    # archive, never from an untrusted descriptor or pulled outer file claim.
+    expected["sbom.spdx.json"] = {"sha256": receipt.get("sbom_sha256"),
+        "size_bytes": (Path(extract_dir) / "sbom.spdx.json").stat().st_size,
+        "media_type": CONTENT_FILES["sbom.spdx.json"]}
+    roster = verify_artifact_roster(source_manifest_path, source_manifest_digest, expected, pulled_dir=pulled_dir)
+    proof = {"schema_version": SCHEMA_VERSION, "role": "content-readback-proof",
+             "reference": registry + "@sha256:" + source_manifest_digest,
+             "registry": registry, "manifest_sha256": source_manifest_digest,
+             "file_sha256": expected["source-companion.tar.gz"]["sha256"],
+             "receipt_sha256": checksum(expected_receipt_path), "spdx_sha256": receipt["sbom_sha256"],
+             "inventory_sha256": receipt["inventory_sha256"], "artifact": inventory["artifact"],
+             "files": roster["files"], **_transcript(transcript_path)}
+    write_receipt(Path(extract_dir).parent / "content-readback-proof.json", proof)
+    return proof
+
+
+def verify_readback(sealed_receipt_path: Path, pulled_dir: Path, *, transcript_path: Path,
+                    extract_dir: Path, source_manifest_path: Path | None = None,
+                    source_manifest_digest: str | None = None, registry: str | None = None) -> dict:
+    """Verify seal bytes, optionally including the exact immutable OCI roster.
+
+    The legacy archive-only call is a local diagnostic. A bound caller transcript
+    does not authenticate anonymous transport, CI identity or publication rights.
     """
     receipt = _read_json(sealed_receipt_path)
     _require(receipt.get("role") == "sealed-source", "readback requires a sealed-source receipt")
     sealed_name = _need(receipt, "archive", "sealed receipt lacks the sealed archive name")
     sealed_digest = _need(receipt, "archive_sha256", "sealed receipt lacks the sealed archive digest")
+    _require(sealed_name == "sealed-source.tar.gz", "sealed archive requires its protected filename")
     pulled_dir, extract_dir = Path(pulled_dir), Path(extract_dir)
     archive = pulled_dir / sealed_name
     _require(archive.is_file() and not archive.is_symlink(), "pulled sealed archive is missing")
@@ -551,10 +724,22 @@ def verify_readback(sealed_receipt_path: Path, pulled_dir: Path, *, transcript_p
     _require(pulled_digest == sealed_digest,
              f"anonymous readback digest mismatch: pulled {pulled_digest} != sealed {sealed_digest}")
     pulled_receipt = pulled_dir / "sealed-source.json"
-    _require(pulled_receipt.is_file(), "pulled sealed receipt is missing")
+    _regular_file(pulled_receipt, "pulled sealed receipt")
     _require(pulled_receipt.read_bytes() == Path(sealed_receipt_path).read_bytes(),
              "pulled sealed receipt bytes differ from the sealed receipt")
     manifest = verify_sealed_archive(archive, extract_dir)
+    _require(type(receipt.get("schema_version")) is int and receipt["schema_version"] == SCHEMA_VERSION,
+             "sealed receipt schema mismatch")
+    _require(checksum(extract_dir / "sealed.json") == receipt.get("manifest_sha256"), "sealed inner manifest digest mismatch")
+    actual_members = sum(path.is_file() for path in extract_dir.rglob("*"))
+    _require(type(receipt.get("member_count")) is int and receipt["member_count"] == actual_members,
+             "sealed member count mismatch")
+    _require(type(receipt.get("source_count")) is int and receipt["source_count"] == len(manifest["sources"]),
+             "sealed source count mismatch")
+    _require(type(receipt.get("size_bytes")) is int and receipt["size_bytes"] == archive.stat().st_size,
+             "sealed archive size mismatch")
+    _require(receipt.get("runtime_role") == manifest.get("runtime_role") and receipt.get("build_key") == manifest.get("build_key"),
+             "sealed receipt role/build key mismatch")
     manifest_env = _need(manifest, "environment", "sealed manifest lacks the environment identity")
     manifest_channel = _need(manifest, "channel", "sealed manifest lacks the channel identity")
     receipt_env = _need(receipt, "environment", "sealed receipt lacks the environment identity")
@@ -572,7 +757,16 @@ def verify_readback(sealed_receipt_path: Path, pulled_dir: Path, *, transcript_p
              "environment": receipt_env, "channel": receipt_channel,
              "runtime_role": receipt_role,
              "transcript_sha256": checksum(transcript), "transcript_bytes": transcript.stat().st_size,
-             "anonymous_transport": "caller-executed with fresh empty credential directories; see transcript bytes"}
+             "anonymous_transport": "unverified caller transcript; no transport authentication"}
+    proof.update(_transcript(transcript_path))
+    proof["verification_scope"] = "local archive bytes only; no OCI manifest or authenticated transport"
+    if source_manifest_path is not None or source_manifest_digest is not None or registry is not None:
+        require_repository(registry)
+        roster = verify_artifact_roster(source_manifest_path, source_manifest_digest,
+                                       _seal_roster(sealed_receipt_path, receipt), pulled_dir=pulled_dir)
+        proof.update(source_manifest_sha256=roster["manifest_sha256"], files=roster["files"], registry=registry,
+                     reference=registry + "@sha256:" + source_manifest_digest,
+                     receipt_sha256=checksum(sealed_receipt_path), verification_scope="exact OCI and local archive bytes")
     write_receipt(extract_dir.parent / "readback-proof.json", proof)
     return proof
 
@@ -692,30 +886,88 @@ def _catalogue_binding(spec: dict) -> dict:
 
 def _handoff_schema(value: dict) -> None:
     _require(isinstance(value, dict), "handoff must be an object")
-    _require(value.get("schema_version") == SCHEMA_VERSION, "unsupported handoff schema_version")
+    _require(type(value.get("schema_version")) is int and value["schema_version"] in {1, HANDOFF_SCHEMA_VERSION}, "unsupported handoff schema_version")
     for key in ("registry", "catalogue", "source", "binary", "admission", "readback", "producer", "exposure"):
         _require(key in value, f"handoff requires {key}")
     _require("digest" not in value and "handoff_sha256" not in value and "self_digest" not in value,
              "handoff must not embed its own digest (circular self-digest refused)")
-    _require(_REPO.fullmatch(value["registry"]), "handoff registry must be a repository path")
+    _require(isinstance(value["registry"], str) and _REPO.fullmatch(value["registry"]), "handoff registry must be a repository path")
     for key in ("source", "binary"):
         entry = value[key]
-        _require(_SHA256.fullmatch(entry.get("manifest_sha256", "")),
+        _require(isinstance(entry, dict), "handoff " + key + " must be an object")
+        _require(isinstance(entry.get("manifest_sha256"), str) and _SHA256.fullmatch(entry["manifest_sha256"]),
                  f"handoff {key} requires its registry manifest digest")
         _require(entry.get("tag"), f"handoff {key} requires its recorded tag alias")
         _require(entry.get("reference", "") == value["registry"] + "@sha256:" + entry["manifest_sha256"],
                  f"handoff {key} reference must bind its manifest digest")
-    _require(_SHA256.fullmatch(value["source"].get("file_sha256", "")),
+    _require(isinstance(value["source"].get("file_sha256"), str) and _SHA256.fullmatch(value["source"]["file_sha256"]),
              "handoff source requires the sealed file digest")
+    _require(value["binary"].get("kind") in {"bundle", "docker-local", "image"}, "handoff binary kind invalid")
     if value["binary"]["kind"] == "bundle":
-        _require(_SHA256.fullmatch(value["binary"].get("file_sha256", "")),
+        _require(isinstance(value["binary"].get("file_sha256"), str) and _SHA256.fullmatch(value["binary"]["file_sha256"]),
                  "handoff bundle binary requires its file digest")
     else:
-        _require(value["binary"].get("engine_id", "").startswith("sha256:"),
+        _require(isinstance(value["binary"].get("engine_id"), str) and value["binary"]["engine_id"].startswith("sha256:"),
                  "handoff image binary requires its engine ID")
     admission = value["admission"]
+    _require(isinstance(admission, dict), "handoff admission must be an object")
     _require(admission.get("status") in {"eligible", "blocked"}, "handoff admission requires an eligible/blocked verdict")
     _require(isinstance(admission.get("blockers"), list), "handoff admission requires a blockers list")
+    if value["schema_version"] == HANDOFF_SCHEMA_VERSION:
+        content = value["source"].get("content_companion")
+        fields = {"reference", "manifest_sha256", "file_sha256", "receipt_sha256", "spdx_sha256", "readback_proof_sha256"}
+        _require(isinstance(content, dict) and set(content) == fields, "handoff2 requires exact content_companion fields")
+        for name in fields - {"reference"}:
+            _require(isinstance(content[name], str) and _SHA256.fullmatch(content[name]), "invalid content_companion " + name)
+        _require(content["reference"] == value["registry"] + "@sha256:" + content["manifest_sha256"],
+                 "handoff content companion must bind the same repository and manifest")
+        catalogue = value["catalogue"]
+        _require(isinstance(catalogue, dict) and isinstance(catalogue.get("environment"), str)
+                 and _TAG_ENV.fullmatch(catalogue["environment"]), "handoff2 requires catalogue environment")
+        _require(value["registry"].rsplit("/", 1)[-1] == catalogue["environment"],
+                 "handoff2 repository differs from environment")
+
+
+def require_eligible_handoff(value: dict, evidence_dir: Path | None = None, *,
+                             executable: Path | None = None,
+                             trusted_root: Path | None = None,
+                             output_dir: Path | None = None,
+                             promotion_dir: Path | None = None,
+                             promotion_executable: Path | None = None,
+                             promotion_trusted_root: Path | None = None,
+                             promotion_output_dir: Path | None = None) -> dict:
+    """Public acquisition gate, separate from historical handoff display.
+
+    Authenticated source transport verifies through a handoff-pinned
+    evidence directory (see acquisition.verify_transport_evidence);
+    trusted image promotion verifies through a second handoff-pinned
+    evidence directory (see promotion.verify_promotion_evidence).
+    No caller boolean replaces either check. Evidence paths must be
+    pathlib.Path; None means refused, never skipped. Verification is
+    offline: no GH_TOKEN and no live GitHub reads on this path.
+    """
+    _handoff_schema(value)
+    _require(value["schema_version"] == HANDOFF_SCHEMA_VERSION, "public acquisition requires handoff schema2")
+    verdict = value["admission"]
+    _require(verdict.get("status") == "eligible" and verdict.get("blockers") == [], "handoff admission is not eligible")
+    _require(verdict.get("content_status") == "eligible" and verdict.get("source_readback_status") == "verified",
+             "handoff requires complete source/content readback admission")
+    from .acquisition import verify_transport_evidence
+    try:
+        verify_transport_evidence(value, evidence_dir, executable, trusted_root, output_dir)
+    except PublishError:
+        raise
+    except ValueError as error:
+        raise PublishError(str(error)) from error
+    from .promotion import verify_promotion_evidence
+    try:
+        verify_promotion_evidence(value, promotion_dir, promotion_executable,
+                                  promotion_trusted_root, promotion_output_dir)
+    except PublishError:
+        raise
+    except ValueError as error:
+        raise PublishError(str(error)) from error
+    return value
 
 
 def show_handoff(path: Path) -> dict:
@@ -725,8 +977,78 @@ def show_handoff(path: Path) -> dict:
     return value
 
 
+def verify_acquired_image(handoff: dict, inspect_value, *, manifest_path: Path,
+                          platform_manifest_path: Path | None = None) -> dict:
+    """Bind acquired image identity to handoff and immutable OCI manifest bytes.
+
+    This integrity primitive grants no admission/publication authority. The
+    acquisition caller must separately use require_eligible_handoff.
+    """
+    _handoff_schema(handoff)
+    binary = handoff["binary"]
+    _require(binary.get("kind") == "docker-local", "acquired image requires a docker-local handoff")
+    digest = binary["manifest_sha256"]
+    _require(checksum(_regular_file(manifest_path, "acquired image manifest")) == digest,
+             "acquired image manifest digest mismatch")
+    manifest = _read_json(manifest_path)
+    _require(manifest.get("schemaVersion") == 2, "acquired image manifest schema mismatch")
+    platform = binary.get("platform")
+    _require(isinstance(platform, str) and _PLATFORM.fullmatch(platform), "handoff image platform missing")
+    if manifest.get("mediaType") in {"application/vnd.oci.image.index.v1+json", "application/vnd.docker.distribution.manifest.list.v2+json"}:
+        descriptors = manifest.get("manifests")
+        _require(isinstance(descriptors, list) and all(isinstance(item, dict) for item in descriptors),
+                 "acquired image index descriptor mismatch")
+        selected = [item for item in descriptors if isinstance(item.get("platform"), dict)
+                    and item["platform"].get("os", "") + "/" + item["platform"].get("architecture", "") == platform]
+        _require(len(selected) == 1, "acquired image index platform ambiguous or missing")
+        selected = selected[0]
+        expected = binary.get("platform_manifest_sha256")
+        _require(isinstance(expected, str) and _SHA256.fullmatch(expected)
+                 and selected.get("digest") == "sha256:" + expected, "handoff platform manifest mismatch")
+        _require(platform_manifest_path is not None, "acquired image requires selected platform manifest bytes")
+        selected_path = _regular_file(platform_manifest_path, "selected platform manifest")
+        _require(checksum(selected_path) == expected and type(selected.get("size")) is int
+                 and selected_path.stat().st_size == selected["size"], "selected platform manifest bytes mismatch")
+        manifest = _read_json(selected_path)
+        _require(selected.get("mediaType") == manifest.get("mediaType") and manifest.get("schemaVersion") == 2,
+                 "selected platform descriptor media/schema mismatch")
+    else:
+        _require(platform_manifest_path is None and binary.get("platform_manifest_sha256") is None,
+                 "single manifest image has unexpected platform manifest")
+    _require(manifest.get("mediaType") in {"application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json"},
+             "acquired image manifest media type mismatch")
+    config = binary.get("config_sha256")
+    _require(isinstance(config, str) and _SHA256.fullmatch(config), "handoff requires image config SHA256")
+    _require(isinstance(manifest.get("config"), dict) and manifest["config"].get("digest") == "sha256:" + config,
+             "acquired image config differs from handoff")
+    if isinstance(inspect_value, list):
+        _require(len(inspect_value) == 1, "acquired inspect must describe exactly one image")
+        inspect_value = inspect_value[0]
+    _require(isinstance(inspect_value, dict), "acquired inspect must describe an image")
+    _require(inspect_value.get("Id") == binary.get("engine_id"), "acquired image engine differs from handoff")
+    _require(inspect_value.get("Os", "") + "/" + inspect_value.get("Architecture", "") == platform,
+             "acquired image platform differs from handoff")
+    _require(binary["reference"] in (inspect_value.get("RepoDigests") or []), "acquired image repository digest missing")
+    engine = binary["engine_id"]
+    _require(isinstance(engine, str) and engine.startswith("sha256:") and _SHA256.fullmatch(engine[7:]),
+             "handoff image engine SHA256 invalid")
+    return {"kind": "docker-local", "reference": engine, "sha256": engine[7:], "platform": platform}
+
+
+def verify_acquired_bundle(handoff: dict, archive: Path) -> dict:
+    """Verify acquired native bytes; this grants no acquisition authority."""
+    _handoff_schema(handoff)
+    binary = handoff["binary"]
+    _require(binary.get("kind") == "bundle", "acquired bundle requires a bundle handoff")
+    path = _regular_file(archive, "acquired bundle")
+    _require(checksum(path) == binary.get("file_sha256"), "acquired bundle digest differs from handoff")
+    platform = binary.get("platform")
+    _require(isinstance(platform, str) and _PLATFORM.fullmatch(platform), "handoff bundle platform invalid")
+    return {"kind": "bundle", "reference": str(path.resolve()), "sha256": binary["file_sha256"], "platform": platform}
+
+
 def _claimed_artifact_blocker(*, artifact_kind: str, artifact_reference: str, artifact_digest: str,
-                             build_receipt_path: Path) -> str | None:
+                             build_receipt_path: Path, platform: str) -> str | None:
     """Bind the claimed artifact to the build receipt's own artifact field.
 
     Input matching alone cannot catch a swapped claim: the sealed inputs
@@ -738,6 +1060,8 @@ def _claimed_artifact_blocker(*, artifact_kind: str, artifact_reference: str, ar
     built = _read_json(build_receipt_path).get("artifact")
     if not isinstance(built, dict):
         return "claimed artifact is unbound: build receipt carries no artifact identity"
+    if built.get("kind") != artifact_kind or built.get("platform") != platform:
+        return "claimed artifact kind/platform differs from the built artifact"
     if artifact_kind == "docker-local":
         if built.get("reference") != artifact_reference or built.get("sha256") != artifact_digest:
             return ("claimed artifact differs from the built artifact: "
@@ -753,7 +1077,10 @@ def admit(*, artifact_kind: str, artifact_reference: str, artifact_digest: str, 
          sealed_receipt_path: Path, sealed_manifest: dict, readback_proof: dict,
          build_receipt_path: Path, spec: dict, registry: str, evidence_dir: Path | None,
          out_dir: Path, producer: dict, manifest: dict | None = None,
-         source_manifest_digest: str, source_manifest_path: Path) -> dict:
+         source_manifest_digest: str, source_manifest_path: Path,
+         content_receipt_path: Path | None = None, content_manifest_path: Path | None = None,
+         content_manifest_digest: str | None = None, content_readback_proof_path: Path | None = None,
+         content_pulled_dir: Path | None = None, content_transcript_path: Path | None = None) -> dict:
     """Run the delivery gate and write the admission plus the verdict.
 
     The admission records the factual bindings and the verdict; the verdict
@@ -780,20 +1107,8 @@ def admit(*, artifact_kind: str, artifact_reference: str, artifact_digest: str, 
              "readback manifest differs from the sealed manifest")
     _require(_SHA256.fullmatch(source_manifest_digest or ""),
              "admission requires the pushed source manifest digest")
-    try:
-        pushed_manifest = json.loads(Path(source_manifest_path).read_text(encoding="utf-8"))
-    except (OSError, ValueError) as error:
-        raise PublishError("invalid pushed source manifest") from error
-    _require(checksum(source_manifest_path) == source_manifest_digest,
-             "pushed source manifest bytes differ from their digest")
-    _require(isinstance(pushed_manifest, dict) and isinstance(pushed_manifest.get("layers"), list)
-             and all(isinstance(layer, dict) for layer in pushed_manifest["layers"]),
-             "pushed source manifest shape mismatch")
-    layer_digests = {layer.get("digest") for layer in pushed_manifest["layers"]}
+    verify_artifact_roster(source_manifest_path, source_manifest_digest, _seal_roster(sealed_receipt_path, receipt))
     sealed_digest = _need(receipt, "archive_sha256", "sealed receipt lacks the sealed archive digest")
-    _require("sha256:" + sealed_digest in layer_digests
-             and "sha256:" + checksum(sealed_receipt_path) in layer_digests,
-             "pushed source manifest does not carry the sealed bytes")
     match = check_input_match(sealed_manifest, build_receipt_path, spec, manifest=manifest)
     if sealed_manifest.get("runtime_role") == "native":
         # The native record keeps the verified value: a forgotten --platform
@@ -805,7 +1120,7 @@ def admit(*, artifact_kind: str, artifact_reference: str, artifact_digest: str, 
                  f"admission platform {platform} differs from the native manifest platform {built_platform}")
     blockers: list[str] = []
     binding = _claimed_artifact_blocker(artifact_kind=artifact_kind, artifact_reference=artifact_reference,
-                                        artifact_digest=artifact_digest, build_receipt_path=build_receipt_path)
+                                        artifact_digest=artifact_digest, build_receipt_path=build_receipt_path, platform=platform)
     if binding is not None:
         blockers.append(binding)
     content: dict = {"status": "blocked", "blockers": ["actual-content source/license evidence absent; distribution unreviewed"]}
@@ -819,6 +1134,50 @@ def admit(*, artifact_kind: str, artifact_reference: str, artifact_digest: str, 
     else:
         blockers.extend(content["blockers"])
     _require(_REPO.fullmatch(registry), "admission registry must be a repository path")
+    # Local byte evidence and caller transcripts cannot authenticate anonymous
+    # source availability. Keep that later protected integration explicitly shut.
+    blockers.append("authenticated anonymous source transport integration unavailable")
+    sealed_bytes = (json.dumps(sealed_manifest, sort_keys=True, indent=2) + "\n").encode()
+    if hashlib.sha256(sealed_bytes).hexdigest() != receipt.get("manifest_sha256"):
+        blockers.append("sealed manifest input differs from the protected inner manifest")
+    source_readback_status = "missing"
+    if (type(readback_proof.get("schema_version")) is not int or readback_proof["schema_version"] != SCHEMA_VERSION
+            or readback_proof.get("source_manifest_sha256") != source_manifest_digest
+            or readback_proof.get("registry") != registry
+            or readback_proof.get("reference") != registry + "@sha256:" + source_manifest_digest
+            or readback_proof.get("environment") != spec["id"] or readback_proof.get("channel") != spec["channel"]
+            or readback_proof.get("runtime_role") != sealed_manifest.get("runtime_role")
+            or json.dumps(readback_proof.get("files"), sort_keys=True) != json.dumps(_seal_roster(sealed_receipt_path, receipt), sort_keys=True)
+            or readback_proof.get("receipt_sha256") != checksum(sealed_receipt_path)):
+        blockers.append("build-input seal lacks exact OCI readback proof for this registry")
+    content_summary = None
+    content_inputs = (content_receipt_path, content_manifest_path, content_manifest_digest,
+                      content_readback_proof_path, content_pulled_dir, content_transcript_path)
+    if all(value is not None for value in content_inputs) and evidence_dir is not None:
+        from .models import ArtifactRef
+        import tempfile
+        artifact = ArtifactRef(artifact_kind, artifact_reference, artifact_digest, platform)
+        _require(registry.rsplit("/", 1)[-1] == spec["id"], "content source repository differs from environment")
+        with tempfile.TemporaryDirectory(prefix="p11lab-content-readback-") as temporary:
+            verified = verify_content_readback(content_receipt_path, content_pulled_dir,
+                source_manifest_path=content_manifest_path, source_manifest_digest=content_manifest_digest,
+                registry=registry, artifact=artifact, transcript_path=content_transcript_path,
+                extract_dir=Path(temporary) / "extracted")
+            proof_file = _regular_file(content_readback_proof_path, "content readback proof")
+            _require(json.dumps(_read_json(proof_file), sort_keys=True) == json.dumps(verified, sort_keys=True),
+                     "content readback proof differs from reverified bytes")
+            for name in CONTENT_FILES:
+                _require(_regular_file(Path(evidence_dir) / name, "local evidence " + name).read_bytes()
+                         == (Path(content_pulled_dir) / name).read_bytes(),
+                         "published complete-content bytes differ from local assessment: " + name)
+            inventory = _read_json(Path(temporary) / "extracted/inventory.json")
+            _require(inventory.get("build_key") == match["build_key"], "content inventory build key mismatch or missing")
+        source_readback_status = "verified"
+        content_summary = {name: verified[name] for name in
+                           ("reference", "manifest_sha256", "file_sha256", "receipt_sha256", "spdx_sha256")}
+        content_summary["readback_proof_sha256"] = checksum(proof_file)
+    else:
+        blockers.append("published complete-content companion/readback evidence absent or incomplete")
     role = _need(sealed_manifest, "runtime_role", "sealed manifest lacks the runtime role")
     environment = _need(sealed_manifest, "environment", "sealed manifest lacks the environment identity")
     channel = _need(sealed_manifest, "channel", "sealed manifest lacks the channel identity")
@@ -833,12 +1192,16 @@ def admit(*, artifact_kind: str, artifact_reference: str, artifact_digest: str, 
                             "reference": registry + "@sha256:" + source_manifest_digest},
                  "local_binary": {"kind": artifact_kind, "sha256": artifact_digest, "platform": platform},
                  "verdict": {"status": "eligible" if not blockers else "blocked", "blockers": sorted(set(blockers)),
-                             "content_status": content.get("status"), "matched_inputs": match["matched_inputs"],
+                             "content_status": content.get("status"), "source_readback_status": source_readback_status,
+                             "source_transport_authentication": "unverified", "image_promotion_status": "blocked",
+                             "matched_inputs": match["matched_inputs"],
                              "readback_transcript_sha256": proof_transcript},
                  "readback": {"pulled_archive_sha256": proof_pulled,
                               "transcript_sha256": proof_transcript,
                               "anonymous_transport": proof_transport},
                  "producer": producer}
+    if content_summary is not None:
+        admission["source"]["content_companion"] = content_summary
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=False)
     write_receipt(out / "admission.json", admission)
@@ -852,14 +1215,11 @@ def admit(*, artifact_kind: str, artifact_reference: str, artifact_digest: str, 
 def expose(*, admission_path: Path, pushed_digest: str, pushed_tag: str, pushed_size: int,
            local_inspect_path: Path | None, pulled_inspect_path: Path | None,
            pulled_bundle_path: Path | None, registry: str, out_dir: Path) -> dict:
-    """Bind an uploaded binary to its admission after anonymous binary readback.
+    """Check binary readback mechanics, then refuse unintegrated image promotion.
 
-    The registry index digest is only known after the push, so this step runs
-    after the (verdict-gated) upload. Byte identity is proven by comparing the
-    anonymously pulled bytes against the local pre-push identity: engine Id
-    plus layer DiffIDs for images, exact file bytes for bundles. The handoff
-    stamps the admission verdict; a blocked verdict must still stop public
-    exposure at the workflow/action layer.
+    No new handoff is emitted until the complete trusted promotion validator and
+    authenticated source transport have been integrated. Local admission claims
+    and supplied booleans cannot replace those gates.
     """
     admission = _read_json(admission_path)
     _require(admission.get("role") == "admission", "exposure requires an admission record")
@@ -928,14 +1288,4 @@ def expose(*, admission_path: Path, pushed_digest: str, pushed_tag: str, pushed_
     # canonical alias only (OCI tags share one namespace per repository).
     binary["aliases"] = runtime_aliases(catalogue_env, catalogue_channel) if role == "runtime" else []
     binary["reference"] = registry + "@sha256:" + pushed_digest
-    handoff = {"schema_version": SCHEMA_VERSION, "registry": registry, "catalogue": catalogue,
-               "source": admission["source"], "binary": binary, "admission": admission["verdict"],
-               "readback": admission["readback"], "producer": admission["producer"],
-               "exposure": {"pushed_digest": pushed_digest, "pushed_tag": pushed_tag,
-                            "byte_identity": "anonymous binary readback matches the admitted binary"}}
-    _handoff_schema(handoff)
-    out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=False)
-    write_receipt(out / "handoff.json", handoff)
-    return {"handoff": str(out / "handoff.json"), "reference": binary["reference"],
-            "status": admission["verdict"]["status"]}
+    raise PublishError("full image validation/promotion integration unavailable; exposure and new handoff blocked")

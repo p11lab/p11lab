@@ -1,0 +1,320 @@
+# SPDX-License-Identifier: Apache-2.0
+# Protected image qualification for one custody-sealed candidate.
+# Pipeline: acquire (authenticate the completed custody finalization,
+# load the exact image bytes, replay source checks, run the M03
+# consumer plus OpenSSL control, assert the exact image digest) ->
+# smoke (reusable direct-lane N=1 fixed smoke with that exact digest)
+# -> record (emit one ImageQualificationV1 record and upload it).
+# Reusable plus manual dispatch only; single environment per run
+# (softhsm2-first). No registry publication, no promotion, no
+# auto-promotion: this workflow only retrieves exact bytes and observes.
+name: image-qualification
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Single catalogue environment to qualify.'
+        required: true
+        type: string
+      channel:
+        description: 'Locked channel.'
+        required: false
+        type: string
+        default: 'release'
+      custody_run_id:
+        description: 'Completed custody producer run ID.'
+        required: true
+        type: number
+      custody_attempt:
+        description: 'Completed custody producer attempt.'
+        required: true
+        type: number
+      custody_job_id:
+        description: 'Completed custody producer job ID.'
+        required: true
+        type: number
+      custody_control_id:
+        description: 'Custody control artifact ID.'
+        required: true
+        type: number
+      p11lab_ref:
+        description: 'Pinned 40-hex control commit for reusable calls.'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Single catalogue environment to qualify.'
+        required: true
+        default: 'softhsm2'
+      channel:
+        description: 'Locked channel.'
+        required: true
+        default: 'release'
+      custody_run_id:
+        description: 'Completed custody producer run ID.'
+        required: true
+      custody_attempt:
+        description: 'Completed custody producer attempt.'
+        required: true
+      custody_job_id:
+        description: 'Completed custody producer job ID.'
+        required: true
+      custody_control_id:
+        description: 'Custody control artifact ID.'
+        required: true
+      p11lab_ref:
+        description: 'Pinned 40-hex control commit for manual runs.'
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: image-qualification-${{ inputs.environment }}-${{ inputs.channel }}
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      image_digest: ${{ steps.assert.outputs.image_digest }}
+    steps:
+      - name: Validate input identities
+        shell: sh
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
+          P11LAB_CUSTODY_RUN_ID: ${{ inputs.custody_run_id }}
+          P11LAB_CUSTODY_ATTEMPT: ${{ inputs.custody_attempt }}
+          P11LAB_CUSTODY_JOB_ID: ${{ inputs.custody_job_id }}
+          P11LAB_CUSTODY_CONTROL_ID: ${{ inputs.custody_control_id }}
+          P11LAB_INPUT_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          set -eu
+          case "$P11LAB_INPUT_REF" in ''|*[!0-9a-f]*) echo 'p11lab_ref must be 40-hex' >&2; exit 1 ;; esac
+          test "${#P11LAB_INPUT_REF}" -eq 40
+          test "$P11LAB_INPUT_ENVIRONMENT" = softhsm2
+          test "$P11LAB_INPUT_CHANNEL" = release
+          for value in "$P11LAB_CUSTODY_RUN_ID" "$P11LAB_CUSTODY_ATTEMPT" "$P11LAB_CUSTODY_JOB_ID" "$P11LAB_CUSTODY_CONTROL_ID"; do
+            case "$value" in ''|*[!0-9]*) echo 'custody ids must be positive integers' >&2; exit 1 ;; esac
+            test "$value" -gt 0
+          done
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_INPUT_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          set -eu
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_INPUT_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Install p11lab from control
+        shell: sh
+        run: |
+          set -eu
+          python -m pip install --disable-pip-version-check ./p11lab-control
+      - name: Install sealed verifier and trusted root
+        shell: sh
+        run: |
+          set -eu
+          mkdir -m 700 "$RUNNER_TEMP/p11lab-isolated"
+          archive="$RUNNER_TEMP/gh.tar.gz"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" \
+            curl --noproxy '*' --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+              --max-time 120 --max-filesize 15031001 \
+              https://github.com/cli/cli/releases/download/v2.103.2/gh_2.103.2_linux_amd64.tar.gz -o "$archive"
+          printf '%s  %s\n' 62ccf747115ddc61237efffdde66a3c8f70ba249433dc64f70801089b59c59c8 "$archive" | sha256sum -c -
+          test "$(wc -c < "$archive")" -eq 15031001
+          mkdir "$RUNNER_TEMP/p11lab-gh"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/p11lab-gh" gh_2.103.2_linux_amd64/bin/gh
+          gh="$RUNNER_TEMP/p11lab-gh/gh_2.103.2_linux_amd64/bin/gh"
+          printf '%s  %s\n' cbfdc94f3a5c0713c0d6df3e0a1d88a59a76b0c52332aad7d21d112f9da2cc0e "$gh" | sha256sum -c -
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/p11lab-isolated" XDG_CACHE_HOME="$RUNNER_TEMP/p11lab-isolated/cache" \
+            "$gh" attestation trusted-root > "$RUNNER_TEMP/p11lab-trusted-root.jsonl"
+      - name: Acquire exact custody and prepare evaluator
+        shell: sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
+          P11LAB_CUSTODY_RUN_ID: ${{ inputs.custody_run_id }}
+          P11LAB_CUSTODY_ATTEMPT: ${{ inputs.custody_attempt }}
+          P11LAB_CUSTODY_JOB_ID: ${{ inputs.custody_job_id }}
+          P11LAB_CUSTODY_CONTROL_ID: ${{ inputs.custody_control_id }}
+        run: |
+          set -eu
+          p11lab custody prepare-evaluator --output-dir evaluator
+          p11lab custody acquire --environment "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" \
+            --run-id "$P11LAB_CUSTODY_RUN_ID" --attempt "$P11LAB_CUSTODY_ATTEMPT" --job-id "$P11LAB_CUSTODY_JOB_ID" --control-id "$P11LAB_CUSTODY_CONTROL_ID" \
+            --gh "$RUNNER_TEMP/p11lab-gh/gh_2.103.2_linux_amd64/bin/gh" --trusted-root "$RUNNER_TEMP/p11lab-trusted-root.jsonl" \
+            --evaluator-root evaluator --output-dir custody-replay
+          python - <<'PY'
+          import json
+          import os
+          selector = {key: int(os.environ[name]) for key, name in (
+              ('run_id', 'P11LAB_CUSTODY_RUN_ID'), ('attempt', 'P11LAB_CUSTODY_ATTEMPT'),
+              ('job_id', 'P11LAB_CUSTODY_JOB_ID'), ('control_id', 'P11LAB_CUSTODY_CONTROL_ID'))}
+          assert all(value > 0 for value in selector.values())
+          with open('custody-replay/custody-selector.json', 'x', encoding='utf-8') as handle:
+              handle.write(json.dumps(selector, sort_keys=True) + '\n')
+          PY
+      - name: Assert exact image digest
+        id: assert
+        shell: sh
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          import os
+          import re
+          manifest = json.load(open('custody-replay/acquisition/payload/image-part1/custody-manifest.json', encoding='utf-8'))
+          reference = manifest['artifact']['reference']
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}', reference) is not None
+          assert manifest['engine_id'] == reference
+          assert re.fullmatch(r'[0-9a-f]{64}', manifest['config_sha256']) is not None
+          assert manifest['layers'] and all(re.fullmatch(r'sha256:[0-9a-f]{64}', row['diff_id']) is not None for row in manifest['layers'])
+          assert re.fullmatch(r'[0-9a-f]{64}', manifest['build_key']) is not None
+          artifact = dict(manifest['artifact'])
+          with open('artifact.json', 'w', encoding='utf-8') as handle:
+              handle.write(json.dumps({'artifact': artifact}, sort_keys=True) + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write('image_digest=%s\n' % reference)
+          PY
+      - name: Run M03 consumer and OpenSSL control
+        shell: sh
+        run: |
+          set -eu
+          p11lab image prepare-tools --output-dir "$RUNNER_TEMP/p11lab-tools"
+          p11lab image validate-local --artifact artifact.json --policy "$RUNNER_TEMP/p11lab-tools/validation-policy.json" --output-dir validation-out
+          python - <<'PY'
+          import json
+          # The M03 consumer plus oracle control feeds exactly one leg
+          # outcome. Only the consumer and oracle sections below are read;
+          # no other validation section feeds this outcome.
+          result = json.load(open('validation-out/validation.json', encoding='utf-8'))
+          consumer_ok = result['consumer']['app_returncode'] == 0
+          controls = result['oracle']['controls']
+          oracle_ok = (controls['positive']['returncode'] == 0
+                       and controls['altered_message']['returncode'] == 1
+                       and controls['altered_signature']['returncode'] == 1)
+          status = 'pass' if (result['status'] == 'observations-complete'
+                              and result['infrastructure_errors'] == []
+                              and consumer_ok and oracle_ok) else 'fail'
+          with open('validation-out/openssl-result.json', 'w', encoding='utf-8') as handle:
+              handle.write(json.dumps({'status': status}) + '\n')
+          PY
+      - name: Stage small qualification inputs
+        shell: sh
+        run: |
+          set -eu
+          mkdir -p qualification-inputs/authority qualification-inputs/acquisition/payload/image-part1
+          cp custody-replay/authority/custody-finalization.json qualification-inputs/authority/
+          cp custody-replay/acquisition/payload/image-part1/custody-manifest.json qualification-inputs/acquisition/payload/image-part1/
+          cp custody-replay/custody-selector.json qualification-inputs/
+          cp validation-out/openssl-result.json qualification-inputs/
+      - name: Upload qualification inputs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-image-qualification-inputs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: qualification-inputs/
+          if-no-files-found: error
+          retention-days: 14
+  smoke:
+    needs:
+      - acquire
+    uses: ./.github/workflows/checker-direct-validation.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      environment: ${{ inputs.environment }}
+      digest: ${{ needs.acquire.outputs.image_digest }}
+      suite: smoke
+  record:
+    needs:
+      - acquire
+      - smoke
+    if: ${{ always() && needs.acquire.result == 'success' && (needs.smoke.result == 'success' || needs.smoke.result == 'failure') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_INPUT_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          set -eu
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_INPUT_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Install p11lab from control
+        shell: sh
+        run: |
+          set -eu
+          python -m pip install --disable-pip-version-check ./p11lab-control
+      - name: Download qualification inputs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: p11lab-image-qualification-inputs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: payload-root/
+      - name: Download smoke evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: checker-direct-merged-${{ github.run_id }}
+          path: smoke-evidence/
+      - name: Emit image qualification record
+        shell: sh
+        env:
+          P11LAB_SMOKE_RESULT: ${{ needs.smoke.result }}
+        run: |
+          set -eu
+          test -f smoke-evidence/verdict.json || { echo 'missing smoke evidence; refusing to record' >&2; exit 1; }
+          python - <<'PY'
+          import json
+          import os
+          # One N=1 fixed smoke observation plus the M03 consumer/OpenSSL
+          # control feed exactly one qualification record.
+          # Three runs never concatenate into one record.
+          raw = open('smoke-evidence/verdict.json', 'rb').read(8 * 1024 * 1024 + 1)
+          assert len(raw) <= 8 * 1024 * 1024, 'smoke evidence byte bound'
+          verdict = json.loads(raw)
+          assert isinstance(verdict, dict), 'smoke verdict shape'
+          status = 'pass' if (os.environ['P11LAB_SMOKE_RESULT'] == 'success'
+                              and verdict.get('verdict') == 'pass') else 'fail'
+          with open('smoke-result.json', 'w', encoding='utf-8') as handle:
+              handle.write(json.dumps({'status': status}) + '\n')
+          PY
+          p11lab custody qualify --payload-dir payload-root --smoke-result smoke-result.json --openssl-result payload-root/openssl-result.json --output-dir qualification-out
+      - name: Upload image qualification record
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-image-qualification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: qualification-out/qualification-record.json
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,1293 @@
+{
+  "apt_snapshot": "20260918T000000Z",
+  "base_image": "docker.io/library/debian@sha256:7792b1f7702a86946cd518db72b6a407302c3e9bc1635634368b878189e8221c",
+  "checker_source": null,
+  "execution": {
+    "argv": [
+      "/usr/bin/python3.13",
+      "-I",
+      "/opt/p11lab-oracle/verify.py",
+      "/input",
+      "--openssl",
+      "/usr/bin/openssl"
+    ],
+    "environment": {
+      "LC_ALL": "C",
+      "OPENSSL_CONF": "/opt/p11lab-oracle/openssl.cnf",
+      "OPENSSL_MODULES": "/usr/lib/x86_64-linux-gnu/ossl-modules",
+      "PYTHONNOUSERSITE": "1",
+      "PYTHONSAFEPATH": "1"
+    },
+    "expected_outputs": [],
+    "provider_state": "absent",
+    "runtime_roots": [
+      "python3.13=3.13.5-2+deb13u5",
+      "openssl=3.5.7-1~deb13u2"
+    ]
+  },
+  "license_status": "unreviewed",
+  "limits": {
+    "attempt_seconds": 3600,
+    "file_bytes": 268435456,
+    "io_seconds": 60,
+    "payload_seconds": 900,
+    "redirects": 5,
+    "total_bytes": 536870912
+  },
+  "metadata": [
+    {
+      "filename": "trixie.InRelease",
+      "path": "metadata/trixie.InRelease",
+      "sha256": "0584fba32e13e0ab8285fb16c27adea1ec03a73669c18702821094fd6ca86675",
+      "size": 140421,
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/dists/trixie/InRelease"
+    },
+    {
+      "filename": "trixie.Packages.xz",
+      "path": "metadata/trixie.Packages.xz",
+      "sha256": "7778d3e3f303b7ddb8ce0fe7c8d57473a076c6bf2e8f241f75421d2396352498",
+      "size": 9678380,
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/dists/trixie/main/binary-amd64/Packages.xz"
+    },
+    {
+      "filename": "trixie.Sources.xz",
+      "path": "metadata/trixie.Sources.xz",
+      "sha256": "6002f81f463a2d976d84b34170367cc16da2d60bd0ba9ab9d868d6e1c1a935d9",
+      "size": 10540436,
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/dists/trixie/main/source/Sources.xz"
+    },
+    {
+      "filename": "trixie-updates.InRelease",
+      "path": "metadata/trixie-updates.InRelease",
+      "sha256": "cdab5e62be015db5b6eceabcd6987788fab1f5dfb855b5d6f3514d473d491008",
+      "size": 47340,
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/dists/trixie-updates/InRelease"
+    },
+    {
+      "filename": "trixie-updates.Packages.xz",
+      "path": "metadata/trixie-updates.Packages.xz",
+      "sha256": "10012cb384dc2613586d7b3d391d92a5637c9faa36017239739f2a6109a0d45f",
+      "size": 4412,
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/dists/trixie-updates/main/binary-amd64/Packages.xz"
+    },
+    {
+      "filename": "trixie-updates.Sources.xz",
+      "path": "metadata/trixie-updates.Sources.xz",
+      "sha256": "ee5f96a8668d9845d7d8020ebef75d27c7d41c1dcc92d3fa61597ed5ed89ad51",
+      "size": 1840,
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/dists/trixie-updates/main/source/Sources.xz"
+    },
+    {
+      "filename": "trixie-security.InRelease",
+      "path": "metadata/trixie-security.InRelease",
+      "sha256": "ff9e26df483ab7af014170d14a1c5cfce31d2da81d7986495f4238cfbd8fb85e",
+      "size": 43409,
+      "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/dists/trixie-security/InRelease"
+    },
+    {
+      "filename": "trixie-security.Packages.xz",
+      "path": "metadata/trixie-security.Packages.xz",
+      "sha256": "0fa9c8002797b15c43cbc16292a9516698861e294de97ff2c909d88d1645690f",
+      "size": 261848,
+      "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/dists/trixie-security/main/binary-amd64/Packages.xz"
+    },
+    {
+      "filename": "trixie-security.Sources.xz",
+      "path": "metadata/trixie-security.Sources.xz",
+      "sha256": "bb55ebcfb58e1e61186e525f65aba0bab3df1d6a0027da7393dd8dc76724341e",
+      "size": 229724,
+      "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/dists/trixie-security/main/source/Sources.xz"
+    }
+  ],
+  "packages": [
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/libexpat1/copyright",
+      "filename": "pool/main/e/expat/libexpat1_2.8.3-1~deb13u1_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "libexpat1",
+      "path": "binaries/38abe0e710a07688e9c149d74536e67cfee0364bdb64dd6d644c32a1cfad389f.deb",
+      "relations": {
+        "Multi-Arch": "same",
+        "Pre-Depends": "libc6 (>= 2.36)"
+      },
+      "sha256": "38abe0e710a07688e9c149d74536e67cfee0364bdb64dd6d644c32a1cfad389f",
+      "size": 122672,
+      "source_package": "expat",
+      "source_version": "2.8.3-1~deb13u1",
+      "stanza_sha256": "72dce98374ae88b01261914e2c70e415a1eb523139d5cfe9d3658b78b35c802f",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/e/expat/libexpat1_2.8.3-1~deb13u1_amd64.deb",
+      "version": "2.8.3-1~deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/libffi8/copyright",
+      "filename": "pool/main/libf/libffi/libffi8_3.4.8-2_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "libffi8",
+      "path": "binaries/0ebdc340de33333639c3c63874cd4b15ac2e83dfa1ef3053b7eefaf4919f4f68.deb",
+      "relations": {
+        "Breaks": "libffi8ubuntu1 (<< 3.4.2-1)",
+        "Depends": "libc6 (>= 2.34)",
+        "Multi-Arch": "same",
+        "Provides": "libffi8ubuntu1 (= 3.4.8-2)",
+        "Replaces": "libffi8ubuntu1 (<< 3.4.2-1)"
+      },
+      "sha256": "0ebdc340de33333639c3c63874cd4b15ac2e83dfa1ef3053b7eefaf4919f4f68",
+      "size": 24144,
+      "source_package": "libffi",
+      "source_version": "3.4.8-2",
+      "stanza_sha256": "d7fa2ea7e0d282896afee9c995b02667cf1d0b23231e72b9244964eafa9a01bf",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/libf/libffi/libffi8_3.4.8-2_amd64.deb",
+      "version": "3.4.8-2"
+    },
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/libncursesw6/copyright",
+      "filename": "pool/main/n/ncurses/libncursesw6_6.5+20250216-2_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "libncursesw6",
+      "path": "binaries/47baa2e11579583654583a066b69bd5a5d2f22423081f707ed6c0c3ba6d538b7.deb",
+      "relations": {
+        "Depends": "libtinfo6 (= 6.5+20250216-2), libc6 (>= 2.34)",
+        "Multi-Arch": "same",
+        "Recommends": "libgpm2"
+      },
+      "sha256": "47baa2e11579583654583a066b69bd5a5d2f22423081f707ed6c0c3ba6d538b7",
+      "size": 135484,
+      "source_package": "ncurses",
+      "source_version": "6.5+20250216-2",
+      "stanza_sha256": "5d5ba2a19aadfd88a606c817ae924a0ccd3eee4c9f45ad4820f4c04bbb0760b1",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/n/ncurses/libncursesw6_6.5+20250216-2_amd64.deb",
+      "version": "6.5+20250216-2"
+    },
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/libpython3.13-minimal/copyright",
+      "filename": "pool/main/p/python3.13/libpython3.13-minimal_3.13.5-2+deb13u5_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "libpython3.13-minimal",
+      "path": "binaries/a4aa6a9a8c77f87bfe545e1d14ec42c001d189ace90e3aa75deec882b39dee49.deb",
+      "relations": {
+        "Breaks": "libpython3.13-stdlib (<< 3.13.1-3~)",
+        "Conflicts": "binfmt-support (<< 1.1.2)",
+        "Depends": "libc6 (>= 2.14), libssl3t64 (>= 3.4.0)",
+        "Multi-Arch": "same",
+        "Recommends": "libpython3.13-stdlib",
+        "Replaces": "libpython3.13-stdlib (<< 3.13.1-3~)"
+      },
+      "sha256": "a4aa6a9a8c77f87bfe545e1d14ec42c001d189ace90e3aa75deec882b39dee49",
+      "size": 863168,
+      "source_package": "python3.13",
+      "source_version": "3.13.5-2+deb13u5",
+      "stanza_sha256": "90a35e2d104a1dbd71f1ad17bb8e977a9c6f1c5c5a7612960542afe3bae98aac",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/p/python3.13/libpython3.13-minimal_3.13.5-2+deb13u5_amd64.deb",
+      "version": "3.13.5-2+deb13u5"
+    },
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/libpython3.13-stdlib/copyright",
+      "filename": "pool/main/p/python3.13/libpython3.13-stdlib_3.13.5-2+deb13u5_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "libpython3.13-stdlib",
+      "path": "binaries/db161322a3481d2c0c3b9a3b9a03c3ab0e2b1718f54b88755fb4a3f939165b84.deb",
+      "relations": {
+        "Depends": "libpython3.13-minimal (= 3.13.5-2+deb13u5), media-types | mime-support, netbase, tzdata, libbz2-1.0, libc6 (>= 2.38), libdb5.3t64, libffi8 (>= 3.4), liblzma5 (>= 5.1.1alpha+20120614), libncursesw6 (>= 6.1), libreadline8t64 (>= 7.0~beta), libsqlite3-0 (>= 3.36.0), libtinfo6 (>= 6), libuuid1 (>= 2.20.1)",
+        "Multi-Arch": "same"
+      },
+      "sha256": "db161322a3481d2c0c3b9a3b9a03c3ab0e2b1718f54b88755fb4a3f939165b84",
+      "size": 1958624,
+      "source_package": "python3.13",
+      "source_version": "3.13.5-2+deb13u5",
+      "stanza_sha256": "a3b0fc13cab7c46d78d1740baf5165b15930faf21b83398699b64db8e594a2d7",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/p/python3.13/libpython3.13-stdlib_3.13.5-2+deb13u5_amd64.deb",
+      "version": "3.13.5-2+deb13u5"
+    },
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/libreadline8t64/copyright",
+      "filename": "pool/main/r/readline/libreadline8t64_8.2-6_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "libreadline8t64",
+      "path": "binaries/eeadf2b5e755c9f183883feea2d9b5b28560284275d5f54d3e55d0923b1d0967.deb",
+      "relations": {
+        "Breaks": "libreadline8 (<< 8.2-6)",
+        "Depends": "readline-common, libc6 (>= 2.38), libtinfo6 (>= 6)",
+        "Multi-Arch": "same",
+        "Provides": "libreadline8 (= 8.2-6)",
+        "Replaces": "libreadline8"
+      },
+      "sha256": "eeadf2b5e755c9f183883feea2d9b5b28560284275d5f54d3e55d0923b1d0967",
+      "size": 168832,
+      "source_package": "readline",
+      "source_version": "8.2-6",
+      "stanza_sha256": "19f08c9e49504e3a890b8eadc3528447677ab4326f909ad430327a9919b5a57b",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/r/readline/libreadline8t64_8.2-6_amd64.deb",
+      "version": "8.2-6"
+    },
+    {
+      "architecture": "all",
+      "copyright_path": "/usr/share/doc/media-types/copyright",
+      "filename": "pool/main/m/media-types/media-types_13.0.0_all.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "media-types",
+      "path": "binaries/0788e4b0b72db1bcf74a19cb24c3511e7770ad0b341f0f30e361701c3072f53e.deb",
+      "relations": {
+        "Breaks": "mime-support (<< 3.65)",
+        "Multi-Arch": "foreign",
+        "Replaces": "mime-support (<< 3.65)"
+      },
+      "sha256": "0788e4b0b72db1bcf74a19cb24c3511e7770ad0b341f0f30e361701c3072f53e",
+      "size": 29336,
+      "source_package": "media-types",
+      "source_version": "13.0.0",
+      "stanza_sha256": "b5cbec1423455c43892c3d162badfe1f01425c486600a44be1cdc39718c6f0cf",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/m/media-types/media-types_13.0.0_all.deb",
+      "version": "13.0.0"
+    },
+    {
+      "architecture": "all",
+      "copyright_path": "/usr/share/doc/netbase/copyright",
+      "filename": "pool/main/n/netbase/netbase_6.5_all.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "netbase",
+      "path": "binaries/76bafa92947ebd37b0a6f9ec6570412041f56edebc1c66d323731216d318471e.deb",
+      "relations": {
+        "Breaks": "ebtables (<< 2.0.11-2)",
+        "Multi-Arch": "foreign",
+        "Replaces": "ebtables (<< 2.0.11-2)"
+      },
+      "sha256": "76bafa92947ebd37b0a6f9ec6570412041f56edebc1c66d323731216d318471e",
+      "size": 12436,
+      "source_package": "netbase",
+      "source_version": "6.5",
+      "stanza_sha256": "a3098afe36e6de0c7fef8889b50e002250437c05c82e41ff83f9aaf00b716882",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/n/netbase/netbase_6.5_all.deb",
+      "version": "6.5"
+    },
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/openssl/copyright",
+      "filename": "pool/main/o/openssl/openssl_3.5.7-1~deb13u2_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "openssl",
+      "path": "binaries/4ff006f431d8c2e69fa736885a3b6e779f2448535f69dbde821d9f0ff87ad8ea.deb",
+      "relations": {
+        "Depends": "libc6 (>= 2.34), libssl3t64 (>= 3.5.0)",
+        "Multi-Arch": "foreign",
+        "Suggests": "ca-certificates"
+      },
+      "sha256": "4ff006f431d8c2e69fa736885a3b6e779f2448535f69dbde821d9f0ff87ad8ea",
+      "size": 1507300,
+      "source_package": "openssl",
+      "source_version": "3.5.7-1~deb13u2",
+      "stanza_sha256": "f4c993f32858e25ed580c05d64b45693389acce8afb3b5cc5c9991bd3e67a68a",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/o/openssl/openssl_3.5.7-1~deb13u2_amd64.deb",
+      "version": "3.5.7-1~deb13u2"
+    },
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/python3.13/copyright",
+      "filename": "pool/main/p/python3.13/python3.13_3.13.5-2+deb13u5_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "python3.13",
+      "path": "binaries/460c1fd72845516ac3ce9d1686916f3ab2e4c86f8a9746e14d26243a47e2b98d.deb",
+      "relations": {
+        "Breaks": "python3-all (<< 3.6.5~rc1-1), python3-dev (<< 3.6.5~rc1-1), python3-venv (<< 3.6.5-2)",
+        "Depends": "python3.13-minimal (= 3.13.5-2+deb13u5), libpython3.13-stdlib (= 3.13.5-2+deb13u5), media-types | mime-support, tzdata",
+        "Multi-Arch": "allowed",
+        "Recommends": "ca-certificates",
+        "Suggests": "python3.13-venv, python3.13-doc, binutils"
+      },
+      "sha256": "460c1fd72845516ac3ce9d1686916f3ab2e4c86f8a9746e14d26243a47e2b98d",
+      "size": 757492,
+      "source_package": "python3.13",
+      "source_version": "3.13.5-2+deb13u5",
+      "stanza_sha256": "13fc456e9498511c3439ca9f34e19b76d149875d7e49ef594c26d99e833cb668",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/p/python3.13/python3.13_3.13.5-2+deb13u5_amd64.deb",
+      "version": "3.13.5-2+deb13u5"
+    },
+    {
+      "architecture": "amd64",
+      "copyright_path": "/usr/share/doc/python3.13-minimal/copyright",
+      "filename": "pool/main/p/python3.13/python3.13-minimal_3.13.5-2+deb13u5_amd64.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "python3.13-minimal",
+      "path": "binaries/c1fda9e7b1bf15b2fa75a238d8a8710e142fe14c722fc650c5fc614f078c9073.deb",
+      "relations": {
+        "Conflicts": "binfmt-support (<< 1.1.2)",
+        "Depends": "libpython3.13-minimal (= 3.13.5-2+deb13u5), libexpat1 (>= 2.6.0), zlib1g (>= 1:1.2.0)",
+        "Multi-Arch": "allowed",
+        "Pre-Depends": "libc6 (>= 2.38)",
+        "Recommends": "python3.13",
+        "Suggests": "binfmt-support"
+      },
+      "sha256": "c1fda9e7b1bf15b2fa75a238d8a8710e142fe14c722fc650c5fc614f078c9073",
+      "size": 2224552,
+      "source_package": "python3.13",
+      "source_version": "3.13.5-2+deb13u5",
+      "stanza_sha256": "56d6d0d8efe533993eefa1a8b808e85dbb9106bcf2389f8b656dddea266940da",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/p/python3.13/python3.13-minimal_3.13.5-2+deb13u5_amd64.deb",
+      "version": "3.13.5-2+deb13u5"
+    },
+    {
+      "architecture": "all",
+      "copyright_path": "/usr/share/doc/readline-common/copyright",
+      "filename": "pool/main/r/readline/readline-common_8.2-6_all.deb",
+      "index": "trixie.Packages",
+      "license_status": "unreviewed",
+      "name": "readline-common",
+      "path": "binaries/f77e8aa0bf0de618f11cb0b21658a4ed60f177d63b3cf26d7fc3706b6d0eaaa9.deb",
+      "relations": {
+        "Conflicts": "libreadline-common, libreadline5 (<< 5.0-11)",
+        "Multi-Arch": "foreign",
+        "Replaces": "libreadline-common, libreadline4 (<< 4.3-16), libreadline5 (<< 5.0-11)",
+        "Suggests": "readline-doc"
+      },
+      "sha256": "f77e8aa0bf0de618f11cb0b21658a4ed60f177d63b3cf26d7fc3706b6d0eaaa9",
+      "size": 69360,
+      "source_package": "readline",
+      "source_version": "8.2-6",
+      "stanza_sha256": "b3b6b58ad6c2aa542dd5e098c92def2204ec99844cc527b4832a9ad4cd0feba8",
+      "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/r/readline/readline-common_8.2-6_all.deb",
+      "version": "8.2-6"
+    }
+  ],
+  "parent_packages": [
+    {
+      "architecture": "amd64",
+      "name": "apt",
+      "source_package": "apt",
+      "source_version": "3.0.3",
+      "version": "3.0.3"
+    },
+    {
+      "architecture": "amd64",
+      "name": "base-files",
+      "source_package": "base-files",
+      "source_version": "13.8+deb13u7",
+      "version": "13.8+deb13u7"
+    },
+    {
+      "architecture": "amd64",
+      "name": "base-passwd",
+      "source_package": "base-passwd",
+      "source_version": "3.6.7",
+      "version": "3.6.7"
+    },
+    {
+      "architecture": "amd64",
+      "name": "bash",
+      "source_package": "bash",
+      "source_version": "5.2.37-2",
+      "version": "5.2.37-2+b10"
+    },
+    {
+      "architecture": "amd64",
+      "name": "bsdutils",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "1:2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "coreutils",
+      "source_package": "coreutils",
+      "source_version": "9.7-3",
+      "version": "9.7-3"
+    },
+    {
+      "architecture": "amd64",
+      "name": "dash",
+      "source_package": "dash",
+      "source_version": "0.5.12-12",
+      "version": "0.5.12-12"
+    },
+    {
+      "architecture": "all",
+      "name": "debconf",
+      "source_package": "debconf",
+      "source_version": "1.5.91",
+      "version": "1.5.91"
+    },
+    {
+      "architecture": "all",
+      "name": "debian-archive-keyring",
+      "source_package": "debian-archive-keyring",
+      "source_version": "2025.1",
+      "version": "2025.1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "debianutils",
+      "source_package": "debianutils",
+      "source_version": "5.23.2",
+      "version": "5.23.2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "diffutils",
+      "source_package": "diffutils",
+      "source_version": "1:3.10-4",
+      "version": "1:3.10-4"
+    },
+    {
+      "architecture": "amd64",
+      "name": "dpkg",
+      "source_package": "dpkg",
+      "source_version": "1.22.22",
+      "version": "1.22.22"
+    },
+    {
+      "architecture": "amd64",
+      "name": "findutils",
+      "source_package": "findutils",
+      "source_version": "4.10.0-3",
+      "version": "4.10.0-3"
+    },
+    {
+      "architecture": "amd64",
+      "name": "gcc-14-base",
+      "source_package": "gcc-14",
+      "source_version": "14.2.0-19",
+      "version": "14.2.0-19"
+    },
+    {
+      "architecture": "amd64",
+      "name": "grep",
+      "source_package": "grep",
+      "source_version": "3.11-4",
+      "version": "3.11-4"
+    },
+    {
+      "architecture": "amd64",
+      "name": "gzip",
+      "source_package": "gzip",
+      "source_version": "1.13-1+deb13u1",
+      "version": "1.13-1+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "hostname",
+      "source_package": "hostname",
+      "source_version": "3.25",
+      "version": "3.25"
+    },
+    {
+      "architecture": "all",
+      "name": "init-system-helpers",
+      "source_package": "init-system-helpers",
+      "source_version": "1.69~deb13u1",
+      "version": "1.69~deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libacl1",
+      "source_package": "acl",
+      "source_version": "2.3.2-2",
+      "version": "2.3.2-2+b1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libapt-pkg7.0",
+      "source_package": "apt",
+      "source_version": "3.0.3",
+      "version": "3.0.3"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libattr1",
+      "source_package": "attr",
+      "source_version": "1:2.5.2-3",
+      "version": "1:2.5.2-3"
+    },
+    {
+      "architecture": "all",
+      "name": "libaudit-common",
+      "source_package": "audit",
+      "source_version": "1:4.0.2-2+deb13u1",
+      "version": "1:4.0.2-2+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libaudit1",
+      "source_package": "audit",
+      "source_version": "1:4.0.2-2+deb13u1",
+      "version": "1:4.0.2-2+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libblkid1",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libbsd0",
+      "source_package": "libbsd",
+      "source_version": "0.12.2-2",
+      "version": "0.12.2-2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libbz2-1.0",
+      "source_package": "bzip2",
+      "source_version": "1.0.8-6",
+      "version": "1.0.8-6"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libc-bin",
+      "source_package": "glibc",
+      "source_version": "2.41-12+deb13u4",
+      "version": "2.41-12+deb13u4"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libc6",
+      "source_package": "glibc",
+      "source_version": "2.41-12+deb13u4",
+      "version": "2.41-12+deb13u4"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libcap-ng0",
+      "source_package": "libcap-ng",
+      "source_version": "0.8.5-4",
+      "version": "0.8.5-4+b1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libcap2",
+      "source_package": "libcap2",
+      "source_version": "1:2.75-10+deb13u1",
+      "version": "1:2.75-10+deb13u1+b3"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libcrypt1",
+      "source_package": "libxcrypt",
+      "source_version": "1:4.4.38-1",
+      "version": "1:4.4.38-1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libdb5.3t64",
+      "source_package": "db5.3",
+      "source_version": "5.3.28+dfsg2-9",
+      "version": "5.3.28+dfsg2-9"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libdebconfclient0",
+      "source_package": "cdebconf",
+      "source_version": "0.280",
+      "version": "0.280"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libgcc-s1",
+      "source_package": "gcc-14",
+      "source_version": "14.2.0-19",
+      "version": "14.2.0-19"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libgmp10",
+      "source_package": "gmp",
+      "source_version": "2:6.3.0+dfsg-3",
+      "version": "2:6.3.0+dfsg-3"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libhogweed6t64",
+      "source_package": "nettle",
+      "source_version": "3.10.1-1",
+      "version": "3.10.1-1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "liblastlog2-2",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "liblz4-1",
+      "source_package": "lz4",
+      "source_version": "1.10.0-4",
+      "version": "1.10.0-4"
+    },
+    {
+      "architecture": "amd64",
+      "name": "liblzma5",
+      "source_package": "xz-utils",
+      "source_version": "5.8.1-1+deb13u1",
+      "version": "5.8.1-1+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libmd0",
+      "source_package": "libmd",
+      "source_version": "1.1.0-2",
+      "version": "1.1.0-2+b1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libmount1",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libnettle8t64",
+      "source_package": "nettle",
+      "source_version": "3.10.1-1",
+      "version": "3.10.1-1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libpam-modules",
+      "source_package": "pam",
+      "source_version": "1.7.0-5",
+      "version": "1.7.0-5"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libpam-modules-bin",
+      "source_package": "pam",
+      "source_version": "1.7.0-5",
+      "version": "1.7.0-5"
+    },
+    {
+      "architecture": "all",
+      "name": "libpam-runtime",
+      "source_package": "pam",
+      "source_version": "1.7.0-5",
+      "version": "1.7.0-5"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libpam0g",
+      "source_package": "pam",
+      "source_version": "1.7.0-5",
+      "version": "1.7.0-5"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libpcre2-8-0",
+      "source_package": "pcre2",
+      "source_version": "10.46-1~deb13u2",
+      "version": "10.46-1~deb13u2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libseccomp2",
+      "source_package": "libseccomp",
+      "source_version": "2.6.0-2",
+      "version": "2.6.0-2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libselinux1",
+      "source_package": "libselinux",
+      "source_version": "3.8.1-1",
+      "version": "3.8.1-1"
+    },
+    {
+      "architecture": "all",
+      "name": "libsemanage-common",
+      "source_package": "libsemanage",
+      "source_version": "3.8.1-1",
+      "version": "3.8.1-1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libsemanage2",
+      "source_package": "libsemanage",
+      "source_version": "3.8.1-1",
+      "version": "3.8.1-1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libsepol2",
+      "source_package": "libsepol",
+      "source_version": "3.8.1-1",
+      "version": "3.8.1-1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libsmartcols1",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libsqlite3-0",
+      "source_package": "sqlite3",
+      "source_version": "3.46.1-7+deb13u2",
+      "version": "3.46.1-7+deb13u2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libssl3t64",
+      "source_package": "openssl",
+      "source_version": "3.5.7-1~deb13u2",
+      "version": "3.5.7-1~deb13u2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libstdc++6",
+      "source_package": "gcc-14",
+      "source_version": "14.2.0-19",
+      "version": "14.2.0-19"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libsystemd0",
+      "source_package": "systemd",
+      "source_version": "257.13-1~deb13u1",
+      "version": "257.13-1~deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libtinfo6",
+      "source_package": "ncurses",
+      "source_version": "6.5+20250216-2",
+      "version": "6.5+20250216-2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libudev1",
+      "source_package": "systemd",
+      "source_version": "257.13-1~deb13u1",
+      "version": "257.13-1~deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libuuid1",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libxxhash0",
+      "source_package": "xxhash",
+      "source_version": "0.8.3-2",
+      "version": "0.8.3-2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "libzstd1",
+      "source_package": "libzstd",
+      "source_version": "1.5.7+dfsg-1",
+      "version": "1.5.7+dfsg-1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "login",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "1:4.16.0-2+really2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "all",
+      "name": "login.defs",
+      "source_package": "shadow",
+      "source_version": "1:4.17.4-2",
+      "version": "1:4.17.4-2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "mawk",
+      "source_package": "mawk",
+      "source_version": "1.3.4.20250131-1",
+      "version": "1.3.4.20250131-1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "mount",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "all",
+      "name": "ncurses-base",
+      "source_package": "ncurses",
+      "source_version": "6.5+20250216-2",
+      "version": "6.5+20250216-2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "ncurses-bin",
+      "source_package": "ncurses",
+      "source_version": "6.5+20250216-2",
+      "version": "6.5+20250216-2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "openssl-provider-legacy",
+      "source_package": "openssl",
+      "source_version": "3.5.7-1~deb13u2",
+      "version": "3.5.7-1~deb13u2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "passwd",
+      "source_package": "shadow",
+      "source_version": "1:4.17.4-2",
+      "version": "1:4.17.4-2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "perl-base",
+      "source_package": "perl",
+      "source_version": "5.40.1-6+deb13u1",
+      "version": "5.40.1-6+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "sed",
+      "source_package": "sed",
+      "source_version": "4.9-2+deb13u1",
+      "version": "4.9-2+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "sqv",
+      "source_package": "rust-sequoia-sqv",
+      "source_version": "1.3.0-3",
+      "version": "1.3.0-3+b2"
+    },
+    {
+      "architecture": "amd64",
+      "name": "sysvinit-utils",
+      "source_package": "sysvinit",
+      "source_version": "3.14-4",
+      "version": "3.14-4"
+    },
+    {
+      "architecture": "amd64",
+      "name": "tar",
+      "source_package": "tar",
+      "source_version": "1.35+dfsg-3.1",
+      "version": "1.35+dfsg-3.1"
+    },
+    {
+      "architecture": "all",
+      "name": "tzdata",
+      "source_package": "tzdata",
+      "source_version": "2026c-0+deb13u1",
+      "version": "2026c-0+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "util-linux",
+      "source_package": "util-linux",
+      "source_version": "2.41.5-0+deb13u1",
+      "version": "2.41.5-0+deb13u1"
+    },
+    {
+      "architecture": "amd64",
+      "name": "zlib1g",
+      "source_package": "zlib",
+      "source_version": "1:1.3.dfsg+really1.3.1-1",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1"
+    }
+  ],
+  "platform": "linux/amd64",
+  "provenance": {
+    "path": "tool-inputs/oracle.debian13-amd64.provenance.json",
+    "sha256": "12da1e2dcaf387e2a41dd832a1503d6c7b21b89ecf9436f3f68b47b473d176ae"
+  },
+  "python_inputs": [],
+  "readiness": {
+    "build_outputs": "not-produced",
+    "installation": "not-executed",
+    "qualification": "blocked",
+    "rights": "unreviewed"
+  },
+  "resources": [
+    {
+      "asset": "consumer/verify.py",
+      "path": "resources/oracle/verify.py",
+      "sha256": "deacbb2cbd24e849b66889da564f9b96f8d0a8b11a14d2fbb37b95bae212af70",
+      "size": 2444
+    },
+    {
+      "asset": "oracle/openssl.cnf",
+      "path": "resources/oracle/openssl.cnf",
+      "sha256": "a167f7d96fe7d1a61a611209bbac2703df6c21d51c0450159f5a1c784e10ff51",
+      "size": 276
+    }
+  ],
+  "schema_version": 2,
+  "sources": [
+    {
+      "files": [
+        {
+          "filename": "expat_2.8.3-1~deb13u1.dsc",
+          "path": "sources/expat/expat_2.8.3-1~deb13u1.dsc",
+          "sha256": "d17f15fe413a553c72185d2d00448b87db72354e0d8fa6099ad19ee19e7117af",
+          "size": 1638,
+          "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/pool/updates/main/e/expat/expat_2.8.3-1~deb13u1.dsc"
+        },
+        {
+          "filename": "expat_2.8.3.orig.tar.gz",
+          "path": "sources/expat/expat_2.8.3.orig.tar.gz",
+          "sha256": "533659a16e0184035a99fd8e783f1ad61a887a7bf8586a8681740b9d7ed42389",
+          "size": 8464226,
+          "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/pool/updates/main/e/expat/expat_2.8.3.orig.tar.gz"
+        },
+        {
+          "filename": "expat_2.8.3-1~deb13u1.debian.tar.xz",
+          "path": "sources/expat/expat_2.8.3-1~deb13u1.debian.tar.xz",
+          "sha256": "4bf2c5c2f189673c66f79f2f8a8727cd8c08636d46b648c896e1c73673562c7b",
+          "size": 14116,
+          "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/pool/updates/main/e/expat/expat_2.8.3-1~deb13u1.debian.tar.xz"
+        }
+      ],
+      "index": "trixie-security.Sources",
+      "license_status": "unreviewed",
+      "name": "expat",
+      "stanza_sha256": "f4cdc9825ab19313b9022fd0eef8311f8781cca2812b06a01aef39d23ee0a9f0",
+      "version": "2.8.3-1~deb13u1"
+    },
+    {
+      "files": [
+        {
+          "filename": "libffi_3.4.8-2.dsc",
+          "path": "sources/libffi/libffi_3.4.8-2.dsc",
+          "sha256": "4424defe3f37c0084f062e03330b2ba3d3f927367c33be455cfacf7f85a78161",
+          "size": 1948,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/libf/libffi/libffi_3.4.8-2.dsc"
+        },
+        {
+          "filename": "libffi_3.4.8.orig.tar.gz",
+          "path": "sources/libffi/libffi_3.4.8.orig.tar.gz",
+          "sha256": "cbb7f0b3b095dc506387ec1e35b891bfb4891d05b90a495bc69a10f2293f80ff",
+          "size": 595051,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/libf/libffi/libffi_3.4.8.orig.tar.gz"
+        },
+        {
+          "filename": "libffi_3.4.8-2.debian.tar.xz",
+          "path": "sources/libffi/libffi_3.4.8-2.debian.tar.xz",
+          "sha256": "f23ac79a19895ebb6bbb539263d0d945ebc2d3e91217a597f5819777f08b401c",
+          "size": 11220,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/libf/libffi/libffi_3.4.8-2.debian.tar.xz"
+        }
+      ],
+      "index": "trixie.Sources",
+      "license_status": "unreviewed",
+      "name": "libffi",
+      "stanza_sha256": "bbabe75725e6636ac3cdd5a81d5f1b0cbd0dfb1d7c8e86ce5ce8c85435cbf6ba",
+      "version": "3.4.8-2"
+    },
+    {
+      "files": [
+        {
+          "filename": "media-types_13.0.0.dsc",
+          "path": "sources/media-types/media-types_13.0.0.dsc",
+          "sha256": "a664c287e8d358da16bae998374c546cf0eaf3e0416f7059a56818eefe018546",
+          "size": 1647,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/m/media-types/media-types_13.0.0.dsc"
+        },
+        {
+          "filename": "media-types_13.0.0.tar.xz",
+          "path": "sources/media-types/media-types_13.0.0.tar.xz",
+          "sha256": "bcd40584a3e092fd33e45f324e10652a400fea3b0e206d286d1c2d6414d763e7",
+          "size": 62960,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/m/media-types/media-types_13.0.0.tar.xz"
+        }
+      ],
+      "index": "trixie.Sources",
+      "license_status": "unreviewed",
+      "name": "media-types",
+      "stanza_sha256": "7aadbe22b99a6060d67908fefdd145a90ce48356a92d72f5205b8162ad529384",
+      "version": "13.0.0"
+    },
+    {
+      "files": [
+        {
+          "filename": "ncurses_6.5+20250216-2.dsc",
+          "path": "sources/ncurses/ncurses_6.5+20250216-2.dsc",
+          "sha256": "00539cc2bc6bb84be1b8a8a5decf606682e14b6f39b76b9aa090e65d2c2d4580",
+          "size": 3890,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/n/ncurses/ncurses_6.5+20250216-2.dsc"
+        },
+        {
+          "filename": "ncurses_6.5+20250216.orig.tar.gz",
+          "path": "sources/ncurses/ncurses_6.5+20250216.orig.tar.gz",
+          "sha256": "b37baafa436e7133bb12a185cb8f60e1599b1947e9f0181c76f3190acf28b6eb",
+          "size": 3774714,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/n/ncurses/ncurses_6.5+20250216.orig.tar.gz"
+        },
+        {
+          "filename": "ncurses_6.5+20250216.orig.tar.gz.asc",
+          "path": "sources/ncurses/ncurses_6.5+20250216.orig.tar.gz.asc",
+          "sha256": "64f4d17923322176c44079f18f170e2164a59d551d7e4e9c1a6e4eebedc5dd6f",
+          "size": 729,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/n/ncurses/ncurses_6.5+20250216.orig.tar.gz.asc"
+        },
+        {
+          "filename": "ncurses_6.5+20250216-2.debian.tar.xz",
+          "path": "sources/ncurses/ncurses_6.5+20250216-2.debian.tar.xz",
+          "sha256": "546930a8992ae3325d8c38378f290265d969cf6333cfae9648ac6d69e1e8a8a6",
+          "size": 50420,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/n/ncurses/ncurses_6.5+20250216-2.debian.tar.xz"
+        }
+      ],
+      "index": "trixie.Sources",
+      "license_status": "unreviewed",
+      "name": "ncurses",
+      "stanza_sha256": "ee38c9ab14286bdcef055a3e30793c5102ecd7ecda8c481a0dfd99842c8d17a4",
+      "version": "6.5+20250216-2"
+    },
+    {
+      "files": [
+        {
+          "filename": "netbase_6.5.dsc",
+          "path": "sources/netbase/netbase_6.5.dsc",
+          "sha256": "e8691899f57c06fcc383b0f2214b662137df539227d9d7811dc8223f32ebe4c7",
+          "size": 899,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/n/netbase/netbase_6.5.dsc"
+        },
+        {
+          "filename": "netbase_6.5.tar.xz",
+          "path": "sources/netbase/netbase_6.5.tar.xz",
+          "sha256": "9116047aebbaa1698934052d01c6e09b4c3aed643e93df63d2ddcbec243c26d1",
+          "size": 32544,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/n/netbase/netbase_6.5.tar.xz"
+        }
+      ],
+      "index": "trixie.Sources",
+      "license_status": "unreviewed",
+      "name": "netbase",
+      "stanza_sha256": "af4b8889d3fc2cb302a3c6d0fcc07f683a7034440b32a4eadab66f7c334b382b",
+      "version": "6.5"
+    },
+    {
+      "files": [
+        {
+          "filename": "openssl_3.5.7-1~deb13u2.dsc",
+          "path": "sources/openssl/openssl_3.5.7-1~deb13u2.dsc",
+          "sha256": "25904642004d30c5c3da4642a72a7d09f8d9eb6e5ce62dab53c0371114faf8f2",
+          "size": 2707,
+          "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u2.dsc"
+        },
+        {
+          "filename": "openssl_3.5.7.orig.tar.gz",
+          "path": "sources/openssl/openssl_3.5.7.orig.tar.gz",
+          "sha256": "a8c0d28a529ca480f9f36cf5792e2cd21984552a3c8e4aa11a24aa31aeac98e8",
+          "size": 53153930,
+          "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/pool/updates/main/o/openssl/openssl_3.5.7.orig.tar.gz"
+        },
+        {
+          "filename": "openssl_3.5.7.orig.tar.gz.asc",
+          "path": "sources/openssl/openssl_3.5.7.orig.tar.gz.asc",
+          "sha256": "d3d082bee3f658c31db53af625eceecf29d777c7010394bed5787ebcc98abdf2",
+          "size": 833,
+          "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/pool/updates/main/o/openssl/openssl_3.5.7.orig.tar.gz.asc"
+        },
+        {
+          "filename": "openssl_3.5.7-1~deb13u2.debian.tar.xz",
+          "path": "sources/openssl/openssl_3.5.7-1~deb13u2.debian.tar.xz",
+          "sha256": "593a47654ead460a3b609503733f80bef552ff0802799d3b47784faacc50809f",
+          "size": 74836,
+          "url": "https://snapshot.debian.org/archive/debian-security/20260918T000000Z/pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u2.debian.tar.xz"
+        }
+      ],
+      "index": "trixie-security.Sources",
+      "license_status": "unreviewed",
+      "name": "openssl",
+      "stanza_sha256": "6554c9f6fccc5e0f158a55a93b234b39f71c5697a48aac18758cb9458636a219",
+      "version": "3.5.7-1~deb13u2"
+    },
+    {
+      "files": [
+        {
+          "filename": "python3.13_3.13.5-2+deb13u5.dsc",
+          "path": "sources/python3.13/python3.13_3.13.5-2+deb13u5.dsc",
+          "sha256": "4be84e20fb902354fa86955e2fbea6e8bdbd158f54833423488308a9b3532662",
+          "size": 4298,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/p/python3.13/python3.13_3.13.5-2+deb13u5.dsc"
+        },
+        {
+          "filename": "python3.13_3.13.5.orig.tar.xz",
+          "path": "sources/python3.13/python3.13_3.13.5.orig.tar.xz",
+          "sha256": "93e583f243454e6e9e4588ca2c2662206ad961659863277afcdb96801647d640",
+          "size": 22856016,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/p/python3.13/python3.13_3.13.5.orig.tar.xz"
+        },
+        {
+          "filename": "python3.13_3.13.5.orig.tar.xz.asc",
+          "path": "sources/python3.13/python3.13_3.13.5.orig.tar.xz.asc",
+          "sha256": "da6e013d98dcf8fc6696cdb2872b0051fc8fdeb632f73ef9f54d7b5a68647401",
+          "size": 963,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/p/python3.13/python3.13_3.13.5.orig.tar.xz.asc"
+        },
+        {
+          "filename": "python3.13_3.13.5-2+deb13u5.debian.tar.xz",
+          "path": "sources/python3.13/python3.13_3.13.5-2+deb13u5.debian.tar.xz",
+          "sha256": "a51f456e654ce2c9b40cc1db8005e5041cdb0b2c3aa96ab0871c49fe95280366",
+          "size": 299640,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/p/python3.13/python3.13_3.13.5-2+deb13u5.debian.tar.xz"
+        }
+      ],
+      "index": "trixie.Sources",
+      "license_status": "unreviewed",
+      "name": "python3.13",
+      "stanza_sha256": "415270294cb42825c078ff642013255c1b3b3c6e6fb13fb02ed280171c4b6cbe",
+      "version": "3.13.5-2+deb13u5"
+    },
+    {
+      "files": [
+        {
+          "filename": "readline_8.2-6.dsc",
+          "path": "sources/readline/readline_8.2-6.dsc",
+          "sha256": "6f94c7144d6b6b1ff88aaebd81480e87f8773b7638031782aac12ef93ffd2e71",
+          "size": 2810,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/r/readline/readline_8.2-6.dsc"
+        },
+        {
+          "filename": "readline_8.2.orig.tar.gz",
+          "path": "sources/readline/readline_8.2.orig.tar.gz",
+          "sha256": "3feb7171f16a84ee82ca18a36d7b9be109a52c04f492a053331d7d1095007c35",
+          "size": 3043952,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/r/readline/readline_8.2.orig.tar.gz"
+        },
+        {
+          "filename": "readline_8.2-6.debian.tar.xz",
+          "path": "sources/readline/readline_8.2-6.debian.tar.xz",
+          "sha256": "d1cf806644dbce298cf929f1cc9b3af5a50cd7db97b6f69db280c1eb2f544376",
+          "size": 38396,
+          "url": "https://snapshot.debian.org/archive/debian/20260918T000000Z/pool/main/r/readline/readline_8.2-6.debian.tar.xz"
+        }
+      ],
+      "index": "trixie.Sources",
+      "license_status": "unreviewed",
+      "name": "readline",
+      "stanza_sha256": "d4de1f6bdddecb86d068ee0168a82d31e495ed0f395f7958ae3f26fe48d4ed89",
+      "version": "8.2-6"
+    }
+  ],
+  "stages": {
+    "oracle": {
+      "packages": [
+        "apt",
+        "base-files",
+        "base-passwd",
+        "bash",
+        "bsdutils",
+        "coreutils",
+        "dash",
+        "debconf",
+        "debian-archive-keyring",
+        "debianutils",
+        "diffutils",
+        "dpkg",
+        "findutils",
+        "gcc-14-base",
+        "grep",
+        "gzip",
+        "hostname",
+        "init-system-helpers",
+        "libacl1",
+        "libapt-pkg7.0",
+        "libattr1",
+        "libaudit-common",
+        "libaudit1",
+        "libblkid1",
+        "libbsd0",
+        "libbz2-1.0",
+        "libc-bin",
+        "libc6",
+        "libcap-ng0",
+        "libcap2",
+        "libcrypt1",
+        "libdb5.3t64",
+        "libdebconfclient0",
+        "libexpat1",
+        "libffi8",
+        "libgcc-s1",
+        "libgmp10",
+        "libhogweed6t64",
+        "liblastlog2-2",
+        "liblz4-1",
+        "liblzma5",
+        "libmd0",
+        "libmount1",
+        "libncursesw6",
+        "libnettle8t64",
+        "libpam-modules",
+        "libpam-modules-bin",
+        "libpam-runtime",
+        "libpam0g",
+        "libpcre2-8-0",
+        "libpython3.13-minimal",
+        "libpython3.13-stdlib",
+        "libreadline8t64",
+        "libseccomp2",
+        "libselinux1",
+        "libsemanage-common",
+        "libsemanage2",
+        "libsepol2",
+        "libsmartcols1",
+        "libsqlite3-0",
+        "libssl3t64",
+        "libstdc++6",
+        "libsystemd0",
+        "libtinfo6",
+        "libudev1",
+        "libuuid1",
+        "libxxhash0",
+        "libzstd1",
+        "login",
+        "login.defs",
+        "mawk",
+        "media-types",
+        "mount",
+        "ncurses-base",
+        "ncurses-bin",
+        "netbase",
+        "openssl",
+        "openssl-provider-legacy",
+        "passwd",
+        "perl-base",
+        "python3.13",
+        "python3.13-minimal",
+        "readline-common",
+        "sed",
+        "sqv",
+        "sysvinit-utils",
+        "tar",
+        "tzdata",
+        "util-linux",
+        "zlib1g"
+      ],
+      "roots": [
+        "python3.13=3.13.5-2+deb13u5",
+        "openssl=3.5.7-1~deb13u2"
+      ]
+    }
+  },
+  "target": "debian13-amd64",
+  "toolset": "oracle"
+}

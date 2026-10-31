@@ -1,0 +1,15 @@
+{
+  "license_status": "unreviewed",
+  "record": {
+    "kind": "proxy-protobuf",
+    "path": "protoc/protoc-36.1-linux-x86_64.zip",
+    "sha256": "c4bc672d9d49214dc8cafdceadf4df92182d6ca8e3ec65a56b2d7de5602669b4",
+    "size": 3678715,
+    "url": "https://github.com/protocolbuffers/protobuf/releases/download/v36.1/protoc-36.1-linux-x86_64.zip"
+  },
+  "release_metadata_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/tags/v36.1",
+  "schema_version": 1,
+  "target": "linux-x86_64",
+  "trust": "GitHub HTTPS release API asset digest and size; no independent signature verified",
+  "version": "36.1"
+}

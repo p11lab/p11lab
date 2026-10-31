@@ -444,13 +444,76 @@ def test_known_attach_outcome_survives_unavailable_status(monkeypatch, spec, tim
 
 @pytest.mark.parametrize('app,expected', [(7, 7), (0, 143)])
 def test_completed_application_status_survives_signal_while_saving_output(monkeypatch, spec, app, expected):
-    original = Path.write_text
-    def write(path, *args, **kwargs):
+    original = run._write_stage_log
+    def write(path, text):
         if path.name == 'application.stdout.log':
             signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
-        return original(path, *args, **kwargs)
-    monkeypatch.setattr(Path, 'write_text', write)
+        return original(path, text)
+    monkeypatch.setattr(run, '_write_stage_log', write)
     result = execute(monkeypatch, spec, Engine(app=app))
     receipt = json.loads(result.receipt_path.read_text())
     assert result.app_returncode == app and result.exit_code == expected
     assert receipt['app_completed'] and receipt['interrupted_signal'] == signal.SIGTERM
+
+
+def test_bind_mounts_roundtrip_literal_quotes_through_docker_csv(monkeypatch, spec, tmp_path):
+    """Docker consumes CSV inside each argv element, including source quotes."""
+    import csv
+    import io
+    selected = {}
+    for kind in ('cwd', 'output', 'state'):
+        path = tmp_path / (kind + ' space \'";$()')
+        if kind != 'output':
+            path.mkdir()
+        selected[kind] = path
+    scoped = replace(spec, cwd=selected['cwd'], output_dir=selected['output'],
+                     inputs={'P11LAB_STATE_DIR': str(selected['state'])})
+    engine = Engine()
+    assert execute(monkeypatch, scoped, engine).exit_code == 0
+    options = engine.created[2][2]
+    mounts = []
+    for index, word in enumerate(options):
+        if word == '--mount':
+            encoded = options[index + 1]
+            # Python csv.reader permits bare quotes in unquoted fields even
+            # with strict=True; Docker's Go reader rejects that RFC-invalid form.
+            import re
+            field = r'(?:[^,"\r\n]*|"(?:[^"]|"")*")'
+            assert re.fullmatch(field + '(?:,' + field + ')*', encoded)
+            fields = next(csv.reader(io.StringIO(encoded), strict=True))
+            mounts.append(dict(field.split('=', 1) for field in fields if '=' in field))
+    assert {'type': 'bind', 'src': str(selected['cwd']), 'dst': '/workspace'} in mounts
+    assert {'type': 'bind', 'src': str(selected['output']), 'dst': '/p11lab-output'} in mounts
+    assert {'type': 'bind', 'src': str(selected['state']), 'dst': '/var/lib/p11lab'} in mounts
+
+
+@pytest.mark.parametrize('log_name', ['application.stdout.log', 'application.stderr.log', 'post-health.stdout.log', 'post-health.stderr.log'])
+@pytest.mark.parametrize('link_kind', ['symlink', 'hardlink'])
+@pytest.mark.parametrize('application_code', [0, 37])
+def test_application_cannot_redirect_controller_logs_outside_output(monkeypatch, spec, tmp_path, log_name, link_kind, application_code):
+    import os
+    sentinel = tmp_path / 'outside-control-sentinel'
+    original = b'preserve outside host control bytes'
+    sentinel.write_bytes(original)
+    class LinkedLogEngine(Engine):
+        def execute(self, identity, timeout, interrupted):
+            argv = self.created[int(identity.split('-')[1])][1]
+            if argv[0] == 'exec':
+                path = spec.output_dir / log_name
+                if link_kind == 'symlink':
+                    path.symlink_to(sentinel)
+                else:
+                    os.link(sentinel, path)
+            return super().execute(identity, timeout, interrupted)
+    engine = LinkedLogEngine(app=application_code)
+    try:
+        result = execute(monkeypatch, spec, engine)
+        assert sentinel.read_bytes() == original
+        assert result.exit_code == (1 if application_code == 0 else 37)
+        assert any("evidence incomplete" in error for error in result.lifecycle_errors)
+        assert not result.cleanup_errors
+        assert len(engine.removed) == len(engine.created) + 1
+    finally:
+        # The deliberately vulnerable red run must not leave even this
+        # disposable external control changed after observing the failure.
+        sentinel.write_bytes(original)

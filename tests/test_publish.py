@@ -154,6 +154,21 @@ inputs:
     required: true
     description: Immutable handoff digest (sha256:<hex>).
 
+  transport-evidence-digest:
+    description: "Immutable transport-evidence digest (sha256:<hex>); gated acquisition needs both evidence digests."
+    default: ''
+    required: false
+
+  promotion-evidence-digest:
+    required: false
+    description: 'Immutable promotion-evidence digest (sha256:<hex>); gated acquisition needs both evidence digests.'
+    default: ""
+
+  evidence-registry:
+    default: ''
+    required: false
+    description: Registry repository holding the evidence packages (default: the handoff registry).
+
   command:
     description: Application argv as a JSON array of strings.
     required: true
@@ -225,16 +240,15 @@ def test_t13_workflows_and_action_pin_every_used_action():
 
 
 def test_provider_delivery_is_the_single_channel_workflow():
-    """A5: release+rolling collapsed into one channel-parametrized workflow."""
+    """One source-first workflow currently selects the audited release cohort."""
     workflows = ROOT / ".github" / "workflows"
     assert not (workflows / "provider-release.yml").exists()
     assert not (workflows / "provider-rolling.yml").exists()
     text = (workflows / "provider-delivery.yml").read_text()
     assert "provider-${{ inputs.channel }}-${{ inputs.environment }}" in text
     assert "default: 'release'" in text
-    for literal in ("--channel release", "--channel rolling", "provider-release-", "provider-rolling-",
-                    "t13-staging-release-", "t13-staging-rolling-", "'release', '", "'rolling', '"):
-        assert literal not in text, literal
+    assert 'test "$P11LAB_INPUT_ENVIRONMENT" = softhsm2' in text
+    assert 'test "$P11LAB_INPUT_CHANNEL" = release' in text
     assert publish.PUBLISH_WORKFLOWS.count("provider-delivery.yml") == 1
 
 
@@ -269,6 +283,47 @@ def test_installers_embed_oras_pins():
     assert f"$OrasRevision = '{pin['source']['revision']}'" in pwsh
     assert f"$OrasUrl = '{windows['url']}'" in pwsh and f"$OrasSha256 = '{windows['sha256']}'" in pwsh
     assert f"$OrasSize = {windows['size']}" in pwsh
+
+
+def test_installers_embed_gh_pins():
+    from p11lab import delivery_authority
+    pin = publish.GH_PIN
+    linux = pin["artifacts"]["linux/amd64"]
+    assert linux["executable_sha256"] == delivery_authority.GH_EXECUTABLE_SHA256
+    shell = (ROOT / "src" / "p11lab" / "data" / "delivery" / "install-gh.sh").read_text()
+    assert f"GH_VERSION={pin['version']}" in shell
+    assert f"GH_URL={linux['url']}" in shell and f"GH_SHA256={linux['sha256']}" in shell
+    assert f"GH_SIZE={linux['size']}" in shell
+    assert f"GH_EXECUTABLE_SHA256={linux['executable_sha256']}" in shell
+    # ADV #9 workflow-bound parity: the provider workflow's gh pins must
+    # equal the installer, GH_PIN, and the authority constant together.
+    workflow = (ROOT / ".github" / "workflows" / "provider-delivery.yml").read_text()
+
+    def shell_var(name):
+        match = re.search(rf"^{name}=(\S+)$", shell, re.MULTILINE)
+        assert match is not None, name
+        return match.group(1)
+
+    wf_version = re.search(r"cli/cli/releases/download/v(\d+\.\d+\.\d+)/gh_",
+                           workflow).group(1)
+    wf_archive = re.search(r"printf '%s  %s\\n' ([0-9a-f]{64}) \"\$archive\"",
+                           workflow).group(1)
+    wf_size = re.search(r"--max-filesize (\d+) \\\n\s*https://github\.com/cli/cli/",
+                        workflow).group(1)
+    wf_size_check = re.search(r'test "\$\(wc -c < "\$archive"\)" -eq (\d+)',
+                              workflow).group(1)
+    wf_exe = re.search(r"printf '%s  %s\\n' ([0-9a-f]{64}) \"\$gh\"",
+                       workflow).group(1)
+    assert shell_var("GH_VERSION") == wf_version == pin["version"]
+    assert shell_var("GH_SHA256") == wf_archive == linux["sha256"]
+    assert shell_var("GH_SIZE") == wf_size == wf_size_check == str(linux["size"])
+    assert (shell_var("GH_EXECUTABLE_SHA256") == wf_exe == linux["executable_sha256"]
+            == delivery_authority.GH_EXECUTABLE_SHA256)
+    # ADV #8 installer transfer bounds: time/size caps plus HTTPS-only
+    # redirects, mirroring the provider workflow's curl controls.
+    assert "--proto-redir '=https'" in shell
+    assert "--max-time 120" in shell
+    assert '--max-filesize "$GH_SIZE"' in shell
 
 
 def seal_fixture(tmp_path):
@@ -312,10 +367,11 @@ def readback_proof_for(tmp_path, spec, receipt, manifest, *, name="proof"):
 def pushed_manifest_for(tmp_path, *, name="pushed"):
     import hashlib as _hashlib
     receipt_path = tmp_path / "seal" / "sealed-source.json"
-    archive_sha = json.loads(receipt_path.read_text())["archive_sha256"]
-    document = {"schemaVersion": 2, "layers": [
-        {"digest": "sha256:" + archive_sha, "size": 10},
-        {"digest": "sha256:" + _hashlib.sha256(receipt_path.read_bytes()).hexdigest(), "size": 20}]}
+    document = {"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json", "layers": [
+        {"digest": "sha256:" + _hashlib.sha256((receipt_path.parent / name).read_bytes()).hexdigest(),
+         "size": (receipt_path.parent / name).stat().st_size, "mediaType": media,
+         "annotations": {"org.opencontainers.image.title": name}}
+        for name, media in publish.SEAL_FILES.items()]}
     path = tmp_path / f"{name}-manifest.json"
     path.write_text(json.dumps(document))
     return _hashlib.sha256(path.read_bytes()).hexdigest(), path
@@ -681,7 +737,7 @@ def admission_inventory(tmp_path):
     return artifact, inventory
 
 
-def test_admit_eligible_with_complete_evidence(tmp_path):
+def test_admit_local_evidence_stays_blocked_without_published_complete_content(tmp_path):
     import dataclasses
     from p11lab import sources
     spec, receipt, manifest = seal_fixture(tmp_path)
@@ -698,11 +754,12 @@ def test_admit_eligible_with_complete_evidence(tmp_path):
         registry="127.0.0.1:5050/p11lab", evidence_dir=evidence, out_dir=tmp_path / "admission-ok",
         producer={"p11lab_wheel_sha256": "ab" * 32},
         source_manifest_digest=manifest_digest, source_manifest_path=manifest_path)
-    assert result["status"] == "eligible", result["blockers"]
-    assert json.loads(Path(result["verdict"]).read_text())["status"] == "eligible"
+    assert result["status"] == "blocked"
+    assert any("complete-content" in reason for reason in result["blockers"])
+    assert json.loads(Path(result["admission"]).read_text())["verdict"]["content_status"] == "eligible"
 
 
-def test_expose_binds_pushed_bundle_after_readback(tmp_path):
+def test_expose_verifies_bundle_but_refuses_unimplemented_promotion(tmp_path):
     spec, receipt, manifest = seal_fixture(tmp_path)
     binary = tmp_path / "binary.tar"
     tiny_tar(binary)
@@ -735,18 +792,12 @@ def test_expose_binds_pushed_bundle_after_readback(tmp_path):
     assert result["status"] == "blocked"
     pushed = "9f" * 32
     tag = publish.artifact_tag("native", "softhsm2", "release", digest, "debian13-amd64")
-    exposed = publish.expose(admission_path=Path(result["admission"]), pushed_digest=pushed,
-        pushed_tag=tag, pushed_size=binary.stat().st_size, local_inspect_path=None,
-        pulled_inspect_path=None, pulled_bundle_path=binary,
-        registry="127.0.0.1:5050/p11lab", out_dir=tmp_path / "handoff")
-    handoff = publish.show_handoff(Path(exposed["handoff"]))
-    assert handoff["binary"]["reference"] == "127.0.0.1:5050/p11lab@sha256:" + pushed
-    assert handoff["binary"]["manifest_sha256"] == pushed
-    assert handoff["binary"]["file_sha256"] == digest
-    assert handoff["binary"]["aliases"] == []
-    assert handoff["admission"]["status"] == "blocked"
-    assert "digest" not in handoff and "handoff_sha256" not in handoff and "self_digest" not in handoff
-    assert exposed["reference"].endswith(pushed)
+    with pytest.raises(publish.PublishError, match="validation/promotion"):
+        publish.expose(admission_path=Path(result["admission"]), pushed_digest=pushed,
+            pushed_tag=tag, pushed_size=binary.stat().st_size, local_inspect_path=None,
+            pulled_inspect_path=None, pulled_bundle_path=binary,
+            registry="127.0.0.1:5050/p11lab", out_dir=tmp_path / "handoff")
+    assert not (tmp_path / "handoff").exists()
 
 
 def test_expose_refuses_mismatched_bytes_or_tag(tmp_path):
@@ -812,14 +863,12 @@ def test_expose_compares_engine_inspects_for_runtimes(tmp_path):
     before_path, after_path = tmp_path / "before.json", tmp_path / "after.json"
     before_path.write_text(json.dumps([before]))
     after_path.write_text(json.dumps([after]))
-    exposed = publish.expose(admission_path=Path(result["admission"]), pushed_digest=pushed,
-        pushed_tag=tag, pushed_size=1234, local_inspect_path=before_path,
-        pulled_inspect_path=after_path, pulled_bundle_path=None,
-        registry="127.0.0.1:5050/p11lab", out_dir=tmp_path / "handoff-rt")
-    handoff = publish.show_handoff(Path(exposed["handoff"]))
-    assert handoff["binary"]["engine_id"] == "sha256:" + engine
-    assert handoff["binary"]["manifest_sha256"] == pushed
-    assert handoff["binary"]["aliases"] == ["2.7.0", "latest"]
+    with pytest.raises(publish.PublishError, match="validation/promotion"):
+        publish.expose(admission_path=Path(result["admission"]), pushed_digest=pushed,
+            pushed_tag=tag, pushed_size=1234, local_inspect_path=before_path,
+            pulled_inspect_path=after_path, pulled_bundle_path=None,
+            registry="127.0.0.1:5050/p11lab", out_dir=tmp_path / "handoff-rt")
+    assert not (tmp_path / "handoff-rt").exists()
     drifted = dict(after, RootFS={"Layers": ["sha256:" + "dd" * 32]})
     drifted_path = tmp_path / "drifted.json"
     drifted_path.write_text(json.dumps([drifted]))
@@ -918,8 +967,15 @@ def test_action_run_echo_hides_consumer_argv():
     assert "1234" not in " ".join(shown) and "--pin" not in " ".join(shown)
 
 
+@pytest.fixture
+def local_diagnostic_env(monkeypatch):
+    """Select local mechanics explicitly, independent of the test runner's CI."""
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+
 @pytest.mark.parametrize("platform", ["linux/amd64", "windows/amd64"])
-def test_action_run_native_round_trip_keeps_handoff_platform(tmp_path, monkeypatch, platform):
+def test_action_run_native_round_trip_keeps_handoff_platform(tmp_path, monkeypatch, platform, local_diagnostic_env):
     """Sol-4: install and run must both use the handoff platform.
 
     `p11lab run --platform` defaults to linux/amd64 and reverifies the
@@ -972,15 +1028,15 @@ def test_action_run_native_round_trip_keeps_handoff_platform(tmp_path, monkeypat
 
     def fake_subprocess_run(argv, **kwargs):
         calls["install"] = list(argv)
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
+        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
 
     monkeypatch.setattr(module, "_run", fake_run)
-    monkeypatch.setattr(module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(module, "_capture", fake_subprocess_run)
     code = module.main([
         "--environment", "softhsm2", "--channel", "release", "--mode", "native",
         "--registry", registry, "--handoff-digest", "sha256:" + "ff" * 32,
         "--command", '["app"]', "--timeout", "600",
-        "--working-directory", str(work), "--oras", "oras", "--run-dir", str(tmp_path / "rundir")])
+        "--workspace", str(work), "--working-directory", ".", "--oras", "oras", "--run-dir", str(tmp_path / "rundir"), "--local-proof"])
     assert code == 0
     install = calls["install"]
     assert install[install.index("--platform") + 1] == platform
@@ -1075,6 +1131,8 @@ def test_composite_run_step_passes_caller_inputs_literally(tmp_path):
     inputs = "P11LAB_PIN_FILE=/run/pin\nEMPTY_OK=x\n"
     fixtures = {"environment": "softhsm2", "channel": "release", "mode": "direct",
                 "registry": "127.0.0.1:5050/p11lab", "handoff-digest": "sha256:" + "ab" * 32,
+                "transport-evidence-digest": "sha256:" + "11" * 32,
+                "promotion-evidence-digest": "sha256:" + "22" * 32, "evidence-registry": "",
                 "command": command, "inputs": inputs, "state-dir": "", "timeout": "300",
                 "working-directory": "."}
     env_bindings, body = _composite_run_step()
@@ -1109,7 +1167,8 @@ def test_composite_run_step_passes_caller_inputs_literally(tmp_path):
     got = dict(zip(received[::2], received[1::2]))
     assert got["--command"] == command
     assert got["--inputs"] == inputs
-    assert got["--working-directory"] == str(tmp_path / "ws") + "/."
+    assert got["--workspace"] == str(tmp_path / "ws")
+    assert got["--working-directory"] == "."
     assert json.loads(got["--command"])[0] == "python"
 
 
@@ -1186,18 +1245,24 @@ def test_composite_repeated_runs_collect_only_their_own_receipts(tmp_path, secon
             return 0
 
         module._run = fake_run
-        module.subprocess.run = lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout="", stderr="")
-        sys.exit(module.main())
+        module._capture = lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+        # This harness tests shell/receipt mechanics, never public eligibility.
+        os.environ.pop("CI", None)
+        os.environ.pop("GITHUB_ACTIONS", None)
+        sys.exit(module.main(sys.argv[1:] if sys.argv[1:2] == ["--collect"] else [*sys.argv[1:], "--local-proof"]))
         """))
     bindir = tmp_path / "bin"
     bindir.mkdir()
     bindir.joinpath("python").symlink_to(Path(sys.executable))
     fixtures = {"environment": "softhsm2", "channel": "release", "mode": "native",
                 "registry": "127.0.0.1:5050/p11lab", "handoff-digest": "sha256:" + "ab" * 32,
+                "transport-evidence-digest": "sha256:" + "11" * 32,
+                "promotion-evidence-digest": "sha256:" + "22" * 32, "evidence-registry": "",
                 "command": '["app"]', "inputs": "P11LAB_PIN_FILE=/private/pin", "state-dir": "",
                 "timeout": "300", "working-directory": "."}
     run_bindings, run_body = _composite_run_step()
     collect_bindings, collect_body = _composite_run_step("Collect receipts")
+    collect_body = collect_body.replace("${{ github.action_path }}", str(action))
     run_body = run_body.replace("${{ github.action_path }}", str(action))
     env = dict(os.environ, PATH=str(bindir) + os.pathsep + os.environ.get("PATH", ""),
                RUNNER_TEMP=str(runner_temp), GITHUB_WORKSPACE=str(work), P11LAB_ORAS="oras",
@@ -1231,10 +1296,11 @@ def test_composite_repeated_runs_collect_only_their_own_receipts(tmp_path, secon
         env["GITHUB_OUTPUT"] = str(collect_output)
         collect = subprocess.run([bash, "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", collect_body],
                                  cwd=work, env=env, capture_output=True, text=True, timeout=60)
-        assert collect.returncode == 0, collect.stderr
+        assert collect.returncode == expected_code, collect.stderr
         outputs = read_outputs(collect_output)
         if code is None:
-            assert outputs == {"exit-code": "1"}
+            assert outputs["exit-code"] == "1"
+            assert outputs["receipt-path"] == outputs["app-returncode"] == ""
             continue
         assert set(outputs) == {"exit-code", "app-returncode", "receipt-path", "handoff-sha256"}
         if code == "missing-receipt":
@@ -1350,14 +1416,17 @@ def test_composite_collect_after_allocation_failure_has_no_stale_receipt(tmp_pat
     stale.parent.mkdir()
     stale.write_text("exit-code=0\nreceipt-path=stale-receipt.json\n")
     bindings, body = _composite_run_step("Collect receipts")
+    body = body.replace("${{ github.action_path }}", str(ROOT))
     assert "${{ steps." not in body
     env.update(RUNNER_TEMP=str(tmp_path), GITHUB_OUTPUT=str(tmp_path / "collected"))
     for var in bindings:
         env[var] = ""
     collected = subprocess.run([bash, "-e", "-o", "pipefail", "-c", body], env=env,
                                capture_output=True, text=True, timeout=60)
-    assert collected.returncode == 0, collected.stderr
-    assert (tmp_path / "collected").read_text() == "exit-code=1\n"
+    assert collected.returncode == 1, collected.stderr
+    assert dict(line.split("=", 1) for line in (tmp_path / "collected").read_text().splitlines()) == {
+        "exit-code": "1", "app-returncode": "", "receipt-path": "", "handoff-sha256": ""}
+    assert "evidence incomplete" in collected.stderr
 
 
 @pytest.mark.parametrize("existing_kind", ["directory", "file", "symlink"])
@@ -1380,7 +1449,7 @@ def test_action_run_still_refuses_existing_run_directory(tmp_path, monkeypatch, 
     assert module.main([
         "--environment", "softhsm2", "--channel", "release", "--mode", "native",
         "--registry", "127.0.0.1:5050/p11lab", "--handoff-digest", "sha256:" + "ab" * 32,
-        "--command", '["app"]', "--timeout", "300", "--working-directory", str(tmp_path),
+        "--command", '["app"]', "--timeout", "300", "--workspace", str(tmp_path), "--working-directory", ".",
         "--oras", "oras", "--run-dir", str(run_dir)]) == 2
     assert "run directory must be fresh" in capsys.readouterr().err
     assert sentinel.read_text() == "keep"
@@ -1401,20 +1470,24 @@ def test_action_receipt_artifact_example_selects_only_public_receipt():
 
 
 @pytest.fixture
-def action_with_stubbed_acquisition(tmp_path, monkeypatch):
+def action_with_stubbed_acquisition(tmp_path, monkeypatch, local_diagnostic_env):
     """Real wrapper with only remote acquisition and image inspection stubbed."""
     from types import SimpleNamespace
 
     module = _action_run_module()
     registry = "127.0.0.1:5050/p11lab"
     engine_id = "sha256:" + "aa" * 32
+    manifest_bytes = json.dumps({"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "config": {"digest": "sha256:" + "bb" * 32}, "layers": []}).encode()
+    manifest_digest = hashlib.sha256(manifest_bytes).hexdigest()
     handoff = {
         "schema_version": 1, "registry": registry,
         "catalogue": {"environment": "softhsm2", "channel": "release", "runtime_role": "runtime"},
         "source": {"manifest_sha256": "dd" * 32, "tag": "source",
                    "reference": registry + "@sha256:" + "dd" * 32, "file_sha256": "ee" * 32},
-        "binary": {"kind": "image", "manifest_sha256": "cc" * 32, "tag": "binary",
-                   "reference": registry + "@sha256:" + "cc" * 32, "engine_id": engine_id},
+        "binary": {"kind": "docker-local", "manifest_sha256": manifest_digest, "tag": "binary",
+                   "reference": registry + "@sha256:" + manifest_digest, "engine_id": engine_id,
+                   "config_sha256": "bb" * 32, "platform": "linux/amd64"},
         "admission": {"status": "eligible", "blockers": []},
         "readback": {}, "producer": {}, "exposure": {},
     }
@@ -1432,17 +1505,20 @@ def action_with_stubbed_acquisition(tmp_path, monkeypatch):
             return 0
 
         def inspect_image(argv, **kwargs):
+            if argv[0] == "oras":
+                return SimpleNamespace(returncode=0, stdout=manifest_bytes, stderr=b"")
             assert argv[:3] == ["docker", "image", "inspect"]
-            return SimpleNamespace(returncode=0, stdout=engine_id + "\n", stderr="")
+            value = {"Id": engine_id, "Os": "linux", "Architecture": "amd64", "RepoDigests": [handoff["binary"]["reference"]]}
+            return SimpleNamespace(returncode=0, stdout=json.dumps([value]), stderr="")
 
         monkeypatch.setattr(module, "_run", acquisition_or_application)
-        monkeypatch.setattr(module.subprocess, "run", inspect_image)
+        monkeypatch.setattr(module, "_capture", inspect_image)
         run_dir = tmp_path / "run"
         code = module.main([
             "--environment", "softhsm2", "--channel", "release", "--mode", "direct",
             "--registry", registry, "--handoff-digest", "sha256:" + "ff" * 32,
             "--command", '["app"]', "--inputs", inputs, "--timeout", "300",
-            "--working-directory", str(tmp_path), "--oras", "oras", "--run-dir", str(run_dir)])
+            "--workspace", str(tmp_path), "--working-directory", ".", "--oras", "oras", "--run-dir", str(run_dir), "--local-proof"])
         serialized = (run_dir / "action-outputs.env").read_text()
         assert serialized == github_output.read_text()
         outputs = dict(line.split("=", 1) for line in serialized.splitlines())
@@ -1676,8 +1752,8 @@ def test_action_real_receipt_writer_boundary(tmp_path, monkeypatch, action_with_
         assert outputs["app-returncode"] == "37"
 
 
-@pytest.mark.parametrize("application_exit", [37, -15])
-def test_action_real_native_receipt_boundary(tmp_path, monkeypatch, native_receipt_installation, application_exit):
+@pytest.mark.parametrize("application_exit", [37, -15, "changed-installed-bytes"])
+def test_action_real_native_receipt_boundary(tmp_path, monkeypatch, native_receipt_installation, application_exit, local_diagnostic_env):
     """Real install/CLI/lifecycle/writer; fixture adapter, no provider qualification."""
     import subprocess
     import sys
@@ -1720,11 +1796,15 @@ def test_action_real_native_receipt_boundary(tmp_path, monkeypatch, native_recei
 
     def install_or_subprocess(argv, **kwargs):
         if argv[1:4] == ["-m", "p11lab", "install"]:
-            return SimpleNamespace(returncode=cli_main(argv[3:]), stdout="", stderr="")
+            code = cli_main(argv[3:])
+            if application_exit == "changed-installed-bytes":
+                prefix = Path(argv[argv.index("--prefix") + 1])
+                (prefix / "payload/lib/libsofthsm2.so").write_bytes(b"changed after verified install")
+            return SimpleNamespace(returncode=code, stdout=b"", stderr=b"")
         return real_subprocess_run(argv, **kwargs)
 
     monkeypatch.setattr(module, "_run", acquisition_or_cli)
-    monkeypatch.setattr(module.subprocess, "run", install_or_subprocess)
+    monkeypatch.setattr(module, "_capture", install_or_subprocess)
     github_output = tmp_path / "github-output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(github_output))
     run_dir = tmp_path / "action-run"
@@ -1733,12 +1813,17 @@ def test_action_real_native_receipt_boundary(tmp_path, monkeypatch, native_recei
         "--registry", registry, "--handoff-digest", "sha256:" + "ff" * 32,
         "--command", json.dumps([sys.executable, "-c", "raise SystemExit(37)" if application_exit == 37
                                   else "import os, signal; os.kill(os.getpid(), signal.SIGTERM)"]),
-        "--timeout", "30", "--working-directory", str(tmp_path), "--oras", "oras", "--run-dir", str(run_dir)])
-    expected_code = 37 if application_exit == 37 else 143
+        "--timeout", "30", "--workspace", str(tmp_path), "--working-directory", ".", "--oras", "oras", "--run-dir", str(run_dir), "--local-proof"])
+    expected_code = 2 if application_exit == "changed-installed-bytes" else 37 if application_exit == 37 else 143
     assert code == expected_code
     serialized = (run_dir / "action-outputs.env").read_text()
     assert serialized == github_output.read_text()
     outputs = dict(line.split("=", 1) for line in serialized.splitlines())
+    if application_exit == "changed-installed-bytes":
+        assert outputs["exit-code"] == "2"
+        assert outputs["app-returncode"] == outputs["receipt-path"] == ""
+        assert not (run_dir / "run-output/receipt.json").exists()
+        return
     assert outputs["exit-code"] == outputs["app-returncode"] == str(expected_code)
     assert outputs["receipt-path"] == str(run_dir / "run-output/receipt.json")
     receipt = json.loads(Path(outputs["receipt-path"]).read_text())
@@ -1797,7 +1882,7 @@ def test_runtime_aliases_cover_every_locked_channel():
 
 
 def test_delivery_workflows_resolve_registry_per_environment():
-    for name in ("provider-delivery.yml", "native-delivery.yml"):
+    for name in ("native-delivery.yml",):
         text = (ROOT / ".github" / "workflows" / name).read_text()
         assert "effective_registry" in text and "P11LAB_REGISTRY" in text
         assert "'$P11LAB_REGISTRY'" not in text, name  # shell vars need double quotes
@@ -1810,10 +1895,11 @@ def test_delivery_workflows_resolve_registry_per_environment():
                 assert "P11LAB_INPUT_REGISTRY: ${{ inputs.registry }}" in line, (name, line)
 
 
-def test_provider_delivery_pushes_runtime_aliases():
+def test_provider_delivery_does_not_publish_runtime_aliases():
     text = (ROOT / ".github" / "workflows" / "provider-delivery.yml").read_text()
-    assert "runtime_aliases" in text
-    assert 'STAGE_TAG="t13-staging-$P11LAB_INPUT_CHANNEL"' in text
+    assert "runtime_aliases" not in text
+    assert "docker push" not in text
+    assert "p11lab publish expose" not in text
 
 
 def test_require_repository_accepts_strict_paths_only():
@@ -1847,3 +1933,36 @@ def test_aliases_for_sources_reserves_floating_names():
     assert publish.aliases_for_sources([], "release") == ["latest"]
     assert publish.aliases_for_sources([git(), git()], "rolling") == ["rolling"]
     assert publish.aliases_for_sources("nope", "release") == ["latest"]
+
+
+@pytest.mark.parametrize('native_code', [37, 124])
+def test_watchdog_native_result_keeps_strict_receipt_and_collection_binding(tmp_path, monkeypatch, native_code):
+    """Real owned CLI/runner receipt survives watchdog; mismatched status still fails."""
+    from test_application_action import watchdog_lifecycle_receipt
+    module, code, attempt, values, provider = watchdog_lifecycle_receipt(tmp_path, monkeypatch, native_code)
+    receipt_file = attempt / 'run-output/receipt.json'
+    receipt, app = module._receipt_outputs(receipt_file, values=values, provider=provider, code=code)
+    assert code == native_code
+    assert receipt == str(receipt_file) and app == str(native_code)
+    outputs = {'exit-code': str(code), 'app-returncode': app, 'receipt-path': receipt, 'handoff-sha256': ''}
+    context = {'values': values, 'provider': provider}
+    (attempt / 'action-context.json').write_text(json.dumps(context))
+    exported = tmp_path / 'finalized-output'
+    monkeypatch.setenv('GITHUB_OUTPUT', str(exported))
+    module._finalize(attempt, outputs)
+    assert dict(line.split('=', 1) for line in exported.read_text().splitlines()) == outputs
+    collected = tmp_path / 'collected-output'
+    monkeypatch.setenv('GITHUB_OUTPUT', str(collected))
+    assert module.collect(str(attempt)) == native_code
+    assert dict(line.split('=', 1) for line in collected.read_text().splitlines()) == outputs
+    # Keep the strict validator: an altered wrapper status cannot export receipt37.
+    wrong_code = 124 if native_code == 37 else 37
+    assert module._receipt_outputs(receipt_file, values=values, provider=provider, code=wrong_code) == ('', '')
+    (attempt / 'action-outputs.env').write_text(''.join(f'{key}={wrong_code if key == "exit-code" else value}\n'
+                                                     for key, value in outputs.items()))
+    mismatched = tmp_path / 'mismatched-output'
+    monkeypatch.setenv('GITHUB_OUTPUT', str(mismatched))
+    assert module.collect(str(attempt)) == 1
+    invalid = dict(line.split('=', 1) for line in mismatched.read_text().splitlines())
+    assert invalid['exit-code'] == '1'
+    assert invalid['receipt-path'] == invalid['app-returncode'] == ''

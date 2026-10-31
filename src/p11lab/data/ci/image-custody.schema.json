@@ -1,0 +1,841 @@
+{
+  "$comment": "Closed custody declarations only. Runtime validation additionally checks exact role/member rosters, identity relationships, byte limits and immutable source references. This schema grants neither authority nor source rights.",
+  "$defs": {
+    "artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "docker-local",
+            "custody-tree",
+            "custody-evaluator-metadata"
+          ]
+        },
+        "platform": {
+          "const": "linux/amd64"
+        },
+        "reference": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "reference",
+        "sha256",
+        "platform"
+      ],
+      "type": "object"
+    },
+    "component": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "name": {
+          "enum": [
+            "checker-derived",
+            "checker-image",
+            "checker-inputs",
+            "checker-root",
+            "consumer-derived",
+            "consumer-image",
+            "consumer-inputs",
+            "consumer-root",
+            "evaluator-original",
+            "oracle-image",
+            "oracle-inputs",
+            "oracle-root"
+          ]
+        },
+        "review_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/component_source"
+        }
+      },
+      "required": [
+        "name",
+        "artifact",
+        "review_sha256",
+        "source"
+      ],
+      "type": "object"
+    },
+    "component_source": {
+      "additionalProperties": false,
+      "properties": {
+        "file_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "inventory_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "receipt_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "reference": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_archive_size": {
+          "maximum": 5368709120,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "spdx_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reference",
+        "manifest_sha256",
+        "file_sha256",
+        "receipt_sha256",
+        "spdx_sha256",
+        "inventory_sha256",
+        "source_archive_size"
+      ],
+      "type": "object"
+    },
+    "content": {
+      "additionalProperties": false,
+      "properties": {
+        "file_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "inventory_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "receipt_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "reference": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "spdx_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reference",
+        "manifest_sha256",
+        "file_sha256",
+        "receipt_sha256",
+        "spdx_sha256",
+        "inventory_sha256"
+      ],
+      "type": "object"
+    },
+    "facts": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "build_key": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "build_receipt_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "$ref": "#/$defs/content"
+            },
+            "sealed": {
+              "$ref": "#/$defs/sealed"
+            }
+          },
+          "required": [
+            "sealed",
+            "content"
+          ],
+          "type": "object"
+        },
+        "validation": {
+          "$ref": "#/$defs/validation"
+        }
+      },
+      "required": [
+        "artifact",
+        "build_key",
+        "build_receipt_sha256",
+        "source",
+        "validation"
+      ],
+      "type": "object"
+    },
+    "files": {
+      "additionalProperties": false,
+      "properties": {
+        "checker-tool": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "derived-image.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "installed-image.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "tool-root.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  }
+                },
+                "type": "object"
+              },
+              "part": {
+                "maximum": 2,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "part",
+              "files"
+            ],
+            "type": "object"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "consumer-tool": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "derived-image.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "installed-image.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "tool-root.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  }
+                },
+                "type": "object"
+              },
+              "part": {
+                "maximum": 2,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "part",
+              "files"
+            ],
+            "type": "object"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "evaluator-original": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "evaluator-build-receipt.json": {
+                    "$ref": "#/$defs/member"
+                  }
+                },
+                "type": "object"
+              },
+              "part": {
+                "maximum": 2,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "part",
+              "files"
+            ],
+            "type": "object"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "image": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "image.tar": {
+                    "$ref": "#/$defs/member"
+                  }
+                },
+                "type": "object"
+              },
+              "part": {
+                "maximum": 2,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "part",
+              "files"
+            ],
+            "type": "object"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "oracle-tool": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "installed-image.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "tool-root.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  }
+                },
+                "type": "object"
+              },
+              "part": {
+                "maximum": 2,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "part",
+              "files"
+            ],
+            "type": "object"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "source-records": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "build-receipt.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "component-rights.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "content-oci-manifest.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "content-readback-proof.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "content-transport-journal.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "sbom.spdx.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "seal-oci-manifest.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "seal-readback-proof.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "seal-transport-journal.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "sealed-source.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "source-admission.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "source-bundle.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "source-companion.json": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "source-context.json": {
+                    "$ref": "#/$defs/member"
+                  }
+                },
+                "type": "object"
+              },
+              "part": {
+                "maximum": 2,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "part",
+              "files"
+            ],
+            "type": "object"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "tool-inputs": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "checker-inputs.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "consumer-inputs.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "oracle-inputs.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  }
+                },
+                "type": "object"
+              },
+              "part": {
+                "maximum": 2,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "part",
+              "files"
+            ],
+            "type": "object"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "validation": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "package.tar.gz": {
+                    "$ref": "#/$defs/member"
+                  },
+                  "validation.json": {
+                    "$ref": "#/$defs/member"
+                  }
+                },
+                "type": "object"
+              },
+              "part": {
+                "maximum": 2,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "part",
+              "files"
+            ],
+            "type": "object"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "image",
+        "validation",
+        "source-records",
+        "evaluator-original",
+        "checker-tool",
+        "consumer-tool",
+        "oracle-tool",
+        "tool-inputs"
+      ],
+      "type": "object"
+    },
+    "layer": {
+      "properties": {
+        "diff_id": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "diff_id"
+      ],
+      "type": "object"
+    },
+    "member": {
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "size": {
+          "maximum": 536870912,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "size",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "producer": {
+      "additionalProperties": false,
+      "properties": {
+        "graph_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "owner_id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "repository_id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "signer_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "source_ref": {
+          "pattern": "^refs/heads/[A-Za-z0-9._/-]+$",
+          "type": "string"
+        },
+        "source_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "workflow_id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "workflow_path": {
+          "const": ".github/workflows/provider-delivery.yml"
+        }
+      },
+      "required": [
+        "repository",
+        "repository_id",
+        "owner_id",
+        "workflow_id",
+        "workflow_path",
+        "source_sha",
+        "source_ref",
+        "signer_sha",
+        "graph_sha256"
+      ],
+      "type": "object"
+    },
+    "run": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "const": 1
+        },
+        "job": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "job_id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "run_id": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "run_id",
+        "attempt",
+        "job",
+        "job_id"
+      ],
+      "type": "object"
+    },
+    "sealed": {
+      "additionalProperties": false,
+      "properties": {
+        "archive_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "receipt_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "reference": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "reference",
+        "manifest_sha256",
+        "archive_sha256",
+        "receipt_sha256"
+      ],
+      "type": "object"
+    },
+    "source_archive": {
+      "additionalProperties": false,
+      "properties": {
+        "media_type": {
+          "const": "application/gzip"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "size": {
+          "maximum": 5368709120,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "size",
+        "sha256",
+        "media_type"
+      ],
+      "type": "object"
+    },
+    "validation": {
+      "additionalProperties": false,
+      "properties": {
+        "body_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "config_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/layer"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "package_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "validation_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "validation_sha256",
+        "package_sha256",
+        "body_sha256",
+        "config_sha256",
+        "layers"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:p11lab:schema:image-custody:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact": {
+      "$ref": "#/$defs/artifact"
+    },
+    "build_key": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "component_rights_tree_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "components": {
+      "items": {
+        "$ref": "#/$defs/component"
+      },
+      "maxItems": 12,
+      "minItems": 12,
+      "type": "array"
+    },
+    "config_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "controller_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "engine_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "evaluator_identity_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "evaluator_receipt_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "facts": {
+      "$ref": "#/$defs/facts"
+    },
+    "files": {
+      "$ref": "#/$defs/files"
+    },
+    "image_archive": {
+      "$ref": "#/$defs/member"
+    },
+    "image_promotable": {
+      "const": false
+    },
+    "kind": {
+      "const": "image-qualification-custody"
+    },
+    "layers": {
+      "items": {
+        "$ref": "#/$defs/layer"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "producer": {
+      "$ref": "#/$defs/producer"
+    },
+    "profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "qualification_only": {
+      "const": true
+    },
+    "retention_days": {
+      "const": 14
+    },
+    "run": {
+      "$ref": "#/$defs/run"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "source_archives": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/source_archive"
+        },
+        "sealed": {
+          "$ref": "#/$defs/source_archive"
+        }
+      },
+      "required": [
+        "sealed",
+        "content"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "qualification_only",
+    "image_promotable",
+    "retention_days",
+    "artifact",
+    "engine_id",
+    "config_sha256",
+    "layers",
+    "build_key",
+    "facts",
+    "image_archive",
+    "files",
+    "source_archives",
+    "producer",
+    "run",
+    "profile_sha256",
+    "controller_sha256",
+    "evaluator_receipt_sha256",
+    "evaluator_identity_sha256",
+    "component_rights_tree_sha256",
+    "components"
+  ],
+  "type": "object"
+}

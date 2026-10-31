@@ -1,0 +1,548 @@
+{
+  "AdmissionVerdict": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "admitted",
+        "type": "bool"
+      },
+      {
+        "default": "<required>",
+        "name": "failures",
+        "type": "list[str]"
+      },
+      {
+        "default": "<required>",
+        "name": "warnings",
+        "type": "list[str]"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.admit",
+    "signature": "(admitted: 'bool', failures: 'list[str]', warnings: 'list[str]') -> None"
+  },
+  "ComparisonVerdict": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "regressions",
+        "type": "list[Regression]"
+      },
+      {
+        "default": "<required>",
+        "name": "improvements",
+        "type": "list[Regression]"
+      },
+      {
+        "default": "<required>",
+        "name": "unstable",
+        "type": "list[str]"
+      },
+      {
+        "default": "<required>",
+        "name": "counts",
+        "type": "Mapping[str, int]"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(regressions: 'list[Regression]', improvements: 'list[Regression]', unstable: 'list[str]', counts: 'Mapping[str, int]') -> None"
+  },
+  "Delta": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "lane",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "case_id",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "phase",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "old_fp",
+        "type": "tuple[str, ...] | str"
+      },
+      {
+        "default": "<required>",
+        "name": "new_fp",
+        "type": "tuple[str, ...] | str"
+      },
+      {
+        "default": "<required>",
+        "name": "reason",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "ttl",
+        "type": "int"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(lane: 'str', case_id: 'str', phase: 'str', old_fp: 'tuple[str, ...] | str', new_fp: 'tuple[str, ...] | str', reason: 'str', ttl: 'int') -> None"
+  },
+  "EMPTY_SHARD_SHA256": {
+    "module": null,
+    "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "LEDGER_SCHEMA_VERSION": {
+    "module": null,
+    "value": 1
+  },
+  "LedgerHeader": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "schema_v",
+        "type": "int"
+      },
+      {
+        "default": "<required>",
+        "name": "lane",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "lane_os",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "lane_arch",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "framework_sha",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "p11lab_sha",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "image_digest",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "corpus_hash",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "disabled_hash",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "planned_collection_hash",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "planned_count",
+        "type": "int"
+      },
+      {
+        "default": "<required>",
+        "name": "raw_stream_bytes",
+        "type": "int"
+      },
+      {
+        "default": "<required>",
+        "name": "raw_stream_sha256",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "malformed_lines",
+        "type": "int"
+      },
+      {
+        "default": "<required>",
+        "name": "counters",
+        "type": "dict[str, int]"
+      },
+      {
+        "default": "<required>",
+        "name": "created_by",
+        "type": "str"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.schema",
+    "signature": "(schema_v: 'int', lane: 'str', lane_os: 'str', lane_arch: 'str', framework_sha: 'str', p11lab_sha: 'str', image_digest: 'str', corpus_hash: 'str', disabled_hash: 'str', planned_collection_hash: 'str', planned_count: 'int', raw_stream_bytes: 'int', raw_stream_sha256: 'str', malformed_lines: 'int', counters: 'dict[str, int]', created_by: 'str') -> None"
+  },
+  "LedgerHeader.from_record": {
+    "property": false,
+    "signature": "(record: 'Mapping[str, Any]', *, line_number: 'int') -> 'LedgerHeader'"
+  },
+  "LedgerHeader.to_record": {
+    "property": false,
+    "signature": "(self) -> 'dict[str, Any]'"
+  },
+  "LedgerRow": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "node_id",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "phase",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "attempt",
+        "type": "int"
+      },
+      {
+        "default": "<required>",
+        "name": "attempts_total",
+        "type": "int"
+      },
+      {
+        "default": "<required>",
+        "name": "shard_id",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "outcome",
+        "type": "Outcome"
+      },
+      {
+        "default": "<required>",
+        "name": "duration_ms",
+        "type": "int"
+      },
+      {
+        "default": "<required>",
+        "name": "reason",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "class_reason",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "category",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "ckr_expected",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "ckr_actual",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "mechanism",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "stimulus_rev",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "oracle_rev",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "reach",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "effect",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "cleanup",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "termination",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "flags",
+        "type": "list[str]"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.schema",
+    "signature": "(node_id: 'str', phase: 'str', attempt: 'int', attempts_total: 'int', shard_id: 'str', outcome: 'Outcome', duration_ms: 'int', reason: 'str', class_reason: 'str', category: 'str', ckr_expected: 'str', ckr_actual: 'str', mechanism: 'str', stimulus_rev: 'str', oracle_rev: 'str', reach: 'str', effect: 'str', cleanup: 'str', termination: 'str', flags: 'list[str]') -> None"
+  },
+  "LedgerRow.from_record": {
+    "property": false,
+    "signature": "(record: 'Mapping[str, Any]', *, line_number: 'int') -> 'LedgerRow'"
+  },
+  "LedgerRow.sort_key": {
+    "property": true,
+    "signature": "(self) -> 'tuple[str, str, int]'"
+  },
+  "LedgerRow.to_record": {
+    "property": false,
+    "signature": "(self) -> 'dict[str, Any]'"
+  },
+  "ObligationInventory": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "members",
+        "type": "frozenset[str]"
+      },
+      {
+        "default": "frozenset()",
+        "name": "unselected",
+        "type": "frozenset[str]"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.obligations",
+    "signature": "(members: 'frozenset[str]', unselected: 'frozenset[str]' = frozenset()) -> None"
+  },
+  "Outcome": {
+    "module": "pkcs11_check.core.evidence.schema",
+    "signature": "(*values)",
+    "values": [
+      "passed",
+      "failed",
+      "skipped",
+      "xfailed",
+      "xpassed",
+      "error",
+      "crashed",
+      "timeout",
+      "crash_limited",
+      "missing"
+    ]
+  },
+  "PredeclaredRoster": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "lane",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "shards",
+        "type": "Mapping[str, ShardExpectation]"
+      },
+      {
+        "default": "('lane', 'framework_sha')",
+        "name": "required_identity",
+        "type": "tuple[str, ...]"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.admit",
+    "signature": "(lane: 'str', shards: 'Mapping[str, ShardExpectation]', required_identity: 'tuple[str, ...]' = ('lane', 'framework_sha')) -> None"
+  },
+  "QuorumPolicy": {
+    "fields": [
+      {
+        "default": "3",
+        "name": "min_repeats",
+        "type": "int"
+      },
+      {
+        "default": "0.6666666666666666",
+        "name": "quorum_frac",
+        "type": "float"
+      },
+      {
+        "default": "True",
+        "name": "disagree_is_unstable",
+        "type": "bool"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(min_repeats: 'int' = 3, quorum_frac: 'float' = 0.6666666666666666, disagree_is_unstable: 'bool' = True) -> None"
+  },
+  "Regression": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "node_id",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "phase",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "old",
+        "type": "tuple[str, ...] | str"
+      },
+      {
+        "default": "<required>",
+        "name": "new",
+        "type": "tuple[str, ...] | str"
+      },
+      {
+        "default": "<required>",
+        "name": "axis",
+        "type": "str"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(node_id: 'str', phase: 'str', old: 'tuple[str, ...] | str', new: 'tuple[str, ...] | str', axis: 'str') -> None"
+  },
+  "RotationDeltas": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "version",
+        "type": "str"
+      },
+      {
+        "default": "<required>",
+        "name": "entries",
+        "type": "tuple[Delta, ...]"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(version: 'str', entries: 'tuple[Delta, ...]') -> None"
+  },
+  "SessionCompletionTracker.complete": {
+    "property": true,
+    "signature": "(self) -> 'bool'"
+  },
+  "SessionCompletionTracker.invalidate": {
+    "property": false,
+    "signature": "(self) -> 'None'"
+  },
+  "SessionCompletionTracker.observe": {
+    "property": false,
+    "signature": "(self, record: 'Mapping[str, Any]') -> 'None'"
+  },
+  "SessionCompletionTracker.single_exitstatus": {
+    "property": true,
+    "signature": "(self) -> 'int | None'"
+  },
+  "ShardExpectation": {
+    "fields": [
+      {
+        "default": "<required>",
+        "name": "records",
+        "type": "int"
+      },
+      {
+        "default": "<required>",
+        "name": "sha256",
+        "type": "str"
+      }
+    ],
+    "module": "pkcs11_check.core.evidence.admit",
+    "signature": "(records: 'int', sha256: 'str') -> None"
+  },
+  "admit_lane": {
+    "module": "pkcs11_check.core.evidence.admit",
+    "signature": "(header: 'LedgerHeader', rows: 'Sequence[LedgerRow]', roster: 'PredeclaredRoster', obligations: 'ObligationInventory') -> 'AdmissionVerdict'"
+  },
+  "combine_attempts": {
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(rows: 'Sequence[LedgerRow]', policy: 'QuorumPolicy') -> 'tuple[tuple[str, ...], list[str]]'"
+  },
+  "compare_lanes": {
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(baseline: 'tuple[LedgerHeader, list[LedgerRow]]', candidate: 'tuple[LedgerHeader, list[LedgerRow]]', deltas: 'RotationDeltas', quorum: 'QuorumPolicy') -> 'ComparisonVerdict'"
+  },
+  "compile_obligations": {
+    "module": "pkcs11_check.core.evidence.obligations",
+    "signature": "(catalog: 'Mapping[str, Any]', profile: 'Mapping[str, Any]') -> 'ObligationInventory'"
+  },
+  "core.report_log.SessionCompletionTracker": {
+    "fields": [
+      {
+        "default": "0",
+        "name": "starts",
+        "type": "int"
+      },
+      {
+        "default": "0",
+        "name": "finishes",
+        "type": "int"
+      },
+      {
+        "default": "False",
+        "name": "_active",
+        "type": "bool"
+      },
+      {
+        "default": "False",
+        "name": "_invalid",
+        "type": "bool"
+      },
+      {
+        "default": "None",
+        "name": "_exitstatuses",
+        "type": "list[int] | None"
+      }
+    ],
+    "signature": "(starts: 'int' = 0, finishes: 'int' = 0, _active: 'bool' = False, _invalid: 'bool' = False, _exitstatuses: 'list[int] | None' = None) -> None"
+  },
+  "core.report_log.iter_report_log_records": {
+    "signature": "(path: 'Path', *, on_invalid: 'Callable[[], None] | None' = None) -> 'Iterator[dict[str, Any]]'"
+  },
+  "export_ledger": {
+    "module": "pkcs11_check.core.evidence.export",
+    "signature": "(records: 'Iterable[Mapping[str, Any]]', identity: 'Mapping[str, str]', sink: 'TextIO', *, reader_invalid_lines: 'int | Callable[[], int] | None' = None) -> 'LedgerHeader'"
+  },
+  "fingerprint": {
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(row: 'LedgerRow') -> 'tuple[str, ...]'"
+  },
+  "load_ledger": {
+    "module": "pkcs11_check.core.evidence.export",
+    "signature": "(path: 'Path') -> 'tuple[LedgerHeader, list[LedgerRow]]'"
+  },
+  "row_blob": {
+    "module": "pkcs11_check.core.evidence.admit",
+    "signature": "(row: 'LedgerRow | Mapping[str, Any]') -> 'bytes'"
+  },
+  "scripts/verify_round_receipt.py:compute_bundle_identity": {
+    "signature": "(digests: 'Mapping[str, str]') -> 'str'"
+  },
+  "scripts/verify_round_receipt.py:main": {
+    "signature": "(argv: 'list[str] | None' = None) -> 'int'"
+  },
+  "scripts/verify_round_receipt.py:validate_lock": {
+    "signature": "(data: 'Any') -> 'list[str]'"
+  },
+  "scripts/verify_round_receipt.py:validate_receipt": {
+    "signature": "(receipt: 'Any', lock: 'dict[str, Any]', expect_fw: 'str') -> 'list[str]'"
+  },
+  "shard_digest": {
+    "module": "pkcs11_check.core.evidence.admit",
+    "signature": "(rows: 'Sequence[LedgerRow | Mapping[str, Any]]') -> 'str'"
+  },
+  "validate_deltas": {
+    "module": "pkcs11_check.core.evidence.compare",
+    "signature": "(deltas: 'RotationDeltas') -> 'list[str]'"
+  }
+}

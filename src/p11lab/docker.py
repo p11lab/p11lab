@@ -182,3 +182,16 @@ class Docker:
         if observed_id != identity or any(actual.get(k) != v for k, v in labels.items()):
             raise DockerError('refusing deletion: ownership identity/labels mismatch')
         self.command([kind, 'rm', *(['--force'] if kind == 'container' else []), identity], 10)
+
+    def stop(self, identity, labels):
+        """Stop an exactly owned container, retaining it for terminal diagnostics."""
+        try:
+            inspected = json.loads(self.command(['container', 'inspect', identity]).stdout)[0]
+            actual = inspected.get('Config', {}).get('Labels') or {}
+            if not isinstance(actual, dict):
+                raise ValueError('invalid container labels')
+        except (ValueError, IndexError, TypeError, AttributeError) as error:
+            raise DockerError('refusing stop: ownership inspection unavailable') from error
+        if inspected.get('Id') != identity or any(actual.get(k) != v for k, v in labels.items()):
+            raise DockerError('refusing stop: ownership identity/labels mismatch')
+        self.command(['stop', '--time', '5', identity], timeout=10)

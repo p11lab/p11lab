@@ -1,5 +1,14 @@
 # Source companions and distribution evidence
 
+Complete-content verification checks retained bytes and their exact OCI
+layer/file rosters. Local `assess_distribution` eligibility alone grants no
+publication or image promotion. The configured source-first path additionally
+requires protected owner review, live anonymous digest readback and an attested
+producer context; the required owner profile and complete reviewed inventory are
+not yet configured. Historical alpha images and earlier local investigations
+acquire no new rights or admission status. See [delivery eligibility](delivery.md#current-eligibility-boundary).
+
+
 Every distributed artifact has its own inventory and admission record. The
 P11Lab Apache-2.0 license covers original P11Lab material; it does not relicense
 providers, Debian packages, copied headers, datasets or optional integrations.
@@ -101,11 +110,12 @@ relationships and actual file hashes. Mixed source-package and uncertain final
 Rust vendor attribution may use `NOASSERTION` while retained exact source grants
 remain reviewed. This differs from an unknown redistribution grant, which blocks.
 
-The first SoftHSM inventory includes all inherited packages and sqv's declared
+The historical local SoftHSM source investigation includes all inherited packages and sqv's declared
 static source closure, not only the provider's ldd output. sqv/reader/OpenPGP/policy
 select LGPLv3 where their grants permit; Nettle Rust wrappers select LGPL-3.0-only.
-The exercised LGPLv3 4(d)(0) route retains complete application/library source and
-Debian packaged-cargo rebuild/recombine directions, accommodating fat LTO.
+The proposed LGPLv3 4(d)(0) route requires complete application/library source and
+Debian packaged-cargo rebuild/recombine directions, including fat LTO outputs;
+responsible review and exact-candidate reconstruction evidence remain required.
 Original grants and alternatives remain in the sources. Compatible native LGPL
 shared libraries remain replaceable. GCC runtime exceptions and file-specific
 SoftHSM, p11-kit header, Unicode, compiler_builtins LLVM and Rust attribution
@@ -126,3 +136,14 @@ obligations and `agpl_remote_source_offer: {status: reviewed, evidence_path: ...
 with retained operational offer evidence. Container boundaries do not supply an
 exception to remote users' source rights. Binary source delivery and the service's
 remote offer are separate obligations.
+
+
+Complete-content readback shares receipt/SPDX verification with local assessment;
+it does not add a second distribution-rights evaluator. To assemble protected
+inputs, join source `reviews`, `content_reviews`, `layer_reviews` and ordered
+`patches` against exact source/payload/file hashes and the new candidate's measured
+observation. Retain an exact `build_key` in the portable inventory for delivery
+admission. An assembler may join and measure these records; it must not generate
+review approvals or infer them from SPDX labels. Unreviewed or changed content
+stays blocked. Publish only the explicit archive/receipt/SPDX roster, never the
+adjacent `package-cache/` or `admission.json`.

@@ -1,0 +1,460 @@
+{
+  "expectation": {
+    "allowed_axis": "checker",
+    "catalog_union": [
+      "/executor/tests/test_a.py::test_one",
+      "/executor/tests/test_b.py::test_two"
+    ],
+    "endpoints": {
+      "baseline": {
+        "artifacts": {
+          "checker": {
+            "installed_manifest_sha256": "e342e4ff40e894139e10fcdc52d593c53f672f0b265ed1568bf88e339a15a9d6",
+            "source_sha": "542978c362d794745252b4257b7c3aa78833090b",
+            "wheel_sha256": "5c49bb6c605f1f3b72e912e73e257d4536e501d5d728fe85e687ab314bccb22a"
+          },
+          "consumer": {
+            "installed_manifest_sha256": "6bfbd709d5fdc0618ab5ea71913d552464b1fad43b2fc34cf25e96f3d2a904dc"
+          },
+          "derivative": {
+            "config_digest": "sha256:8de928bb7273a9b6c7a178e87de283b4fc3aaac2d1c557c398ab1bfdb2a9956e",
+            "layer_digests": [
+              "sha256:cf34405a8dafd2229b8127024447e996c941e7db510b48e329995de9b6b0287d",
+              "sha256:f8931178a418240cb536cc85b128cedbc9185c0f9f80e656ff8086e51e75d227"
+            ],
+            "manifest_digest": "sha256:68867e32a341a9123f3375031694adc175b3eeaad1947c8540735a3440035f22",
+            "parent_manifest_digest": "sha256:5c4c1964340aca5b65393bbe9d3249cdd71be26665b3320ad694f034f2743283"
+          },
+          "provider": {
+            "build_key": "2c342554baf006c67c834909c66653ca15bcd2580f4b40339e506697dd042fa9",
+            "config_digest": "sha256:2d38182f21de150f84195a65a732a911a4478a5ce7c6c4d84477855f7f9b3733",
+            "family": "softhsm2",
+            "layer_digests": [
+              "sha256:cf34405a8dafd2229b8127024447e996c941e7db510b48e329995de9b6b0287d"
+            ],
+            "manifest_digest": "sha256:5c4c1964340aca5b65393bbe9d3249cdd71be26665b3320ad694f034f2743283",
+            "platform": "linux/amd64",
+            "recipe_sha256": "e1d8e552330911f9f779f85b6f2c00a15e790dcc3fbb3b28f5da1d660a30c5b8",
+            "source_sha": "6a149f8e661291651cc76b6d36814b89f769d121"
+          },
+          "proxy": null
+        },
+        "catalog": [
+          "/executor/tests/test_a.py::test_one",
+          "/executor/tests/test_b.py::test_two"
+        ],
+        "evidence": {
+          "catalog_sha256": "c1a00f29b175f6adbaf29cb965d7981311c44b0d5ab23c5f76b6621f33c7f736",
+          "coverage_sha256": "c5bf56a1e83a69d64ba51285d87e4a92a6fed990fd9e6f28caef0f684ca21736",
+          "ledger_sha256": "d7fdadb378fce6363ce0619d3ec9d4da2ba76131078d5c6803a6cabf33b59186",
+          "obligations_sha256": "32a980704deee146c3302930b14c0537fe7308e03d75f62b66ef9bc62cc00b8e",
+          "raw_manifest_sha256": "7e24ecf4690791ebfa056ff3a2d754f9824222e01f28adea7445f4648320b7f8",
+          "selected_sha256": "7e3d01cd83a366987a2c2b3a1e68cc30a31b94800d0e51dda6ce85ccf88ae9a0"
+        },
+        "frozen_controls": {
+          "config_policy": "517ffdbdcc5987359bb4ab619d306233c5b3b3847b0a236207f649ecea7a22cf",
+          "consumer_policy": "8e0276d8d14b51fcc4ece5e788e63b4d6f9d5fb85994e139848867704b14b8a4",
+          "dataset": "f0b012861d67a831589f4dd0eea17c177c2d101393b81513e0bac4b2d278a6ef",
+          "obligation_policy": "d0444f9cecdcec4b25efd181ed69173cb42bffa2b00b77239f51e8d68fd29316",
+          "profile": "06c3ec46ba7a11924d51c3361958034990ee9f7214e0dd1cfbba0a21ab3c60fa"
+        },
+        "header": {
+          "corpus_hash": "f0b012861d67a831589f4dd0eea17c177c2d101393b81513e0bac4b2d278a6ef",
+          "counters": {
+            "child_crash": 0,
+            "child_timeout": 0,
+            "crash_limited": 0,
+            "crashed": 0,
+            "error": 0,
+            "failed": 1,
+            "incomplete": 0,
+            "missing": 0,
+            "passed": 0,
+            "skipped": 0,
+            "timeout": 0,
+            "xfailed": 0,
+            "xpassed": 0
+          },
+          "created_by": "pkcs11-check",
+          "disabled_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+          "framework_sha": "542978c362d794745252b4257b7c3aa78833090b",
+          "image_digest": "sha256:68867e32a341a9123f3375031694adc175b3eeaad1947c8540735a3440035f22",
+          "lane": "checker-softhsm2-direct-linux-amd64-smoke-v1",
+          "lane_arch": "amd64",
+          "lane_os": "linux",
+          "malformed_lines": 0,
+          "p11lab_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+          "planned_collection_hash": "7e3d01cd83a366987a2c2b3a1e68cc30a31b94800d0e51dda6ce85ccf88ae9a0",
+          "planned_count": 1,
+          "raw_stream_bytes": 324,
+          "raw_stream_sha256": "c17d68fa887ea908a17e382d067e8674eae779872afce9b1fba89efa2e5456d8",
+          "record": "header",
+          "schema_v": 1
+        },
+        "observed_selected": [
+          "/executor/tests/test_a.py::test_one"
+        ],
+        "role": "baseline",
+        "selected": [
+          "/executor/tests/test_a.py::test_one"
+        ],
+        "sidecar": {
+          "build_manifest_sha256": "5938e3dfe6b801936676423f31e0c06128eae87d29e84592d4e5dad7fd07c87e",
+          "installed_manifest_sha256": "e342e4ff40e894139e10fcdc52d593c53f672f0b265ed1568bf88e339a15a9d6",
+          "source_archive_sha256": "11288415016270918fbe0670ce0021c70eea9f547104b643072aa1f66a019d9c"
+        },
+        "unselected": {
+          "/executor/tests/test_b.py::test_two": "protected-profile-exclusion"
+        }
+      },
+      "candidate": {
+        "artifacts": {
+          "checker": {
+            "installed_manifest_sha256": "139aa95843090ec616d2783e00b73ce26f6c48e57f1b5250a4964849b8dcc45e",
+            "source_sha": "cb0214a681382f2725444616bec0e2a5626df6a4",
+            "wheel_sha256": "4378c2e473a0ccceb6453de73c962063b2b6243bf82e966c10d9e5731abb2a2a"
+          },
+          "consumer": {
+            "installed_manifest_sha256": "6bfbd709d5fdc0618ab5ea71913d552464b1fad43b2fc34cf25e96f3d2a904dc"
+          },
+          "derivative": {
+            "config_digest": "sha256:a7f22f7535ce3bb2ec47d3ab5cac2eb402d0b754e1ef878da634ab4350f1dc3f",
+            "layer_digests": [
+              "sha256:cf34405a8dafd2229b8127024447e996c941e7db510b48e329995de9b6b0287d",
+              "sha256:bf7e9c6e11dfee465d3185120032c98e001a554dce6b4997873ac2da7d03c216"
+            ],
+            "manifest_digest": "sha256:f6d0237b28ca6cf025973622aca4827a63bd5be12d50b61e2fc94a7933d5b644",
+            "parent_manifest_digest": "sha256:5c4c1964340aca5b65393bbe9d3249cdd71be26665b3320ad694f034f2743283"
+          },
+          "provider": {
+            "build_key": "2c342554baf006c67c834909c66653ca15bcd2580f4b40339e506697dd042fa9",
+            "config_digest": "sha256:2d38182f21de150f84195a65a732a911a4478a5ce7c6c4d84477855f7f9b3733",
+            "family": "softhsm2",
+            "layer_digests": [
+              "sha256:cf34405a8dafd2229b8127024447e996c941e7db510b48e329995de9b6b0287d"
+            ],
+            "manifest_digest": "sha256:5c4c1964340aca5b65393bbe9d3249cdd71be26665b3320ad694f034f2743283",
+            "platform": "linux/amd64",
+            "recipe_sha256": "e1d8e552330911f9f779f85b6f2c00a15e790dcc3fbb3b28f5da1d660a30c5b8",
+            "source_sha": "6a149f8e661291651cc76b6d36814b89f769d121"
+          },
+          "proxy": null
+        },
+        "catalog": [
+          "/executor/tests/test_a.py::test_one",
+          "/executor/tests/test_b.py::test_two"
+        ],
+        "evidence": {
+          "catalog_sha256": "c1a00f29b175f6adbaf29cb965d7981311c44b0d5ab23c5f76b6621f33c7f736",
+          "coverage_sha256": "c5bf56a1e83a69d64ba51285d87e4a92a6fed990fd9e6f28caef0f684ca21736",
+          "ledger_sha256": "c10ace0479c88b175a6e3519bedeb12fcb146f561b8d27daa501c405f22d290f",
+          "obligations_sha256": "32a980704deee146c3302930b14c0537fe7308e03d75f62b66ef9bc62cc00b8e",
+          "raw_manifest_sha256": "7e24ecf4690791ebfa056ff3a2d754f9824222e01f28adea7445f4648320b7f8",
+          "selected_sha256": "7e3d01cd83a366987a2c2b3a1e68cc30a31b94800d0e51dda6ce85ccf88ae9a0"
+        },
+        "frozen_controls": {
+          "config_policy": "517ffdbdcc5987359bb4ab619d306233c5b3b3847b0a236207f649ecea7a22cf",
+          "consumer_policy": "8e0276d8d14b51fcc4ece5e788e63b4d6f9d5fb85994e139848867704b14b8a4",
+          "dataset": "f0b012861d67a831589f4dd0eea17c177c2d101393b81513e0bac4b2d278a6ef",
+          "obligation_policy": "d0444f9cecdcec4b25efd181ed69173cb42bffa2b00b77239f51e8d68fd29316",
+          "profile": "06c3ec46ba7a11924d51c3361958034990ee9f7214e0dd1cfbba0a21ab3c60fa"
+        },
+        "header": {
+          "corpus_hash": "f0b012861d67a831589f4dd0eea17c177c2d101393b81513e0bac4b2d278a6ef",
+          "counters": {
+            "child_crash": 0,
+            "child_timeout": 0,
+            "crash_limited": 0,
+            "crashed": 0,
+            "error": 0,
+            "failed": 1,
+            "incomplete": 0,
+            "missing": 0,
+            "passed": 0,
+            "skipped": 0,
+            "timeout": 0,
+            "xfailed": 0,
+            "xpassed": 0
+          },
+          "created_by": "pkcs11-check",
+          "disabled_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+          "framework_sha": "cb0214a681382f2725444616bec0e2a5626df6a4",
+          "image_digest": "sha256:f6d0237b28ca6cf025973622aca4827a63bd5be12d50b61e2fc94a7933d5b644",
+          "lane": "checker-softhsm2-direct-linux-amd64-smoke-v1",
+          "lane_arch": "amd64",
+          "lane_os": "linux",
+          "malformed_lines": 0,
+          "p11lab_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+          "planned_collection_hash": "7e3d01cd83a366987a2c2b3a1e68cc30a31b94800d0e51dda6ce85ccf88ae9a0",
+          "planned_count": 1,
+          "raw_stream_bytes": 324,
+          "raw_stream_sha256": "c17d68fa887ea908a17e382d067e8674eae779872afce9b1fba89efa2e5456d8",
+          "record": "header",
+          "schema_v": 1
+        },
+        "observed_selected": [
+          "/executor/tests/test_a.py::test_one"
+        ],
+        "role": "candidate",
+        "selected": [
+          "/executor/tests/test_a.py::test_one"
+        ],
+        "sidecar": {
+          "build_manifest_sha256": "2176550848a044d177f4fa91cc1792fb7b1f19dcd2097e4a89d2b3265694c9e9",
+          "installed_manifest_sha256": "139aa95843090ec616d2783e00b73ce26f6c48e57f1b5250a4964849b8dcc45e",
+          "source_archive_sha256": "5ac40d779db186a9d8fbe9f5181c4e610ad024367c5e30647210799187c9990d"
+        },
+        "unselected": {
+          "/executor/tests/test_b.py::test_two": "protected-profile-exclusion"
+        }
+      }
+    },
+    "frozen_controls": {
+      "config_policy": "517ffdbdcc5987359bb4ab619d306233c5b3b3847b0a236207f649ecea7a22cf",
+      "consumer_policy": "8e0276d8d14b51fcc4ece5e788e63b4d6f9d5fb85994e139848867704b14b8a4",
+      "dataset": "f0b012861d67a831589f4dd0eea17c177c2d101393b81513e0bac4b2d278a6ef",
+      "obligation_policy": "d0444f9cecdcec4b25efd181ed69173cb42bffa2b00b77239f51e8d68fd29316",
+      "profile": "06c3ec46ba7a11924d51c3361958034990ee9f7214e0dd1cfbba0a21ab3c60fa"
+    },
+    "lane": "checker-softhsm2-direct-linux-amd64-smoke-v1",
+    "operation": "checker",
+    "protected": {
+      "control_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+      "evaluator_sha": "09aabfec9fea7e424aabb991f6347349bfa84075",
+      "policy_sha256": "5aba0ffe9522f5d48b418ad9df6816d0c4e6bdc3945198a77056c31e458b1b48",
+      "prepare_sha256": "df2f9384c60ba0c28436a7b8ab4f037a4bf322ba70496ac60196f976395fcc2b",
+      "producer_authority_sha256": "fc36227b5b5641d6e14e8acb19e87bdca0c5d2c156560c8bd8859c8d11f2c841",
+      "selected_candidate_source_sha": "cb0214a681382f2725444616bec0e2a5626df6a4",
+      "selected_lane": "checker-softhsm2-direct-linux-amd64-smoke-v1"
+    },
+    "reviewed_delta_refs": [],
+    "schema_version": 1,
+    "selected_union": [
+      "/executor/tests/test_a.py::test_one"
+    ]
+  },
+  "observations": {
+    "endpoints": {
+      "baseline": {
+        "files": [
+          {
+            "path": "artifacts.json",
+            "sha256": "d65374eb7a99ff05b08779326286861119a6d40d6c98dfd8a69ac2d639ce1b2e",
+            "size": 1379
+          },
+          {
+            "path": "build-manifest.json",
+            "sha256": "5938e3dfe6b801936676423f31e0c06128eae87d29e84592d4e5dad7fd07c87e",
+            "size": 1469
+          },
+          {
+            "path": "catalog.json",
+            "sha256": "50eacfeb09e23ee61e995954acea777b9cabe9f1d47d676dd9c4f82571054581",
+            "size": 89
+          },
+          {
+            "path": "checker.whl",
+            "sha256": "5c49bb6c605f1f3b72e912e73e257d4536e501d5d728fe85e687ab314bccb22a",
+            "size": 79
+          },
+          {
+            "path": "controls/config_policy.json",
+            "sha256": "517ffdbdcc5987359bb4ab619d306233c5b3b3847b0a236207f649ecea7a22cf",
+            "size": 44
+          },
+          {
+            "path": "controls/consumer_policy.json",
+            "sha256": "8e0276d8d14b51fcc4ece5e788e63b4d6f9d5fb85994e139848867704b14b8a4",
+            "size": 46
+          },
+          {
+            "path": "controls/dataset.json",
+            "sha256": "f0b012861d67a831589f4dd0eea17c177c2d101393b81513e0bac4b2d278a6ef",
+            "size": 38
+          },
+          {
+            "path": "controls/obligation_policy.json",
+            "sha256": "d0444f9cecdcec4b25efd181ed69173cb42bffa2b00b77239f51e8d68fd29316",
+            "size": 48
+          },
+          {
+            "path": "controls/profile.json",
+            "sha256": "06c3ec46ba7a11924d51c3361958034990ee9f7214e0dd1cfbba0a21ab3c60fa",
+            "size": 38
+          },
+          {
+            "path": "coverage.json",
+            "sha256": "c5bf56a1e83a69d64ba51285d87e4a92a6fed990fd9e6f28caef0f684ca21736",
+            "size": 255
+          },
+          {
+            "path": "header.json",
+            "sha256": "5b194e57190f3bc7adc0de9a2eb3c0863f7759a8b54fc2a1a4f86c0eb1cce710",
+            "size": 945
+          },
+          {
+            "path": "installed-manifest.json",
+            "sha256": "e342e4ff40e894139e10fcdc52d593c53f672f0b265ed1568bf88e339a15a9d6",
+            "size": 92
+          },
+          {
+            "path": "ledger.jsonl",
+            "sha256": "d7fdadb378fce6363ce0619d3ec9d4da2ba76131078d5c6803a6cabf33b59186",
+            "size": 1411
+          },
+          {
+            "path": "obligations.json",
+            "sha256": "32a980704deee146c3302930b14c0537fe7308e03d75f62b66ef9bc62cc00b8e",
+            "size": 155
+          },
+          {
+            "path": "raw-manifest.json",
+            "sha256": "7e24ecf4690791ebfa056ff3a2d754f9824222e01f28adea7445f4648320b7f8",
+            "size": 138
+          },
+          {
+            "path": "raw/report.jsonl",
+            "sha256": "c17d68fa887ea908a17e382d067e8674eae779872afce9b1fba89efa2e5456d8",
+            "size": 324
+          },
+          {
+            "path": "selected.json",
+            "sha256": "adcf4e8f14f641cb019a4d1a216589444ec863ca66cd099340f9db328ba9bbc3",
+            "size": 52
+          },
+          {
+            "path": "sidecar.json",
+            "sha256": "36b9a2c3372fe3360e6d3c651966f41789de6063d9a76fd3d618043b387d7bf6",
+            "size": 278
+          },
+          {
+            "path": "source.tar",
+            "sha256": "11288415016270918fbe0670ce0021c70eea9f547104b643072aa1f66a019d9c",
+            "size": 10240
+          }
+        ],
+        "streams": [
+          {
+            "attempt": "outer1",
+            "path": "raw/report.jsonl",
+            "selected": [
+              "/executor/tests/test_a.py::test_one"
+            ],
+            "shard_id": "outer1/shard0"
+          }
+        ]
+      },
+      "candidate": {
+        "files": [
+          {
+            "path": "artifacts.json",
+            "sha256": "e8992aa49ce0624bbd437b78cbc540813908ccf18da2f0b562c51395b3b88a26",
+            "size": 1379
+          },
+          {
+            "path": "build-manifest.json",
+            "sha256": "2176550848a044d177f4fa91cc1792fb7b1f19dcd2097e4a89d2b3265694c9e9",
+            "size": 1469
+          },
+          {
+            "path": "catalog.json",
+            "sha256": "50eacfeb09e23ee61e995954acea777b9cabe9f1d47d676dd9c4f82571054581",
+            "size": 89
+          },
+          {
+            "path": "checker.whl",
+            "sha256": "4378c2e473a0ccceb6453de73c962063b2b6243bf82e966c10d9e5731abb2a2a",
+            "size": 79
+          },
+          {
+            "path": "controls/config_policy.json",
+            "sha256": "517ffdbdcc5987359bb4ab619d306233c5b3b3847b0a236207f649ecea7a22cf",
+            "size": 44
+          },
+          {
+            "path": "controls/consumer_policy.json",
+            "sha256": "8e0276d8d14b51fcc4ece5e788e63b4d6f9d5fb85994e139848867704b14b8a4",
+            "size": 46
+          },
+          {
+            "path": "controls/dataset.json",
+            "sha256": "f0b012861d67a831589f4dd0eea17c177c2d101393b81513e0bac4b2d278a6ef",
+            "size": 38
+          },
+          {
+            "path": "controls/obligation_policy.json",
+            "sha256": "d0444f9cecdcec4b25efd181ed69173cb42bffa2b00b77239f51e8d68fd29316",
+            "size": 48
+          },
+          {
+            "path": "controls/profile.json",
+            "sha256": "06c3ec46ba7a11924d51c3361958034990ee9f7214e0dd1cfbba0a21ab3c60fa",
+            "size": 38
+          },
+          {
+            "path": "coverage.json",
+            "sha256": "c5bf56a1e83a69d64ba51285d87e4a92a6fed990fd9e6f28caef0f684ca21736",
+            "size": 255
+          },
+          {
+            "path": "header.json",
+            "sha256": "6559137a030eb3fb28706b4f0280b75944589df7738fb8d95e16d255d9f54b37",
+            "size": 945
+          },
+          {
+            "path": "installed-manifest.json",
+            "sha256": "139aa95843090ec616d2783e00b73ce26f6c48e57f1b5250a4964849b8dcc45e",
+            "size": 93
+          },
+          {
+            "path": "ledger.jsonl",
+            "sha256": "c10ace0479c88b175a6e3519bedeb12fcb146f561b8d27daa501c405f22d290f",
+            "size": 1411
+          },
+          {
+            "path": "obligations.json",
+            "sha256": "32a980704deee146c3302930b14c0537fe7308e03d75f62b66ef9bc62cc00b8e",
+            "size": 155
+          },
+          {
+            "path": "raw-manifest.json",
+            "sha256": "7e24ecf4690791ebfa056ff3a2d754f9824222e01f28adea7445f4648320b7f8",
+            "size": 138
+          },
+          {
+            "path": "raw/report.jsonl",
+            "sha256": "c17d68fa887ea908a17e382d067e8674eae779872afce9b1fba89efa2e5456d8",
+            "size": 324
+          },
+          {
+            "path": "selected.json",
+            "sha256": "adcf4e8f14f641cb019a4d1a216589444ec863ca66cd099340f9db328ba9bbc3",
+            "size": 52
+          },
+          {
+            "path": "sidecar.json",
+            "sha256": "afc45789734c1e50c93990461870faa311d82634143ae54ac2c9fba3a56cb675",
+            "size": 278
+          },
+          {
+            "path": "source.tar",
+            "sha256": "5ac40d779db186a9d8fbe9f5181c4e610ad024367c5e30647210799187c9990d",
+            "size": 10240
+          }
+        ],
+        "streams": [
+          {
+            "attempt": "outer1",
+            "path": "raw/report.jsonl",
+            "selected": [
+              "/executor/tests/test_a.py::test_one"
+            ],
+            "shard_id": "outer1/shard0"
+          }
+        ]
+      }
+    },
+    "schema_version": 1,
+    "scope": "github-attested"
+  }
+}

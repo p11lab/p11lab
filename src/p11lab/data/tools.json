@@ -10,7 +10,8 @@
         "license_status": "unreviewed"
       },
       "artifacts": [],
-      "pending": "Pinned source; built artifact and actual-content source/license evidence pending."
+      "pending": "Fixed executor source and portable Debian/Python/build input selection measured; 58ac local wheel remains expected unbuilt output, with no public wheel URL or reproduced producer receipt. Installed manifests, source/rights admission and qualification remain blocked.",
+      "input_lock": "tool-inputs/checker.debian13-amd64.lock.json"
     },
     "proxy": {
       "status": "planned",
@@ -70,7 +71,24 @@
         "consumer/README.md",
         "consumer/verify.py",
         "consumer/Dockerfile"
-      ]
+      ],
+      "input_lock": "tool-inputs/consumer.debian13-amd64.lock.json"
+    }
+  },
+  "input_sets": {
+    "checker": {
+      "target": "debian13-amd64",
+      "lock": "tool-inputs/checker.debian13-amd64.lock.json",
+      "installation": "not-executed",
+      "rights": "unreviewed",
+      "qualification": "blocked"
+    },
+    "oracle": {
+      "target": "debian13-amd64",
+      "lock": "tool-inputs/oracle.debian13-amd64.lock.json",
+      "installation": "not-executed",
+      "rights": "unreviewed",
+      "qualification": "blocked"
     }
   }
 }

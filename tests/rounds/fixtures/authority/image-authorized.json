@@ -1,0 +1,593 @@
+{
+  "envelope": {
+    "allowed_axis": "image",
+    "catalog_union": [
+      "test_a.py::test_one",
+      "test_b.py::test_two"
+    ],
+    "endpoints": {
+      "baseline": {
+        "artifacts": {
+          "checker": {
+            "installed_manifest_sha256": "320c30997cd1f7655c456f21e143e27ff4456925baba477a32f422428a649fe2",
+            "source_sha": "542978c362d794745252b4257b7c3aa78833090b",
+            "wheel_sha256": "6466b5abd6d2c9838acee42f71393461a0b85d3ec02d181e75aa19efa6e8a13d"
+          },
+          "consumer": {
+            "installed_manifest_sha256": "6bfbd709d5fdc0618ab5ea71913d552464b1fad43b2fc34cf25e96f3d2a904dc"
+          },
+          "derivative": {
+            "config_digest": "sha256:8de928bb7273a9b6c7a178e87de283b4fc3aaac2d1c557c398ab1bfdb2a9956e",
+            "layer_digests": [
+              "sha256:cf34405a8dafd2229b8127024447e996c941e7db510b48e329995de9b6b0287d",
+              "sha256:f8931178a418240cb536cc85b128cedbc9185c0f9f80e656ff8086e51e75d227"
+            ],
+            "manifest_digest": "sha256:68867e32a341a9123f3375031694adc175b3eeaad1947c8540735a3440035f22",
+            "parent_manifest_digest": "sha256:5c4c1964340aca5b65393bbe9d3249cdd71be26665b3320ad694f034f2743283"
+          },
+          "provider": {
+            "build_key": "2c342554baf006c67c834909c66653ca15bcd2580f4b40339e506697dd042fa9",
+            "config_digest": "sha256:2d38182f21de150f84195a65a732a911a4478a5ce7c6c4d84477855f7f9b3733",
+            "family": "softhsm2",
+            "layer_digests": [
+              "sha256:cf34405a8dafd2229b8127024447e996c941e7db510b48e329995de9b6b0287d"
+            ],
+            "manifest_digest": "sha256:5c4c1964340aca5b65393bbe9d3249cdd71be26665b3320ad694f034f2743283",
+            "platform": "linux/amd64",
+            "recipe_sha256": "e1d8e552330911f9f779f85b6f2c00a15e790dcc3fbb3b28f5da1d660a30c5b8",
+            "source_sha": "6a149f8e661291651cc76b6d36814b89f769d121"
+          },
+          "proxy": {
+            "build_key": "5cc8d01f322513dffd4b09b182332e87ba13bac62140333223a5e0f03e81dff9",
+            "cli_sha256": "99bb88401742848e032fd6f51709415fb6be169a72d2e5d7fc44289255160d3c",
+            "daemon_sha256": "f77b12a53ece5f6b7050800bbdbf8cc5ebe87f1b1387cf739f243e43e2ce886b",
+            "shim_sha256": "04e666aa09809daf691a99cc7bf2d57ba09bac171966a71812ffd049d7c96bb1",
+            "source_sha": "c4c3ed5bcc7af02c5ccf3bcc73ceceb42a01f4ec"
+          }
+        },
+        "catalog": [
+          "test_a.py::test_one",
+          "test_b.py::test_two"
+        ],
+        "evidence": {
+          "catalog_sha256": "f51a371e150ef1661c6efe0a1b3fb40385cb31a999399c432320ce33bc6ec00e",
+          "coverage_sha256": "6a783eda7335f73e852d4cb3997d96a941869016d4a3916c317bb3a5bd47311c",
+          "ledger_sha256": "dca8243ae9abeb3284192f914739f4b920483df586c679268f3c4bb9621883a9",
+          "obligations_sha256": "1590678ef1c18971bdcfafe6fa98919320e4f9b5c4fc2968b641c6e205c2643e",
+          "raw_manifest_sha256": "2711b2e0ec78d2e64c98ed2384ab1d6420eaba5522c5006fbd796584eecac16d",
+          "selected_sha256": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34"
+        },
+        "frozen_controls": {
+          "config_policy": "cf623f6562600798ab36bd84427f1eff850437db826a7835246c28b6b7ebac99",
+          "consumer_policy": "ed9a5d24694d70ef4b5f27ce4895792d44071ac6f0cf9cc421f000802fec0b7b",
+          "dataset": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+          "obligation_policy": "c63d345ed2d67d200adcded83b726a7054f868cf8d90e00dc06e40b44740be20",
+          "profile": "1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0"
+        },
+        "header": {
+          "corpus_hash": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+          "counters": {
+            "child_crash": 0,
+            "child_timeout": 0,
+            "crash_limited": 0,
+            "crashed": 0,
+            "error": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "missing": 0,
+            "passed": 1,
+            "skipped": 0,
+            "timeout": 0,
+            "xfailed": 0,
+            "xpassed": 0
+          },
+          "created_by": "pkcs11-check",
+          "disabled_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+          "framework_sha": "542978c362d794745252b4257b7c3aa78833090b",
+          "image_digest": "sha256:68867e32a341a9123f3375031694adc175b3eeaad1947c8540735a3440035f22",
+          "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+          "lane_arch": "amd64",
+          "lane_os": "linux",
+          "malformed_lines": 0,
+          "p11lab_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+          "planned_collection_hash": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34",
+          "planned_count": 1,
+          "raw_stream_bytes": 0,
+          "raw_stream_sha256": "",
+          "record": "header",
+          "schema_v": 1
+        },
+        "observed_selected": [
+          "test_a.py::test_one"
+        ],
+        "role": "baseline",
+        "selected": [
+          "test_a.py::test_one"
+        ],
+        "sidecar": {
+          "build_manifest_sha256": "f2e22505fd9a8932d4a1c03c9cfad55e86f2ee1f086cde3d0536e2673b1018af",
+          "installed_manifest_sha256": "10b4dc97437e71b8b5b83954b653f53712e6f12eddbdb6329da097ef5dc60d9e",
+          "source_archive_sha256": "5ea2ca99c00b19aeb72dd98b1184c6f42f015c6c9c9028542195cbc05a160745"
+        },
+        "unselected": {
+          "test_b.py::test_two": "protected-profile-exclusion"
+        }
+      },
+      "candidate": {
+        "artifacts": {
+          "checker": {
+            "installed_manifest_sha256": "320c30997cd1f7655c456f21e143e27ff4456925baba477a32f422428a649fe2",
+            "source_sha": "542978c362d794745252b4257b7c3aa78833090b",
+            "wheel_sha256": "6466b5abd6d2c9838acee42f71393461a0b85d3ec02d181e75aa19efa6e8a13d"
+          },
+          "consumer": {
+            "installed_manifest_sha256": "6bfbd709d5fdc0618ab5ea71913d552464b1fad43b2fc34cf25e96f3d2a904dc"
+          },
+          "derivative": {
+            "config_digest": "sha256:b4d1352a34ad19cf67195116b97f193f7b7a6995efd5c8554779530e9a60f158",
+            "layer_digests": [
+              "sha256:372e93b06551830648cb0884f859d40ff92737869beacb9b260f71ad84b05cd0",
+              "sha256:f3663814da46413aec95780422a27eff755a03c475b4e4a4599d7d543914e108"
+            ],
+            "manifest_digest": "sha256:9a6d1944688f24fbd7db849e380f3b67efa7baddf3be9f7c62ecffc7ce586109",
+            "parent_manifest_digest": "sha256:a6372711c77da4cc84a146c9e4507cd089a4c0c8e2ff928fe3ac7d7635e0dadd"
+          },
+          "provider": {
+            "build_key": "05a9217abee2f45d868dcf7b817e3e945b90ba115e2d1c0fc952bf65a99131e6",
+            "config_digest": "sha256:cb14ad93be0128ca0871804f050e8c9cf0fadd84a43172d053b549cb1537b31e",
+            "family": "softhsm2",
+            "layer_digests": [
+              "sha256:372e93b06551830648cb0884f859d40ff92737869beacb9b260f71ad84b05cd0"
+            ],
+            "manifest_digest": "sha256:a6372711c77da4cc84a146c9e4507cd089a4c0c8e2ff928fe3ac7d7635e0dadd",
+            "platform": "linux/amd64",
+            "recipe_sha256": "00faf8d40342a0074180000a1415acf4c1f0809c18dab27ffe6182d49a2af330",
+            "source_sha": "591d858e54c97dba28dab068de2a62fd28cbc227"
+          },
+          "proxy": {
+            "build_key": "5cc8d01f322513dffd4b09b182332e87ba13bac62140333223a5e0f03e81dff9",
+            "cli_sha256": "99bb88401742848e032fd6f51709415fb6be169a72d2e5d7fc44289255160d3c",
+            "daemon_sha256": "f77b12a53ece5f6b7050800bbdbf8cc5ebe87f1b1387cf739f243e43e2ce886b",
+            "shim_sha256": "04e666aa09809daf691a99cc7bf2d57ba09bac171966a71812ffd049d7c96bb1",
+            "source_sha": "c4c3ed5bcc7af02c5ccf3bcc73ceceb42a01f4ec"
+          }
+        },
+        "catalog": [
+          "test_a.py::test_one",
+          "test_b.py::test_two"
+        ],
+        "evidence": {
+          "catalog_sha256": "f51a371e150ef1661c6efe0a1b3fb40385cb31a999399c432320ce33bc6ec00e",
+          "coverage_sha256": "81f4dd6c9b8be632582ae4977858f36be60cd558aeb2da20645fac34b601da29",
+          "ledger_sha256": "98258bbdddb9b07a9c0be4841a02403130c78b4cb750ca305ed05dbb47537f77",
+          "obligations_sha256": "f7b1b4773d33828b1489cc5ecd86c700f4baaec4602a82c25f945857eda0cdad",
+          "raw_manifest_sha256": "65e2b1d2f21ed264c2ff7eb7fcff2d7edebc4b369ef181041f5a210cebfdeccd",
+          "selected_sha256": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34"
+        },
+        "frozen_controls": {
+          "config_policy": "cf623f6562600798ab36bd84427f1eff850437db826a7835246c28b6b7ebac99",
+          "consumer_policy": "ed9a5d24694d70ef4b5f27ce4895792d44071ac6f0cf9cc421f000802fec0b7b",
+          "dataset": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+          "obligation_policy": "c63d345ed2d67d200adcded83b726a7054f868cf8d90e00dc06e40b44740be20",
+          "profile": "1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0"
+        },
+        "header": {
+          "corpus_hash": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+          "counters": {
+            "child_crash": 0,
+            "child_timeout": 0,
+            "crash_limited": 0,
+            "crashed": 0,
+            "error": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "missing": 0,
+            "passed": 1,
+            "skipped": 0,
+            "timeout": 0,
+            "xfailed": 0,
+            "xpassed": 0
+          },
+          "created_by": "pkcs11-check",
+          "disabled_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+          "framework_sha": "542978c362d794745252b4257b7c3aa78833090b",
+          "image_digest": "sha256:9a6d1944688f24fbd7db849e380f3b67efa7baddf3be9f7c62ecffc7ce586109",
+          "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+          "lane_arch": "amd64",
+          "lane_os": "linux",
+          "malformed_lines": 0,
+          "p11lab_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+          "planned_collection_hash": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34",
+          "planned_count": 1,
+          "raw_stream_bytes": 0,
+          "raw_stream_sha256": "",
+          "record": "header",
+          "schema_v": 1
+        },
+        "observed_selected": [
+          "test_a.py::test_one"
+        ],
+        "role": "candidate",
+        "selected": [
+          "test_a.py::test_one"
+        ],
+        "sidecar": {
+          "build_manifest_sha256": "cd7480875e09dd8ee8c11fda8d83658e87b5d34116713ab1fd9c9a548d28e1f2",
+          "installed_manifest_sha256": "058cbf16a0a1c8da6439f791aeda26f166dab3e34a5b1e9c97da874454cecde7",
+          "source_archive_sha256": "08d9f72fff757880216fe23596d9ff38d19b81d01d2fbe1b4046a5368b688857"
+        },
+        "unselected": {
+          "test_b.py::test_two": "protected-profile-exclusion"
+        }
+      }
+    },
+    "frozen_controls": {
+      "config_policy": "cf623f6562600798ab36bd84427f1eff850437db826a7835246c28b6b7ebac99",
+      "consumer_policy": "ed9a5d24694d70ef4b5f27ce4895792d44071ac6f0cf9cc421f000802fec0b7b",
+      "dataset": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+      "obligation_policy": "c63d345ed2d67d200adcded83b726a7054f868cf8d90e00dc06e40b44740be20",
+      "profile": "1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0"
+    },
+    "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+    "operation": "image",
+    "protected": {
+      "control_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+      "evaluator_sha": "09aabfec9fea7e424aabb991f6347349bfa84075",
+      "policy_sha256": "5aba0ffe9522f5d48b418ad9df6816d0c4e6bdc3945198a77056c31e458b1b48",
+      "prepare_sha256": "df2f9384c60ba0c28436a7b8ab4f037a4bf322ba70496ac60196f976395fcc2b",
+      "producer_authority_sha256": "fc36227b5b5641d6e14e8acb19e87bdca0c5d2c156560c8bd8859c8d11f2c841",
+      "selected_candidate_source_sha": "591d858e54c97dba28dab068de2a62fd28cbc227",
+      "selected_lane": "image-softhsm2-direct-linux-amd64-smoke-v1"
+    },
+    "reviewed_delta_refs": [],
+    "schema_version": 1,
+    "selected_union": [
+      "test_a.py::test_one"
+    ]
+  },
+  "observed": {
+    "baseline": {
+      "evidence": {
+        "catalog_sha256": "f51a371e150ef1661c6efe0a1b3fb40385cb31a999399c432320ce33bc6ec00e",
+        "coverage_sha256": "6a783eda7335f73e852d4cb3997d96a941869016d4a3916c317bb3a5bd47311c",
+        "ledger_sha256": "dca8243ae9abeb3284192f914739f4b920483df586c679268f3c4bb9621883a9",
+        "obligations_sha256": "1590678ef1c18971bdcfafe6fa98919320e4f9b5c4fc2968b641c6e205c2643e",
+        "raw_manifest_sha256": "2711b2e0ec78d2e64c98ed2384ab1d6420eaba5522c5006fbd796584eecac16d",
+        "selected_sha256": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34"
+      },
+      "header": {
+        "corpus_hash": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+        "counters": {
+          "child_crash": 0,
+          "child_timeout": 0,
+          "crash_limited": 0,
+          "crashed": 0,
+          "error": 0,
+          "failed": 0,
+          "incomplete": 0,
+          "missing": 0,
+          "passed": 1,
+          "skipped": 0,
+          "timeout": 0,
+          "xfailed": 0,
+          "xpassed": 0
+        },
+        "created_by": "pkcs11-check",
+        "disabled_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+        "framework_sha": "542978c362d794745252b4257b7c3aa78833090b",
+        "image_digest": "sha256:68867e32a341a9123f3375031694adc175b3eeaad1947c8540735a3440035f22",
+        "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+        "lane_arch": "amd64",
+        "lane_os": "linux",
+        "malformed_lines": 0,
+        "p11lab_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+        "planned_collection_hash": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34",
+        "planned_count": 1,
+        "raw_stream_bytes": 0,
+        "raw_stream_sha256": "",
+        "record": "header",
+        "schema_v": 1
+      },
+      "sidecar": {
+        "build_manifest_sha256": "f2e22505fd9a8932d4a1c03c9cfad55e86f2ee1f086cde3d0536e2673b1018af",
+        "installed_manifest_sha256": "10b4dc97437e71b8b5b83954b653f53712e6f12eddbdb6329da097ef5dc60d9e",
+        "source_archive_sha256": "5ea2ca99c00b19aeb72dd98b1184c6f42f015c6c9c9028542195cbc05a160745"
+      }
+    },
+    "candidate": {
+      "evidence": {
+        "catalog_sha256": "f51a371e150ef1661c6efe0a1b3fb40385cb31a999399c432320ce33bc6ec00e",
+        "coverage_sha256": "81f4dd6c9b8be632582ae4977858f36be60cd558aeb2da20645fac34b601da29",
+        "ledger_sha256": "98258bbdddb9b07a9c0be4841a02403130c78b4cb750ca305ed05dbb47537f77",
+        "obligations_sha256": "f7b1b4773d33828b1489cc5ecd86c700f4baaec4602a82c25f945857eda0cdad",
+        "raw_manifest_sha256": "65e2b1d2f21ed264c2ff7eb7fcff2d7edebc4b369ef181041f5a210cebfdeccd",
+        "selected_sha256": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34"
+      },
+      "header": {
+        "corpus_hash": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+        "counters": {
+          "child_crash": 0,
+          "child_timeout": 0,
+          "crash_limited": 0,
+          "crashed": 0,
+          "error": 0,
+          "failed": 0,
+          "incomplete": 0,
+          "missing": 0,
+          "passed": 1,
+          "skipped": 0,
+          "timeout": 0,
+          "xfailed": 0,
+          "xpassed": 0
+        },
+        "created_by": "pkcs11-check",
+        "disabled_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+        "framework_sha": "542978c362d794745252b4257b7c3aa78833090b",
+        "image_digest": "sha256:9a6d1944688f24fbd7db849e380f3b67efa7baddf3be9f7c62ecffc7ce586109",
+        "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+        "lane_arch": "amd64",
+        "lane_os": "linux",
+        "malformed_lines": 0,
+        "p11lab_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+        "planned_collection_hash": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34",
+        "planned_count": 1,
+        "raw_stream_bytes": 0,
+        "raw_stream_sha256": "",
+        "record": "header",
+        "schema_v": 1
+      },
+      "sidecar": {
+        "build_manifest_sha256": "cd7480875e09dd8ee8c11fda8d83658e87b5d34116713ab1fd9c9a548d28e1f2",
+        "installed_manifest_sha256": "058cbf16a0a1c8da6439f791aeda26f166dab3e34a5b1e9c97da874454cecde7",
+        "source_archive_sha256": "08d9f72fff757880216fe23596d9ff38d19b81d01d2fbe1b4046a5368b688857"
+      }
+    }
+  },
+  "protected_expected": {
+    "allowed_axis": "image",
+    "catalog_union": [
+      "test_a.py::test_one",
+      "test_b.py::test_two"
+    ],
+    "endpoints": {
+      "baseline": {
+        "artifacts": {
+          "checker": {
+            "installed_manifest_sha256": "320c30997cd1f7655c456f21e143e27ff4456925baba477a32f422428a649fe2",
+            "source_sha": "542978c362d794745252b4257b7c3aa78833090b",
+            "wheel_sha256": "6466b5abd6d2c9838acee42f71393461a0b85d3ec02d181e75aa19efa6e8a13d"
+          },
+          "consumer": {
+            "installed_manifest_sha256": "6bfbd709d5fdc0618ab5ea71913d552464b1fad43b2fc34cf25e96f3d2a904dc"
+          },
+          "derivative": {
+            "config_digest": "sha256:8de928bb7273a9b6c7a178e87de283b4fc3aaac2d1c557c398ab1bfdb2a9956e",
+            "layer_digests": [
+              "sha256:cf34405a8dafd2229b8127024447e996c941e7db510b48e329995de9b6b0287d",
+              "sha256:f8931178a418240cb536cc85b128cedbc9185c0f9f80e656ff8086e51e75d227"
+            ],
+            "manifest_digest": "sha256:68867e32a341a9123f3375031694adc175b3eeaad1947c8540735a3440035f22",
+            "parent_manifest_digest": "sha256:5c4c1964340aca5b65393bbe9d3249cdd71be26665b3320ad694f034f2743283"
+          },
+          "provider": {
+            "build_key": "2c342554baf006c67c834909c66653ca15bcd2580f4b40339e506697dd042fa9",
+            "config_digest": "sha256:2d38182f21de150f84195a65a732a911a4478a5ce7c6c4d84477855f7f9b3733",
+            "family": "softhsm2",
+            "layer_digests": [
+              "sha256:cf34405a8dafd2229b8127024447e996c941e7db510b48e329995de9b6b0287d"
+            ],
+            "manifest_digest": "sha256:5c4c1964340aca5b65393bbe9d3249cdd71be26665b3320ad694f034f2743283",
+            "platform": "linux/amd64",
+            "recipe_sha256": "e1d8e552330911f9f779f85b6f2c00a15e790dcc3fbb3b28f5da1d660a30c5b8",
+            "source_sha": "6a149f8e661291651cc76b6d36814b89f769d121"
+          },
+          "proxy": {
+            "build_key": "5cc8d01f322513dffd4b09b182332e87ba13bac62140333223a5e0f03e81dff9",
+            "cli_sha256": "99bb88401742848e032fd6f51709415fb6be169a72d2e5d7fc44289255160d3c",
+            "daemon_sha256": "f77b12a53ece5f6b7050800bbdbf8cc5ebe87f1b1387cf739f243e43e2ce886b",
+            "shim_sha256": "04e666aa09809daf691a99cc7bf2d57ba09bac171966a71812ffd049d7c96bb1",
+            "source_sha": "c4c3ed5bcc7af02c5ccf3bcc73ceceb42a01f4ec"
+          }
+        },
+        "catalog": [
+          "test_a.py::test_one",
+          "test_b.py::test_two"
+        ],
+        "evidence": {
+          "catalog_sha256": "f51a371e150ef1661c6efe0a1b3fb40385cb31a999399c432320ce33bc6ec00e",
+          "coverage_sha256": "6a783eda7335f73e852d4cb3997d96a941869016d4a3916c317bb3a5bd47311c",
+          "ledger_sha256": "dca8243ae9abeb3284192f914739f4b920483df586c679268f3c4bb9621883a9",
+          "obligations_sha256": "1590678ef1c18971bdcfafe6fa98919320e4f9b5c4fc2968b641c6e205c2643e",
+          "raw_manifest_sha256": "2711b2e0ec78d2e64c98ed2384ab1d6420eaba5522c5006fbd796584eecac16d",
+          "selected_sha256": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34"
+        },
+        "frozen_controls": {
+          "config_policy": "cf623f6562600798ab36bd84427f1eff850437db826a7835246c28b6b7ebac99",
+          "consumer_policy": "ed9a5d24694d70ef4b5f27ce4895792d44071ac6f0cf9cc421f000802fec0b7b",
+          "dataset": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+          "obligation_policy": "c63d345ed2d67d200adcded83b726a7054f868cf8d90e00dc06e40b44740be20",
+          "profile": "1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0"
+        },
+        "header": {
+          "corpus_hash": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+          "counters": {
+            "child_crash": 0,
+            "child_timeout": 0,
+            "crash_limited": 0,
+            "crashed": 0,
+            "error": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "missing": 0,
+            "passed": 1,
+            "skipped": 0,
+            "timeout": 0,
+            "xfailed": 0,
+            "xpassed": 0
+          },
+          "created_by": "pkcs11-check",
+          "disabled_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+          "framework_sha": "542978c362d794745252b4257b7c3aa78833090b",
+          "image_digest": "sha256:68867e32a341a9123f3375031694adc175b3eeaad1947c8540735a3440035f22",
+          "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+          "lane_arch": "amd64",
+          "lane_os": "linux",
+          "malformed_lines": 0,
+          "p11lab_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+          "planned_collection_hash": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34",
+          "planned_count": 1,
+          "raw_stream_bytes": 0,
+          "raw_stream_sha256": "",
+          "record": "header",
+          "schema_v": 1
+        },
+        "observed_selected": [
+          "test_a.py::test_one"
+        ],
+        "role": "baseline",
+        "selected": [
+          "test_a.py::test_one"
+        ],
+        "sidecar": {
+          "build_manifest_sha256": "f2e22505fd9a8932d4a1c03c9cfad55e86f2ee1f086cde3d0536e2673b1018af",
+          "installed_manifest_sha256": "10b4dc97437e71b8b5b83954b653f53712e6f12eddbdb6329da097ef5dc60d9e",
+          "source_archive_sha256": "5ea2ca99c00b19aeb72dd98b1184c6f42f015c6c9c9028542195cbc05a160745"
+        },
+        "unselected": {
+          "test_b.py::test_two": "protected-profile-exclusion"
+        }
+      },
+      "candidate": {
+        "artifacts": {
+          "checker": {
+            "installed_manifest_sha256": "320c30997cd1f7655c456f21e143e27ff4456925baba477a32f422428a649fe2",
+            "source_sha": "542978c362d794745252b4257b7c3aa78833090b",
+            "wheel_sha256": "6466b5abd6d2c9838acee42f71393461a0b85d3ec02d181e75aa19efa6e8a13d"
+          },
+          "consumer": {
+            "installed_manifest_sha256": "6bfbd709d5fdc0618ab5ea71913d552464b1fad43b2fc34cf25e96f3d2a904dc"
+          },
+          "derivative": {
+            "config_digest": "sha256:b4d1352a34ad19cf67195116b97f193f7b7a6995efd5c8554779530e9a60f158",
+            "layer_digests": [
+              "sha256:372e93b06551830648cb0884f859d40ff92737869beacb9b260f71ad84b05cd0",
+              "sha256:f3663814da46413aec95780422a27eff755a03c475b4e4a4599d7d543914e108"
+            ],
+            "manifest_digest": "sha256:9a6d1944688f24fbd7db849e380f3b67efa7baddf3be9f7c62ecffc7ce586109",
+            "parent_manifest_digest": "sha256:a6372711c77da4cc84a146c9e4507cd089a4c0c8e2ff928fe3ac7d7635e0dadd"
+          },
+          "provider": {
+            "build_key": "05a9217abee2f45d868dcf7b817e3e945b90ba115e2d1c0fc952bf65a99131e6",
+            "config_digest": "sha256:cb14ad93be0128ca0871804f050e8c9cf0fadd84a43172d053b549cb1537b31e",
+            "family": "softhsm2",
+            "layer_digests": [
+              "sha256:372e93b06551830648cb0884f859d40ff92737869beacb9b260f71ad84b05cd0"
+            ],
+            "manifest_digest": "sha256:a6372711c77da4cc84a146c9e4507cd089a4c0c8e2ff928fe3ac7d7635e0dadd",
+            "platform": "linux/amd64",
+            "recipe_sha256": "00faf8d40342a0074180000a1415acf4c1f0809c18dab27ffe6182d49a2af330",
+            "source_sha": "591d858e54c97dba28dab068de2a62fd28cbc227"
+          },
+          "proxy": {
+            "build_key": "5cc8d01f322513dffd4b09b182332e87ba13bac62140333223a5e0f03e81dff9",
+            "cli_sha256": "99bb88401742848e032fd6f51709415fb6be169a72d2e5d7fc44289255160d3c",
+            "daemon_sha256": "f77b12a53ece5f6b7050800bbdbf8cc5ebe87f1b1387cf739f243e43e2ce886b",
+            "shim_sha256": "04e666aa09809daf691a99cc7bf2d57ba09bac171966a71812ffd049d7c96bb1",
+            "source_sha": "c4c3ed5bcc7af02c5ccf3bcc73ceceb42a01f4ec"
+          }
+        },
+        "catalog": [
+          "test_a.py::test_one",
+          "test_b.py::test_two"
+        ],
+        "evidence": {
+          "catalog_sha256": "f51a371e150ef1661c6efe0a1b3fb40385cb31a999399c432320ce33bc6ec00e",
+          "coverage_sha256": "81f4dd6c9b8be632582ae4977858f36be60cd558aeb2da20645fac34b601da29",
+          "ledger_sha256": "98258bbdddb9b07a9c0be4841a02403130c78b4cb750ca305ed05dbb47537f77",
+          "obligations_sha256": "f7b1b4773d33828b1489cc5ecd86c700f4baaec4602a82c25f945857eda0cdad",
+          "raw_manifest_sha256": "65e2b1d2f21ed264c2ff7eb7fcff2d7edebc4b369ef181041f5a210cebfdeccd",
+          "selected_sha256": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34"
+        },
+        "frozen_controls": {
+          "config_policy": "cf623f6562600798ab36bd84427f1eff850437db826a7835246c28b6b7ebac99",
+          "consumer_policy": "ed9a5d24694d70ef4b5f27ce4895792d44071ac6f0cf9cc421f000802fec0b7b",
+          "dataset": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+          "obligation_policy": "c63d345ed2d67d200adcded83b726a7054f868cf8d90e00dc06e40b44740be20",
+          "profile": "1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0"
+        },
+        "header": {
+          "corpus_hash": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+          "counters": {
+            "child_crash": 0,
+            "child_timeout": 0,
+            "crash_limited": 0,
+            "crashed": 0,
+            "error": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "missing": 0,
+            "passed": 1,
+            "skipped": 0,
+            "timeout": 0,
+            "xfailed": 0,
+            "xpassed": 0
+          },
+          "created_by": "pkcs11-check",
+          "disabled_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+          "framework_sha": "542978c362d794745252b4257b7c3aa78833090b",
+          "image_digest": "sha256:9a6d1944688f24fbd7db849e380f3b67efa7baddf3be9f7c62ecffc7ce586109",
+          "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+          "lane_arch": "amd64",
+          "lane_os": "linux",
+          "malformed_lines": 0,
+          "p11lab_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+          "planned_collection_hash": "c4eb46c9bc564e15532ed4a837946cec1012833d8f470927f76c0518857f6b34",
+          "planned_count": 1,
+          "raw_stream_bytes": 0,
+          "raw_stream_sha256": "",
+          "record": "header",
+          "schema_v": 1
+        },
+        "observed_selected": [
+          "test_a.py::test_one"
+        ],
+        "role": "candidate",
+        "selected": [
+          "test_a.py::test_one"
+        ],
+        "sidecar": {
+          "build_manifest_sha256": "cd7480875e09dd8ee8c11fda8d83658e87b5d34116713ab1fd9c9a548d28e1f2",
+          "installed_manifest_sha256": "058cbf16a0a1c8da6439f791aeda26f166dab3e34a5b1e9c97da874454cecde7",
+          "source_archive_sha256": "08d9f72fff757880216fe23596d9ff38d19b81d01d2fbe1b4046a5368b688857"
+        },
+        "unselected": {
+          "test_b.py::test_two": "protected-profile-exclusion"
+        }
+      }
+    },
+    "frozen_controls": {
+      "config_policy": "cf623f6562600798ab36bd84427f1eff850437db826a7835246c28b6b7ebac99",
+      "consumer_policy": "ed9a5d24694d70ef4b5f27ce4895792d44071ac6f0cf9cc421f000802fec0b7b",
+      "dataset": "b277fd623676a525c29b9eb155afc8c9010681814ceafb2d7627f47b9a232576",
+      "obligation_policy": "c63d345ed2d67d200adcded83b726a7054f868cf8d90e00dc06e40b44740be20",
+      "profile": "1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0"
+    },
+    "lane": "image-softhsm2-direct-linux-amd64-smoke-v1",
+    "operation": "image",
+    "protected": {
+      "control_sha": "bd403a86adbfec66ec15df2f1389b1cf04816182",
+      "evaluator_sha": "09aabfec9fea7e424aabb991f6347349bfa84075",
+      "policy_sha256": "5aba0ffe9522f5d48b418ad9df6816d0c4e6bdc3945198a77056c31e458b1b48",
+      "prepare_sha256": "df2f9384c60ba0c28436a7b8ab4f037a4bf322ba70496ac60196f976395fcc2b",
+      "producer_authority_sha256": "fc36227b5b5641d6e14e8acb19e87bdca0c5d2c156560c8bd8859c8d11f2c841",
+      "selected_candidate_source_sha": "591d858e54c97dba28dab068de2a62fd28cbc227",
+      "selected_lane": "image-softhsm2-direct-linux-amd64-smoke-v1"
+    },
+    "reviewed_delta_refs": [],
+    "schema_version": 1,
+    "selected_union": [
+      "test_a.py::test_one"
+    ]
+  },
+  "synthetic": true
+}

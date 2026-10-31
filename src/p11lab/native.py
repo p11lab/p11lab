@@ -26,7 +26,7 @@ from .bundle import (
 )
 from .catalog import load_native_target, packaged_asset, package_data
 from .identity import artifact_key, public_identity
-from .models import ArtifactRef, RunSpec, RunResult
+from .models import ArtifactRef, ProxyBuildIdentityV1, RunSpec, RunResult
 from .receipts import write_receipt
 from .sources import checksum
 from .secrets import credential_text, snapshot_credentials
@@ -615,10 +615,56 @@ def run_native_softhsm(spec: RunSpec, installed: InstalledBundle) -> RunResult:
     return RunResult(app, tuple(lifecycle), tuple(cleanup), code, receipt)
 
 
-def _validate_client_manifest(manifest, environment, channel):
-    """Client bundles carry proxy component identities; no catalog target lock."""
-    from .tls import PROXY_CARGO_LOCK_SHA256, PROXY_SOURCE_REVISION
+def _selected_proxy_identity(expected):
+    """Resolve None to the absolute pinned default; validate explicit records.
 
+    Records are recursively immutable, so returning an existing instance
+    shares it safely: no caller can mutate the selection after resolution.
+    """
+    if expected is None:
+        from .tls import DEFAULT_PROXY_BUILD_IDENTITY
+
+        return DEFAULT_PROXY_BUILD_IDENTITY()
+    if isinstance(expected, ProxyBuildIdentityV1):
+        return expected
+    return ProxyBuildIdentityV1.from_dict(expected)
+
+
+def _observe_client_abi(shim_bytes: bytes, cli_bytes: bytes) -> dict:
+    """Parse client bytes into the recorded ABI observation shape (shim/CLI).
+
+    Mirrors the producer ABI record layout without any policy input: identity
+    re-verifies sameness against the selected record. Daemon entries stay
+    claim-bound through the recorded identity (byte extraction deferred).
+    """
+    from .round_core.proxy_worker import inspect_producer_elf
+
+    infos = {
+        CLIENT_CLI: inspect_producer_elf(cli_bytes),
+        CLIENT_MODULE: inspect_producer_elf(shim_bytes),
+    }
+    return {
+        "decision": "conforming-recorded",
+        "runtime_qualification": "not-performed",
+        "floors": {path: info["floors"] for path, info in infos.items()},
+        "needed": {path: list(info["needed"]) for path, info in infos.items()},
+        "interpreters": {path: info["interpreter"] for path, info in infos.items()},
+        "shim_exports": sorted({row["name"] for row in infos[CLIENT_MODULE]["exports"]}),
+        "version_requirements": {
+            path: [dict(row) for row in info["version_requirements"]]
+            for path, info in infos.items()
+        },
+        "symbol_versions": {
+            path: [dict(row) for row in info["symbol_versions"]] for path, info in infos.items()
+        },
+    }
+
+
+def _validate_client_manifest(manifest, environment, channel, *, expected_proxy_identity=None):
+    """Client bundles carry proxy component identities; no catalog target lock."""
+    selected = _selected_proxy_identity(expected_proxy_identity)
+    if type(manifest) is not dict:
+        raise ValueError("native client manifest must be a mapping")
     if (
         manifest.get("role") != "native-client"
         or manifest.get("target") != CLIENT_TARGET
@@ -628,12 +674,28 @@ def _validate_client_manifest(manifest, environment, channel):
         raise ValueError(
             "native manifest does not match the client target/host requirements"
         )
-    proxy = manifest.get("source", {}).get("proxy", {})
-    if (
-        proxy.get("source_revision") != PROXY_SOURCE_REVISION
-        or proxy.get("cargo_lock_sha256") != PROXY_CARGO_LOCK_SHA256
-    ):
-        raise ValueError("native client proxy component identity mismatch")
+    source = manifest.get("source", {})
+    proxy = source.get("proxy", {}) if type(source) is dict else {}
+    if type(proxy) is not dict or "identity" not in proxy:
+        raise ValueError("native client proxy identity is missing")
+    recorded = ProxyBuildIdentityV1.from_dict(proxy["identity"])
+    recorded.require_same_record(selected, where="client_manifest.identity")
+    archive = recorded.source_archive
+    claim = {
+        "source_revision": recorded.source_commit,
+        "source_archive_sha256": archive["sha256"] if archive else None,
+        "cargo_lock_sha256": recorded.cargo_lock_sha256,
+        "shim_sha256": recorded.shim["sha256"],
+        "cli_sha256": recorded.cli["sha256"],
+    }
+    for key, value in claim.items():
+        if key not in proxy or proxy[key] != value:
+            raise ValueError(
+                "native client proxy claim differs from recorded identity: " + key
+            )
+    if "abi_observed" not in proxy:
+        raise ValueError("native client proxy ABI observation is missing")
+    selected.check_client_abi_observed(proxy["abi_observed"])
     roster = {entry["path"]: entry for entry in manifest.get("files", [])}
     if (
         roster.get(CLIENT_MODULE, {}).get("sha256") != proxy.get("shim_sha256")
@@ -652,6 +714,7 @@ def build_native_client_bundle(
     output_dir: Path,
     environment: str,
     channel: str,
+    expected_proxy_identity=None,
 ) -> ArtifactRef:
     """Package verified pinned-proxy client bytes as a native-client bundle.
 
@@ -660,21 +723,23 @@ def build_native_client_bundle(
     identities, which enter the build key: a proxy component change
     invalidates the client identity.
     """
-    from .tls import PROXY_CARGO_LOCK_SHA256, PROXY_SOURCE_REVISION
-
+    selected = _selected_proxy_identity(expected_proxy_identity)
     for key in (
         "source_revision",
         "cargo_lock_sha256",
         "source_archive_sha256",
         "shim_sha256",
         "cli_sha256",
-        "toolchain",
     ):
-        if not proxy.get(key):
+        if key not in proxy:
             raise ValueError("client build requires proxy " + key)
+    archive = selected.source_archive
     if (
-        proxy["source_revision"] != PROXY_SOURCE_REVISION
-        or proxy["cargo_lock_sha256"] != PROXY_CARGO_LOCK_SHA256
+        proxy["source_revision"] != selected.source_commit
+        or proxy["cargo_lock_sha256"] != selected.cargo_lock_sha256
+        or proxy["source_archive_sha256"] != (archive["sha256"] if archive else None)
+        or proxy["shim_sha256"] != selected.shim["sha256"]
+        or proxy["cli_sha256"] != selected.cli["sha256"]
     ):
         raise ValueError("client build proxy component identity mismatch")
     shim_bytes = Path(shim).read_bytes()
@@ -683,6 +748,8 @@ def build_native_client_bundle(
         raise ValueError("client shim bytes differ from declared proxy component")
     if hashlib.sha256(cli_bytes).hexdigest() != proxy["cli_sha256"]:
         raise ValueError("client CLI bytes differ from declared proxy component")
+    abi_observed = _observe_client_abi(shim_bytes, cli_bytes)
+    selected.check_client_abi_observed(abi_observed)
     if set(licenses) != {
         "share/licenses/proxy-ng/LICENSE-APACHE",
         "share/licenses/proxy-ng/LICENSE-MIT",
@@ -707,17 +774,7 @@ def build_native_client_bundle(
         "features": {
             "target": CLIENT_TARGET,
             "host_requirements": CLIENT_HOST_REQUIREMENTS,
-            "proxy": {
-                key: proxy[key]
-                for key in (
-                    "source_revision",
-                    "cargo_lock_sha256",
-                    "source_archive_sha256",
-                    "shim_sha256",
-                    "cli_sha256",
-                )
-            },
-            "toolchain": proxy["toolchain"],
+            "proxy": selected.to_dict(),
             "licenses": {
                 name: hashlib.sha256(Path(path).read_bytes()).hexdigest()
                 for name, path in sorted(licenses.items())
@@ -771,6 +828,8 @@ def build_native_client_bundle(
                 "cargo_lock_sha256": proxy["cargo_lock_sha256"],
                 "shim_sha256": proxy["shim_sha256"],
                 "cli_sha256": proxy["cli_sha256"],
+                "identity": selected.to_dict(),
+                "abi_observed": abi_observed,
             }
         },
         "build": {"key": key, "identity": public_identity("client", inputs)},
@@ -832,13 +891,31 @@ def build_native_client_bundle(
     return artifact
 
 
-def preflight_native_client(prefix: Path, manifest: dict) -> dict:
+def _rehash_client_payload(prefix: Path) -> dict:
+    """Rehash installed shim/CLI payload bytes (launch-byte verification)."""
+    try:
+        return {
+            "shim_sha256": checksum(prefix / "payload" / CLIENT_MODULE),
+            "cli_sha256": checksum(prefix / "payload" / CLIENT_CLI),
+        }
+    except OSError as error:
+        raise ValueError("native client launch bytes are missing: %s" % error) from error
+
+
+def preflight_native_client(prefix: Path, manifest: dict, *, expected_proxy_identity=None) -> dict:
     """Resolve the shim closure with the host system loader; no provider needed."""
     _validate_client_manifest(
-        manifest, manifest.get("environment"), manifest.get("channel")
+        manifest, manifest.get("environment"), manifest.get("channel"),
+        expected_proxy_identity=expected_proxy_identity,
     )
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise ValueError("native proxy client requires Linux x86_64")
+    before = _rehash_client_payload(prefix)
+    selected = _selected_proxy_identity(expected_proxy_identity)
+    if before["shim_sha256"] != selected.shim["sha256"]:
+        raise ValueError("proxy identity mismatch: preflight.shim_sha256")
+    if before["cli_sha256"] != selected.cli["sha256"]:
+        raise ValueError("proxy identity mismatch: preflight.cli_sha256")
     loader = manifest["host_requirements"]["loader"]
     shim = prefix / "payload" / CLIENT_MODULE
     result = subprocess.run(
@@ -875,39 +952,49 @@ def preflight_native_client(prefix: Path, manifest: dict) -> dict:
     )
     if launch.returncode:
         raise ValueError("native client CLI launch failed")
+    after = _rehash_client_payload(prefix)
+    if after != before:
+        raise ValueError("native client launch bytes changed during preflight")
     return {
         "loader": loader,
         "architecture": platform.machine(),
         "closure": {CLIENT_MODULE: {"loader_output": result.stdout, "resolved": resolved}},
         "cli_version": launch.stdout.strip(),
+        "rehashes": {"before": before, "after": after},
     }
 
 
 def install_native_client_bundle(
-    artifact: ArtifactRef, prefix: Path, *, environment: str, channel: str
+    artifact: ArtifactRef, prefix: Path, *, environment: str, channel: str,
+    expected_proxy_identity=None,
 ) -> InstalledBundle:
     selection = _selection(environment, channel, artifact.platform)
     manifest = inspect_bundle(artifact, **selection)
-    _validate_client_manifest(manifest, environment, channel)
+    _validate_client_manifest(manifest, environment, channel,
+                              expected_proxy_identity=expected_proxy_identity)
     # Inert N1 extraction into private temporary placement. Host preflight
     # precedes creation of the requested prefix or ancestors.
     with tempfile.TemporaryDirectory(
         prefix=".p11lab-client-preflight-", dir=staging_parent(prefix)
     ) as temporary:
         staged = install_bundle(artifact, Path(temporary) / "prefix", **selection)
-        preflight_native_client(staged.prefix, manifest)
+        preflight_native_client(staged.prefix, manifest,
+                                expected_proxy_identity=expected_proxy_identity)
     return install_bundle(artifact, prefix, **selection)
 
 
 def load_client_installation(
-    prefix: Path, *, environment: str, channel: str, platform: str = "linux/amd64"
+    prefix: Path, *, environment: str, channel: str, platform: str = "linux/amd64",
+    expected_proxy_identity=None,
 ) -> InstalledBundle:
     """Reverify an installed client bundle and its host/ABI preflight."""
     installed = read_installation(
         prefix, environment=environment, channel=channel, platform=platform
     )
-    _validate_client_manifest(installed.manifest, environment, channel)
-    preflight_native_client(installed.prefix, installed.manifest)
+    _validate_client_manifest(installed.manifest, environment, channel,
+                              expected_proxy_identity=expected_proxy_identity)
+    preflight_native_client(installed.prefix, installed.manifest,
+                            expected_proxy_identity=expected_proxy_identity)
     return installed
 
 

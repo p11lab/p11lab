@@ -1,0 +1,22 @@
+{
+  "abis": [
+    "cp312"
+  ],
+  "marker_environment": {
+    "implementation_name": "cpython",
+    "implementation_version": "3.12.14",
+    "os_name": "posix",
+    "platform_machine": "x86_64",
+    "platform_python_implementation": "CPython",
+    "platform_release": "",
+    "platform_system": "Linux",
+    "platform_version": "",
+    "python_full_version": "3.12.14",
+    "python_version": "3.12",
+    "sys_platform": "linux"
+  },
+  "platforms": [
+    "linux_x86_64"
+  ],
+  "python_version": "3.12"
+}

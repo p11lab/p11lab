@@ -1,0 +1,12 @@
+[
+  "advertised",
+  "accepted",
+  "attempted",
+  "rejected_cleanly",
+  "skipped_by_capability",
+  "crashed",
+  "timeout",
+  "selected",
+  "selection_rejected",
+  "invoked"
+]

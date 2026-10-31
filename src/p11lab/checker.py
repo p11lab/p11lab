@@ -573,6 +573,67 @@ def validate_results(directory: Path, nodes: list[str], installed_root: Path) ->
             'provider_statuses': [u.get('status') for u in payload.get('units', [])]}
 
 
+CHECKER_SUMMARY_ALLOWED_NEW_KEYS = frozenset({'checker'})
+CHECKER_SUMMARY_APPENDABLE_KEYS = frozenset({'lifecycle_errors'})
+CHECKER_SUMMARY_EXIT_KEY = 'exit_code'
+CHECKER_SUMMARY_INCOMPLETE_MESSAGE = 'checker observation evidence incomplete or unavailable'
+
+GATE_RECEIPT_FIELDS = frozenset({'schema_version', 'attempt_id', 'environment', 'channel', 'mode',
+                                 'execution_location', 'artifacts', 'image_observation', 'execution',
+                                 'inputs', 'state', 'stages', 'owned_resources', 'uncertain_resources',
+                                 'app_returncode', 'app_completed', 'timeout', 'interrupted_signal',
+                                 'cleanup_errors', 'bounded_execution', 'bounded_policy'})
+
+
+def _canonical_field(value):
+    return json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False)
+
+
+def merge_checker_summary(receipt_path, *, profile, nodes, evidence_complete,
+                          observations_complete, exit_code):
+    """Gated preservation merge of the checker summary into the outer receipt (Q6).
+
+    The only allowed mutations are adding the checker summary, appending one
+    lifecycle message, and raising a zero exit to failure; every gate field
+    survives byte-identically and the write keeps the receipt serializer.
+    """
+    outer = json.loads(Path(receipt_path).read_text())
+    if not isinstance(outer, dict):
+        raise ValueError('checker outer receipt malformed')
+    before = {key: _canonical_field(value) for key, value in outer.items()}
+    lifecycle_before = outer.get('lifecycle_errors')
+    if not isinstance(lifecycle_before, list):
+        raise ValueError('gate-1 receipt lifecycle errors malformed')
+    before_exit = outer.get('exit_code')
+    summary = {'profile': profile, 'nodes': list(nodes),
+               'evidence_complete': bool(evidence_complete),
+               'observations_complete': bool(observations_complete)}
+    if 'checker' in outer and _canonical_field(outer['checker']) != _canonical_field(summary):
+        raise ValueError('gate-1 receipt checker summary differs; refusing overwrite')
+    outer['checker'] = summary
+    if not observations_complete:
+        outer['lifecycle_errors'] = [*lifecycle_before, CHECKER_SUMMARY_INCOMPLETE_MESSAGE]
+    if not evidence_complete:
+        outer['exit_code'] = exit_code or 1
+    if type(before_exit) is int and before_exit != 0 and outer.get('exit_code') != before_exit:
+        raise ValueError('gate-1 receipt exit cannot be cleared or replaced')
+    if (outer['lifecycle_errors'] != lifecycle_before
+            and outer['lifecycle_errors'] != lifecycle_before + [CHECKER_SUMMARY_INCOMPLETE_MESSAGE]):
+        raise ValueError('gate-1 receipt lifecycle errors are append-only')
+    after = {key: _canonical_field(value) for key, value in outer.items()}
+    if set(after) - set(before) - CHECKER_SUMMARY_ALLOWED_NEW_KEYS:
+        raise ValueError('gate-1 receipt rewrite added unexpected keys')
+    if set(before) - set(after):
+        raise ValueError('gate-1 receipt rewrite dropped keys')
+    for key in set(before) & set(after):
+        if key in CHECKER_SUMMARY_APPENDABLE_KEYS or key == CHECKER_SUMMARY_EXIT_KEY:
+            continue
+        if before[key] != after[key]:
+            raise ValueError('gate-1 receipt gate field changed: ' + key)
+    write_receipt(Path(receipt_path), outer)
+    return outer
+
+
 def run_checker(spec: RunSpec, profile: str) -> RunResult:
     """Execute an optional Docker derivative through the accepted runner.
 
@@ -598,14 +659,9 @@ def run_checker(spec: RunSpec, profile: str) -> RunResult:
         observations_complete = receipt['evidence']['observations_complete'] is True
     except (OSError, ValueError, KeyError, TypeError):
         complete = observations_complete = False
-    outer = json.loads(result.receipt_path.read_text())
-    outer['checker'] = {'profile': selected['name'], 'nodes': selected['nodes'], 'evidence_complete': complete,
-                        'observations_complete': observations_complete}
-    if not observations_complete:
-        outer['lifecycle_errors'].append('checker observation evidence incomplete or unavailable')
-    if not complete:
-        outer['exit_code'] = result.exit_code or 1
-    write_receipt(result.receipt_path, outer)
+    outer = merge_checker_summary(result.receipt_path, profile=selected['name'], nodes=selected['nodes'],
+                                  evidence_complete=complete, observations_complete=observations_complete,
+                                  exit_code=result.exit_code)
     return replace(result, lifecycle_errors=tuple(outer['lifecycle_errors']), exit_code=outer['exit_code'])
 
 

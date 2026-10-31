@@ -1,0 +1,158 @@
+{
+  "schema": "p11lab.proxy-policy.v1",
+  "schema_version": 1,
+  "id": "proxy-diagnostic-v1",
+  "activation_state": "diagnostic",
+  "commission": "linux-amd64",
+  "budgets_qualified": false,
+  "provider": {
+    "family": "softhsm2",
+    "channel": "release",
+    "platform": "linux/amd64",
+    "manifest_digest": "sha256:69cdeb9a74d13a3382547e184645ee18a7e9e2315246fd40ca814ef97b970d16",
+    "config_digest": "sha256:e59ab297033cedfd8049f76bcf6d9e9c86f8df262be1c80ccbd7c1731437d24f"
+  },
+  "fixed_inputs": {
+    "checker": null,
+    "profile": "round-pr-smoke-v1",
+    "nodes": 23,
+    "destructive": false,
+    "consumer": null,
+    "dataset": null,
+    "config": "tls._PINNED_DEFAULT_IDENTITY.daemon_config_sha256=a958111d2948445495502c5d25152246511bb43004e5dd75b7e1ef1870c2adf2"
+  },
+  "fixed_input_follow_ups": {
+    "checker": "No checker build selected for proxy-diagnostic-v1; the live slice must pin the reviewed checker lock revision plus built wheel digest (candidate authority: src/p11lab/data/tool-inputs/checker.debian13-amd64.lock.json checker_source).",
+    "consumer": "No consumer/caller image selected for proxy-diagnostic-v1; the live slice must pin the exact caller image (consumer.debian13-amd64.lock.json is a Debian toolchain lock, not a caller-image identity).",
+    "dataset": "No dataset identity selected for proxy-diagnostic-v1; the profile node roster is already pinned via round-pr-smoke-v1 (reviewed 23-node seed); the live slice must bind any additional dataset bytes."
+  },
+  "cells": ["direct", "accepted-proxy", "candidate-proxy"],
+  "attempts_per_cell": 1,
+  "no_retry_after_start": true,
+  "comparison": {
+    "baseline": "accepted-proxy",
+    "candidate": "candidate-proxy",
+    "direct_role": "attribution-only"
+  },
+  "controls": [
+    {
+      "id": "PX-AUTH",
+      "design_ref": "design L382 (roster L371-387)",
+      "run_on": ["accepted-proxy", "candidate-proxy"],
+      "stimulus": {
+        "valid_client": "one mTLS handshake + enumerate",
+        "invalid_client": "untrusted-cert handshake from tests/fixtures/proxy-tls/untrusted-client.pem, rejected pre-provider-op"
+      },
+      "expected": {
+        "ck_rv": {"valid_enumerate": "CKR_OK", "invalid_reject_point": "before-provider-operation"},
+        "backend_effect": {"call_counter_delta_by_invalid": 0},
+        "termination": null
+      },
+      "source_binding": "design L382; docs/proxy.md:87-95 (fresh CA, chain/SAN/EKU verified before use) + :115-122 (unauthorized clients fail closed without retries); invalid-peer proof harness is a live-slice follow-up (Q4 fixture committed this slice)",
+      "budget_seconds": 300
+    },
+    {
+      "id": "PX-STATE",
+      "design_ref": "design L383 (roster L371-387)",
+      "run_on": ["accepted-proxy", "candidate-proxy"],
+      "stimulus": {
+        "instance_a": "create uniquely identified token object in instance A",
+        "instance_b": "explicit cross-instance lookup: search instance B LIVE while A runs (Q1)"
+      },
+      "expected": {
+        "ck_rv": {"creation_ck_rv": "preserved-verbatim", "search_ck_rv": "preserved-verbatim"},
+        "backend_effect": {"objects_found_by_a": 1, "objects_found_by_b": 0},
+        "termination": null
+      },
+      "source_binding": "design L383; run.py:563-575 render_proxy_toml (max_contexts=1 single-client admission) + run.py:804 (one logical mTLS client, no replay); A/B orchestration is a live-slice follow-up (Q1)",
+      "budget_seconds": 300
+    },
+    {
+      "id": "PX-REPLAY",
+      "design_ref": "design L384 (roster L371-387)",
+      "run_on": ["accepted-proxy", "candidate-proxy"],
+      "stimulus": {
+        "request": "one non-idempotent create with unique CKA_ID",
+        "fault": "transport fault loses the response after backend effect ack (test connection only)"
+      },
+      "expected": {
+        "ck_rv": {"client_records": "transport-failure", "silent_success": false},
+        "backend_effect": {"backend_operation_count": 1, "post_shutdown_enumerated_objects": 1},
+        "termination": null
+      },
+      "source_binding": "design L384 + L392-394 (cut test connection only; post-shutdown direct observer on same disposable state); run.py:804 (no operation replay); fault injector is a live-slice follow-up",
+      "budget_seconds": 300
+    },
+    {
+      "id": "PX-CLIENT-CRASH",
+      "design_ref": "design L385 (roster L371-387)",
+      "run_on": ["accepted-proxy", "candidate-proxy"],
+      "stimulus": {
+        "crash": "terminate one active client process",
+        "finalizer": "without checker exit finalizer (hooks omitted)"
+      },
+      "expected": {
+        "ck_rv": {"client_crash": "recorded", "reconnect_claim": "none"},
+        "backend_effect": {"owned_process_closed": true, "provider_cleanup_observed": true},
+        "termination": {"client": "terminated-no-finalizer", "daemon": "terminal-facts-required"}
+      },
+      "source_binding": "design L385 + L476 (crash tests omit exit-finalization hooks); run.py:861-909 finish_daemon terminal facts; proxy_finalize.py:18-25 (HOOK_VERSION/HOOK_SCOPE constants)",
+      "budget_seconds": 300
+    },
+    {
+      "id": "PX-DAEMON-DEATH",
+      "design_ref": "design L386 (roster L371-387)",
+      "run_on": ["accepted-proxy", "candidate-proxy"],
+      "stimulus": {
+        "death": "terminate dedicated ready daemon",
+        "client": "while its control client remains"
+      },
+      "expected": {
+        "ck_rv": {"client_observes": "transport-failure"},
+        "backend_effect": {"client_transport_failure_observed": true},
+        "termination": {"unexpected_death": true, "logs_available": true}
+      },
+      "source_binding": "design L386; run.py:876-878 (unexpected_death + 'daemon exited after readiness') + run.py:861-909 (bounded logs retained before removal)",
+      "budget_seconds": 300
+    },
+    {
+      "id": "PX-DAEMON-STOP",
+      "design_ref": "design L386 companion control (roster L371-387)",
+      "run_on": ["accepted-proxy", "candidate-proxy"],
+      "stimulus": {
+        "stop": "normal requested shutdown of dedicated ready daemon"
+      },
+      "expected": {
+        "ck_rv": {"stop": "recorded-clean"},
+        "backend_effect": {"stop_requested": true},
+        "termination": {"unexpected_death": false, "stop_succeeded": true}
+      },
+      "source_binding": "design L386 (separate normal-stop control); run.py:866-871 (daemon_terminal stop_requested/stop_succeeded/unexpected_death fields)",
+      "budget_seconds": 300
+    },
+    {
+      "id": "PX-LIMIT",
+      "design_ref": "design L387 (roster L371-387)",
+      "run_on": ["accepted-proxy", "candidate-proxy"],
+      "stimulus": {
+        "second_client": "attempt second simultaneous client/context against the selected single-client version (a348a5f)"
+      },
+      "expected": {
+        "ck_rv": null,
+        "backend_effect": {"first_context_unaffected": true},
+        "termination": null
+      },
+      "source_binding": "design L387 + L389-391 (unqualified, never guessed); run.py:563-575 (max_contexts=1 admission, stimulus side only); exact rejection value UNBOUND (Q2 absence grep; live-slice follow-up)",
+      "budget_seconds": 300
+    }
+  ],
+  "budgets": {
+    "per_cell_seconds": 300,
+    "transport_controls_seconds": 300,
+    "acquisition_preflight_seconds": 600,
+    "workflow_active_minutes": 30,
+    "raw_bytes": 2147483648,
+    "diagnostics_bytes": 16777216,
+    "retention_days": 14
+  }
+}

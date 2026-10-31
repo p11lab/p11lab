@@ -1,0 +1,68 @@
+{
+  "key_url": "https://static.rust-lang.org/rust-key.gpg.ascii",
+  "keybase_reference": "https://keybase.io/rust",
+  "license_status": "unreviewed",
+  "manifest_sha256": "a7c8774a5fd8441c997d94c029776cbc5eb111e9d72ab5d256fa69866644347e",
+  "manifest_url": "https://static.rust-lang.org/dist/channel-rust-1.98.1.toml",
+  "records": [
+    {
+      "kind": "proxy-rust-dist",
+      "path": "rust/rustc-1.98.1-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "e974f036b28565f37c0f3bd92ddefa809bee16c04f9dcf07b9ed96e05aaaf7c4",
+      "size": 79727616,
+      "url": "https://static.rust-lang.org/dist/2026-09-03/rustc-1.98.1-x86_64-unknown-linux-gnu.tar.xz"
+    },
+    {
+      "kind": "proxy-rust-dist",
+      "path": "rust/cargo-1.98.1-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "ea1de9f9e23107d97ee2b41a72c552f34064a593da503789218387aee59f3ba4",
+      "size": 11662108,
+      "url": "https://static.rust-lang.org/dist/2026-09-03/cargo-1.98.1-x86_64-unknown-linux-gnu.tar.xz"
+    },
+    {
+      "kind": "proxy-rust-dist",
+      "path": "rust/rust-std-1.98.1-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "fa3ff450172a16c026944030230c5069947af93c728d9179971d44e5e0cfb561",
+      "size": 30715684,
+      "url": "https://static.rust-lang.org/dist/2026-09-03/rust-std-1.98.1-x86_64-unknown-linux-gnu.tar.xz"
+    }
+  ],
+  "schema_version": 1,
+  "signing_key_fingerprint": "108F66205EAEB0AAA8DD5E1C85AB96E6FA1BE5FE",
+  "supporting_files": [
+    {
+      "path": "tool-inputs/proxy/rust/cargo.tar.xz.asc",
+      "sha256": "92da3ca0f0106888fc82db9bfd6f2722d26af412fdcf392e25b92f30aa21b9cb",
+      "size": 801
+    },
+    {
+      "path": "tool-inputs/proxy/rust/rust-key.gpg.ascii",
+      "sha256": "e54b09a439647e006b4831eec9785cbaaf3e07ab371c3a6ee6a68e1bdb9fbc6b",
+      "size": 5326
+    },
+    {
+      "path": "tool-inputs/proxy/rust/rust-manifest.toml",
+      "sha256": "a7c8774a5fd8441c997d94c029776cbc5eb111e9d72ab5d256fa69866644347e",
+      "size": 898637
+    },
+    {
+      "path": "tool-inputs/proxy/rust/rust-manifest.toml.asc",
+      "sha256": "a9fed69b47daaaf29a6207af9df13aedb66d502ab0acc4ea557602edf87fd1aa",
+      "size": 801
+    },
+    {
+      "path": "tool-inputs/proxy/rust/rust-std.tar.xz.asc",
+      "sha256": "b14b44a6967989d2ded80c81f567867b1188c1d23ba5db99a49eedbd31ab5263",
+      "size": 801
+    },
+    {
+      "path": "tool-inputs/proxy/rust/rustc.tar.xz.asc",
+      "sha256": "b8a3758f43a60ae37a7c608133cfcc5891f4881a3e6c0871266c592a20b88d7e",
+      "size": 801
+    }
+  ],
+  "target": "x86_64-unknown-linux-gnu",
+  "trust": "Rust Forge links the Rust signing key and Keybase profile; detached signatures locally verified with full fingerprint 108F66205EAEB0AAA8DD5E1C85AB96E6FA1BE5FE. Installed verification rehashes signature evidence but does not rerun signature verification.",
+  "trust_reference": "https://forge.rust-lang.org/infra/other-installation-methods.html",
+  "version": "1.98.1"
+}

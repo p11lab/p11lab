@@ -1,0 +1,240 @@
+# SPDX-License-Identifier: Apache-2.0
+# Execution path: stages a full github context plus a sealed evaluator,
+# invokes `p11lab round execute` through the staged-entry bridge (B-C2x
+# mechanics, H-C-NOT-DEMONSTRATED), and uploads one execution artifact.
+# Values stay diagnostic: round_positive is always false; missing staged
+# material refuses with exit 3 after upload.
+name: checker-round-execution
+on:
+  workflow_call:
+    inputs:
+      framework_sha:
+        required: true
+        type: string
+      tier:
+        required: true
+        type: string
+      p11lab_ref:
+        required: true
+        type: string
+    outputs:
+      round_positive:
+        value: ${{ jobs.execute.outputs.round_positive }}
+      execution_artifact:
+        value: ${{ jobs.execute.outputs.execution_artifact }}
+      capsule_sha256:
+        value: ${{ jobs.execute.outputs.capsule_sha256 }}
+permissions: {}
+jobs:
+  execute:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      round_positive: ${{ steps.result.outputs.round_positive }}
+      execution_artifact: ${{ steps.result.outputs.execution_artifact }}
+      capsule_sha256: ${{ steps.result.outputs.capsule_sha256 }}
+    steps:
+      - name: Validate input identities
+        id: inputs
+        shell: bash
+        env:
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+          TIER: ${{ inputs.tier }}
+        run: |
+          [[ "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$P11LAB_REF" =~ ^[0-9a-f]{40}$ ]]
+          case "$TIER" in pr-smoke|nightly|release) ;; *) exit 1 ;; esac
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: p11lab/p11lab
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+      - name: Verify control identity
+        shell: bash
+        env:
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+      - name: Stage round execution material
+        id: stage
+        shell: bash
+        env:
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+          TIER: ${{ inputs.tier }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          test -f "$GITHUB_WORKSPACE/p11lab-control/src/p11lab/data/rounds/policy.json" || { echo 'refused: staged policy root missing' >&2; exit 3; }
+          mkdir -p "$RUNNER_TEMP/round-evaluator"
+          python - <<'PY'
+          import json, os
+          temp = os.environ['RUNNER_TEMP']
+          archive = {'transport': 'github', 'tier': os.environ['TIER'],
+                     'framework_sha': os.environ['FRAMEWORK_SHA'],
+                     'p11lab_ref': os.environ['P11LAB_REF'],
+                     'run_id': int(os.environ['RUN_ID']),
+                     'run_attempt': int(os.environ['RUN_ATTEMPT'])}
+          with open(temp + '/round-context.json', 'w') as handle:
+              json.dump(archive, handle, sort_keys=True, indent=2)
+              handle.write('\n')
+          PY
+      - name: Resolve producer run and stage context
+        id: context
+        shell: bash
+        env:
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          TIER: ${{ inputs.tier }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          STAGED="$RUNNER_TEMP/round-staged"
+          mkdir -p "$STAGED"
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python -m p11lab round resolve-producer \
+            --event-path "$GITHUB_EVENT_PATH" \
+            --profile "$GITHUB_WORKSPACE/p11lab-control/src/p11lab/data/rounds/producer-profiles.json" \
+            --framework-sha "$FRAMEWORK_SHA" \
+            --tier "$TIER" \
+            --run-id "$RUN_ID" \
+            --attempt "$RUN_ATTEMPT" \
+            --output-dir "$STAGED"
+      - name: Upload resolution evidence
+        if: failure() && steps.context.conclusion == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-round-resolution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/round-staged
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stage sealed evaluator
+        id: evaluator
+        shell: bash
+        run: |
+          test -f "$GITHUB_WORKSPACE/p11lab-control/src/p11lab/data/rounds/evaluator/source.json" || { echo 'refused: staged evaluator locks missing' >&2; exit 3; }
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python - <<'PY'
+          import os
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          control = Path(os.environ['GITHUB_WORKSPACE']) / 'p11lab-control/src/p11lab/data/rounds'
+          lock_root = control / 'evaluator'
+          from p11lab.round_core.bootstrap import acquire_evaluator
+          from p11lab.round_core.inputs import SealedToolInputs, load_json, read_source_archive
+          pin = load_json(read_source_archive(lock_root / 'source.json'))
+          output = temp / 'round-evaluator'
+          receipt = acquire_evaluator(pin, lock_root, output)
+          tools = SealedToolInputs.from_evaluator(output)
+          launcher = tools.root / 'evaluator-install/bin/pkcs11-check'
+          if not launcher.is_file() or launcher.is_symlink():
+              raise SystemExit('refused: sealed launcher missing after staging')
+          receipt_path = output / 'evaluator-build-receipt.json'
+          assert receipt_path.is_file(), 'evaluator-build-receipt.json missing after staging'
+          print('staged sealed evaluator receipt ' + receipt['source']['commit'])
+          PY
+      - name: Execute round lane and write execution manifest
+        id: result
+        shell: bash
+        env:
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          P11LAB_REF: ${{ inputs.p11lab_ref }}
+          TIER: ${{ inputs.tier }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          temp = os.environ['RUNNER_TEMP']
+          with open(temp + '/round-context.json') as handle:
+              archive = json.load(handle)
+          if archive.get('run_id') != int(os.environ['RUN_ID']) or archive.get('run_attempt') != int(os.environ['RUN_ATTEMPT']):
+              print('refused: staged attempt identity mismatch', file=sys.stderr)
+              sys.exit(3)
+          PY
+          code=0
+          STAGED="$RUNNER_TEMP/round-staged"
+          CONTEXT="$RUNNER_TEMP/round-context.json"
+          BRIDGE_ARGS=()
+          if [ -f "$STAGED/round-github-context.json" ]; then CONTEXT="$STAGED/round-github-context.json"; fi
+          if [ -f "$STAGED/authority.json" ]; then BRIDGE_ARGS+=(--authority "$STAGED/authority.json"); fi
+          if [ -d "$STAGED/baseline" ]; then BRIDGE_ARGS+=(--baseline "$STAGED/baseline"); fi
+          if [ -d "$STAGED/candidate" ]; then BRIDGE_ARGS+=(--candidate "$STAGED/candidate"); fi
+          PYTHONPATH="$GITHUB_WORKSPACE/p11lab-control/src" python -m p11lab round execute --context "$CONTEXT" --policy-root "$GITHUB_WORKSPACE/p11lab-control/src/p11lab/data/rounds" --evaluator-root "$RUNNER_TEMP/round-evaluator" --output-dir "$RUNNER_TEMP/round-execution" --output-json "$RUNNER_TEMP/round-execution/verdict-row.json" --tier "$TIER" "${BRIDGE_ARGS[@]}" || code=$?
+          REFUSAL_CODE="$code" python - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          code = int(os.environ['REFUSAL_CODE'])
+          staged = temp / 'round-staged'
+          context_shape = 'full' if (staged / 'round-github-context.json').is_file() else 'legacy'
+          present = [(staged / 'authority.json').is_file(), (staged / 'baseline').is_dir(), (staged / 'candidate').is_dir()]
+          bridge = 'staged' if all(present) else ('absent' if not any(present) else 'partial')
+          limitations = ['honest-control-not-demonstrated: no producer authority, baseline, or builder enrollment is staged',
+                         'producer-enrollment-pending (caller dist/control artifacts)',
+                         'round owner proof unenrolled', 'builder-image-unenrolled']
+          provenance = {'bridge': bridge, 'context_shape': context_shape, 'live_qualified': False,
+                        'honest_control': 'H-C-NOT-DEMONSTRATED', 'mechanics': 'B-C2x',
+                        'diagnostic_only': True, 'limitations': limitations}
+          outputs = {'round_positive': 'false', 'execution_artifact': '', 'capsule_sha256': '', 'refusal': 'true', 'refusal_cause': 'missing-row'}
+          row_path = temp / 'round-execution' / 'verdict-row.json'
+          evidence = temp / 'round-evidence'
+          if row_path.exists():
+              row = json.loads(row_path.read_text())
+              outputs['refusal'] = 'false' if code == 0 else 'true'
+              outputs['refusal_cause'] = '' if code == 0 else row['cause']
+              evidence.mkdir(parents=True, exist_ok=True)
+              for leaf in ('verdict-row.json', 'round-receipt.json', 'round-capsule.json'):
+                  shutil.copyfile(temp / 'round-execution' / leaf, evidence / leaf)
+              capsule = json.loads((evidence / 'round-capsule.json').read_text())
+              if capsule['round_positive'] is not False:
+                  raise SystemExit('policy must remain diagnostic')
+              outputs['capsule_sha256'] = capsule['capsule_sha256']
+              outputs['execution_artifact'] = 'p11lab-round-execution-' + os.environ['RUN_ID'] + '-' + os.environ['RUN_ATTEMPT']
+              manifest = {'schema': 'p11lab-round-execution-v1', 'framework_sha': os.environ['FRAMEWORK_SHA'],
+                          'p11lab_ref': os.environ['P11LAB_REF'], 'tier': os.environ['TIER'],
+                          'run_id': int(os.environ['RUN_ID']), 'run_attempt': int(os.environ['RUN_ATTEMPT']),
+                          'round_positive': False, 'cause': row['cause'], 'exit_code': code,
+                          'execution_artifact': outputs['execution_artifact'],
+                          'capsule_sha256': outputs['capsule_sha256']}
+              manifest.update(provenance)
+              (evidence / 'round-execution.json').write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+          else:
+              evidence.mkdir(parents=True, exist_ok=True)
+              manifest = {'schema': 'p11lab-round-execution-v1', 'framework_sha': os.environ['FRAMEWORK_SHA'],
+                          'p11lab_ref': os.environ['P11LAB_REF'], 'tier': os.environ['TIER'],
+                          'run_id': int(os.environ['RUN_ID']), 'run_attempt': int(os.environ['RUN_ATTEMPT']),
+                          'round_positive': False, 'cause': 'missing-row', 'exit_code': code,
+                          'execution_artifact': 'p11lab-round-execution-' + os.environ['RUN_ID'] + '-' + os.environ['RUN_ATTEMPT'],
+                          'capsule_sha256': ''}
+              manifest.update(provenance)
+              (evidence / 'round-execution.json').write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+              outputs['execution_artifact'] = manifest['execution_artifact']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:
+              for key, value in outputs.items():
+                  handle.write(key + '=' + value + '\n')
+          PY
+      - name: Upload execution evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p11lab-round-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/round-evidence
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report refusal
+        shell: bash
+        env:
+          REFUSAL: ${{ steps.result.outputs.refusal }}
+          REFUSAL_CAUSE: ${{ steps.result.outputs.refusal_cause }}
+        run: |
+          if [[ "$REFUSAL" == "false" ]]; then exit 0; fi
+          echo "refused: $REFUSAL_CAUSE" >&2
+          exit 3

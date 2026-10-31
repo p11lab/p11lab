@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+# UNPUBLISHED TEMPLATE: replace both P11LAB_COMMIT_SHA placeholders with the
+# same reviewed full commit SHA after a compatible workflow is published.
+# Replace PROXY_COMMIT_SHA with the candidate identity.
+# REQUIRES a caller-owned producer in the same workflow run: this template
+# alone is NOT an operational honest control. The producer (test-repo owned,
+# never R-side) must upload the same-run current-attempt artifact
+# `p11lab-proxy-dist-<proxy_sha>-<run_attempt>` staging the caller manifest,
+# payloads, and the execution inputs `cell-payload-<cell>.json`,
+# `comparison.json`, `budgets.json` with the artifact-dir basename preserved.
+# Full-rerun rule: a partial rerun lacking a current producer fails
+# `rerun_requires_producer`. Bind repository/run/attempt/producer-job IDs
+# from read-only API metadata; a manifest's self-assertion is insufficient.
+# Trigger rationale: official proxy callers run on pull_request and derive the
+# candidate from pull_request.head.sha (design caller authority); a manually
+# dispatched trigger would accept hand-typed SHAs, contradicting the authority
+# model (self-assertion is insufficient). This deliberately differs from the
+# checker-round example's dispatch trigger: proxy caller authority differs.
+name: proxy-execution-example
+on:
+  pull_request:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  execution:
+    permissions:
+      contents: read
+      actions: read
+    uses: p11lab/p11lab/.github/workflows/proxy-round-execution.yml@<P11LAB_COMMIT_SHA>
+    with:
+      proxy_sha: <PROXY_COMMIT_SHA>
+      tier: proxy-diagnostic-v1
+      p11lab_ref: <P11LAB_COMMIT_SHA>
