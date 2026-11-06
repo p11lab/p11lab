@@ -97,3 +97,36 @@ def test_publish_accepts_allowed_flags(tmp_path, capsys):
                  "--target", "debian13-amd64", "--output-dir", str(tmp_path / "o")])
     assert code == 2
     assert "not a publish" not in capsys.readouterr().err
+
+
+def test_gather_review_rejects_artifact_and_policy(tmp_path, capsys):
+    code = main(["image", "gather-review", "--environment", "softhsm2", "--channel", "release",
+                 "--artifact", "a.json", "--output-dir", str(tmp_path / "o")])
+    assert code == 2
+    assert "does not accept artifact or policy" in capsys.readouterr().err
+
+
+def test_gather_review_requires_environment_and_channel(tmp_path, capsys):
+    code = main(["image", "gather-review", "--environment", "softhsm2",
+                 "--output-dir", str(tmp_path / "o")])
+    assert code == 2
+    assert "requires environment and channel" in capsys.readouterr().err
+
+
+def test_gather_review_dispatches_with_packaged_lock(tmp_path, monkeypatch, capsys):
+    import p11lab.review_inputs as gather
+
+    seen = {}
+
+    def stub(lock, output_dir, **kwargs):
+        seen["lock_keys"] = sorted(lock)
+        seen["output_dir"] = str(output_dir)
+        return {"status": "complete"}
+
+    monkeypatch.setattr(gather, "gather_review_inputs", stub)
+    code = main(["image", "gather-review", "--environment", "softhsm2", "--channel", "release",
+                 "--output-dir", str(tmp_path / "o")])
+    assert code == 0
+    assert "source_packages" in seen["lock_keys"] and "packages" in seen["lock_keys"]
+    assert seen["output_dir"] == str(tmp_path / "o")
+    assert '"complete"' in capsys.readouterr().out

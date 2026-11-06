@@ -40,6 +40,16 @@ EXPECTED_RECEIPT_FIELDS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _without_ci_markers(monkeypatch):
+    # Mechanics tests exercise fixture transport in-process; without this
+    # the runner's own CI markers trip the production guard. The guard
+    # itself stays covered by test_prepare_refuses_fixture_transport_in_ci.
+    # Mirrors the _env() scrubbing used for subprocess runs below.
+    monkeypatch.delenv('CI', raising=False)
+    monkeypatch.delenv('GITHUB_ACTIONS', raising=False)
+
+
 def _env():
     env = dict(os.environ)
     env["PYTHONPATH"] = str(Path(__file__).resolve().parents[2] / "src")

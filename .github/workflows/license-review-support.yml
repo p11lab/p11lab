@@ -1,0 +1,158 @@
+# SPDX-License-Identifier: Apache-2.0
+# Review-support lane: gather license-review inputs for one locked
+# environment/channel. Mechanical only: builds the exact candidate, fetches
+# every lock-pinned Debian source/binary/index byte with hash verification,
+# resolves incorporated sources via InRelease-pinned Sources.xz, extracts
+# license evidence texts, and records an informational Syft SBOM of the built
+# image. Provider upstream sources ride along from the build tree; the bundle
+# itself is Debian-scoped. It concludes no licenses, grants, or eligibility;
+# the reviewer writes those into the committed inventory template from the
+# uploaded bundle. Manual dispatch only; never a PR gate.
+name: license-review-support
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Catalogue environment ID.'
+        required: true
+        default: 'softhsm2'
+      channel:
+        description: 'Locked channel.'
+        required: true
+        default: 'release'
+      p11lab_ref:
+        description: 'Pinned 40-hex control commit to gather from.'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-support-${{ inputs.environment }}-${{ inputs.channel }}
+  cancel-in-progress: false
+
+jobs:
+  gather:
+    name: gather-review-inputs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    steps:
+      - name: Validate input identities
+        shell: sh
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
+          P11LAB_INPUT_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          set -eu
+          case "$P11LAB_INPUT_REF" in ''|*[!0-9a-f]*) echo 'p11lab_ref must be 40-hex' >&2; exit 1 ;; esac
+          test "${#P11LAB_INPUT_REF}" -eq 40
+          case "$P11LAB_INPUT_ENVIRONMENT" in ''|*[!a-z0-9-]*) echo 'invalid environment' >&2; exit 1 ;; esac
+          case "$P11LAB_INPUT_CHANNEL" in ''|*[!a-z0-9-]*) echo 'invalid channel' >&2; exit 1 ;; esac
+
+      - name: Checkout control source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.p11lab_ref }}
+          path: p11lab-control
+          persist-credentials: false
+
+      - name: Verify control identity
+        shell: sh
+        env:
+          P11LAB_INPUT_REF: ${{ inputs.p11lab_ref }}
+        run: |
+          set -eu
+          test "$(git -C p11lab-control rev-parse HEAD)" = "$P11LAB_INPUT_REF"
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+
+      - name: Install pinned Syft for the informational image SBOM
+        shell: bash
+        run: |
+          set -eu
+          archive="$RUNNER_TEMP/syft.tar.gz"
+          curl --noproxy '*' --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 180 --max-filesize 31424471 \
+            https://github.com/anchore/syft/releases/download/v1.57.0/syft_1.57.0_linux_amd64.tar.gz -o "$archive"
+          printf '%s  %s\n' 9c077a7d43029b3b13e98a8db720661e700c4d58db6352153a06395ae4a2a704 "$archive" | sha256sum -c -
+          test "$(wc -c < "$archive")" -eq 31424471
+          mkdir "$RUNNER_TEMP/p11lab-syft"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/p11lab-syft"
+          "$RUNNER_TEMP/p11lab-syft/syft" version
+
+      - name: Install control P11Lab and build the exact candidate
+        shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -eu
+          python -m pip install ./p11lab-control
+          p11lab build "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --output-dir build-out
+
+      - name: Scan the built image with Syft (informational only)
+        shell: bash
+        run: |
+          set -eu
+          image="$(cat build-out/image-id)"
+          "$RUNNER_TEMP/p11lab-syft/syft" scan "docker:$image" \
+            -o spdx-json=syft.spdx.json -o table=syft.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          document = json.load(open('syft.spdx.json'))
+          names = sorted({p['name'] for p in document.get('packages', [])})
+          print('syft packages:', len(names))
+          Path('syft-packages.txt').write_text('\n'.join(names) + '\n')
+          PY
+          printf 'gathered bundle and Syft SBOM describe %s\n' "$image" | tee image-identity.txt
+
+      - name: Gather license-review inputs from the lock
+        shell: bash
+        env:
+          P11LAB_INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -eu
+          p11lab image gather-review --environment "$P11LAB_INPUT_ENVIRONMENT" \
+            --channel "$P11LAB_INPUT_CHANNEL" --output-dir review-bundle
+          python - <<'PY'
+          import json
+          report = json.load(open('review-bundle/report.json'))
+          print('sources:', report['summary']['sources'],
+                'binaries:', report['summary']['binaries'],
+                'incorporated:', report['summary']['incorporated'],
+                'source_gaps:', report['summary']['source_gaps'],
+                'binary_gaps:', report['summary']['binary_gaps'])
+          PY
+
+      - name: Upload review bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-review-bundle-${{ inputs.environment }}-${{ inputs.channel }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: review-bundle/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+      - name: Upload Syft SBOM, provider sources, and build receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: p11lab-review-context-${{ inputs.environment }}-${{ inputs.channel }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            syft.spdx.json
+            syft.txt
+            syft-packages.txt
+            image-identity.txt
+            build-out/artifact.json
+            build-out/sources/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
