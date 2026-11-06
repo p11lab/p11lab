@@ -165,6 +165,10 @@ or eligibility:
 p11lab image gather-review --environment softhsm2 --channel release --output-dir review-bundle
 ```
 
+An optional `--cache-dir` keeps verified fetch bytes across runs: cached
+bytes are size/hash-verified against the current lock before use, so a rerun
+after a mirror outage resumes instead of restarting.
+
 The `license-review-support` workflow runs the same operation on CI after
 building the exact candidate, and additionally records an informational Syft
 SBOM of the built image for cross-checking. The Syft output never replaces
