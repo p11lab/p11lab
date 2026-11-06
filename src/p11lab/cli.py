@@ -174,9 +174,11 @@ def main(argv=None) -> int:
     command.add_argument("--timeout", type=int, default=300,
                          help="lifecycle attempt budget in seconds, 1..86400 (24h ceiling)")
     image = commands.add_parser("image", help="local image validation")
-    image.add_argument("operation", choices=("prepare-tools", "validate-local"))
+    image.add_argument("operation", choices=("prepare-tools", "validate-local", "gather-review"))
     image.add_argument("--artifact", type=Path)
     image.add_argument("--policy", type=Path)
+    image.add_argument("--environment")
+    image.add_argument("--channel")
     image.add_argument("--output-dir", required=True, type=Path)
     custody = commands.add_parser("custody", help="prepare and replay exact qualification-only image custody")
     custody_operations = custody.add_subparsers(dest="custody_operation", required=True)
@@ -482,6 +484,18 @@ def main(argv=None) -> int:
                 if args.artifact or args.policy:
                     raise ValueError('prepare-tools does not accept artifact or policy')
                 print(json.dumps(prepare_validation_tools(args.output_dir), indent=2, sort_keys=True))
+                return 0
+            if args.operation == 'gather-review':
+                from . import review_inputs
+                if args.artifact or args.policy:
+                    raise ValueError('gather-review does not accept artifact or policy')
+                if not args.environment or not args.channel:
+                    raise ValueError('gather-review requires environment and channel')
+                spec = load_environment(args.environment, args.channel)
+                if spec.get('lock') is None:
+                    raise ValueError('gather-review requires a locked channel')
+                print(json.dumps(review_inputs.gather_review_inputs(spec['lock'], args.output_dir),
+                                 indent=2, sort_keys=True))
                 return 0
             from .image_validation import validate_image
             from .jsonutil import loads

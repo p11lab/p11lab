@@ -147,3 +147,22 @@ admission. An assembler may join and measure these records; it must not generate
 review approvals or infer them from SPDX labels. Unreviewed or changed content
 stays blocked. Publish only the explicit archive/receipt/SPDX roster, never the
 adjacent `package-cache/` or `admission.json`.
+
+Review-input gathering is the mechanical step before human review. For one
+locked environment/channel it fetches every lock-pinned source, binary and
+index byte with hash verification, resolves statically incorporated
+sources through the pinned Sources indices, and extracts license evidence
+texts (Debian copyright files, Cargo license fields, license files) into a
+bundle with a machine-readable report. It concludes no licenses, grants, or
+eligibility:
+
+```sh
+p11lab image gather-review --environment softhsm2 --channel release --output-dir review-bundle
+```
+
+The `license-review-support` workflow runs the same operation on CI after
+building the exact candidate, and additionally records an informational Syft
+SBOM of the built image for cross-checking. The Syft output never replaces
+the reviewed P11Lab SPDX inventory: admission verifies the P11Lab SBOM's
+checksum and identity binding, and only the committed template carries review
+conclusions with grant evidence.
