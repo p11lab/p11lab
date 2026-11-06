@@ -95,11 +95,22 @@ jobs:
         run: |
           set -eu
           python -m pip install ./p11lab-control
-          if ! p11lab build "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --output-dir build-out; then
-            echo '--- build-out/build.log (tail, 200 lines) ---'
+          # snapshot.debian.org serves the builder-stage apt traffic and has
+          # sustained 503/504 windows; retry the whole build a bounded number
+          # of times (each attempt uses a fresh output dir) instead of failing
+          # the run on one bad window. The build definition itself is untouched.
+          attempt=1
+          while [ "$attempt" -le 3 ]; do
+            rm -rf build-out
+            if p11lab build "$P11LAB_INPUT_ENVIRONMENT" --channel "$P11LAB_INPUT_CHANNEL" --output-dir build-out; then
+              break
+            fi
+            echo "--- build attempt $attempt failed; build.log tail (200 lines) ---"
             tail -n 200 build-out/build.log 2>/dev/null || echo 'no build.log emitted'
-            exit 2
-          fi
+            attempt=$((attempt + 1))
+            sleep 60
+          done
+          test -f build-out/artifact.json || { echo 'build failed after 3 attempts' >&2; exit 2; }
 
       - name: Upload build diagnostics on failure
         if: failure()
