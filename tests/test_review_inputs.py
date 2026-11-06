@@ -632,6 +632,87 @@ def test_fetch_url_validates_and_verifies_mocked_bytes(monkeypatch):
         review_inputs._HTTPSOnlyRedirect().redirect_request(None, None, 302, '', {}, 'http://evil/x')
 
 
+def test_gather_cache_serves_verified_bytes_without_refetch(tmp_path, demo_lock):
+    lock, store = demo_lock
+    cache = tmp_path / 'cache'
+    calls = []
+
+    def counting(name):
+        calls.append(name)
+        return store[name]
+
+    first = review_inputs.gather_review_inputs(lock, tmp_path / 'out1', fetcher=counting,
+                                               cache_dir=cache, sleeper=lambda seconds: None)
+    assert first['status'] == 'complete'
+    assert calls, 'expected network fetches on a cold cache'
+
+    def offline(name):
+        raise review_inputs.FetchError('mirror unreachable')
+
+    second = review_inputs.gather_review_inputs(lock, tmp_path / 'out2', fetcher=offline,
+                                                cache_dir=cache, sleeper=lambda seconds: None)
+    assert second['status'] == 'complete'
+    first_report = json.loads((tmp_path / 'out1' / 'report.json').read_text())
+    second_report = json.loads((tmp_path / 'out2' / 'report.json').read_text())
+    assert first_report['summary']['cache_hits'] == 0
+    assert second_report['summary']['cache_hits'] == len(calls)
+
+
+def test_gather_cache_rejects_symlink_and_nested_dirs(tmp_path, demo_lock):
+    lock, store = demo_lock
+    real = tmp_path / 'real'
+    real.mkdir()
+    link = tmp_path / 'link'
+    link.symlink_to(real, target_is_directory=True)
+    with pytest.raises(ValueError, match='real directory'):
+        review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get,
+                                           cache_dir=link, sleeper=lambda seconds: None)
+    nested = tmp_path / 'out2' / 'cache'
+    with pytest.raises(ValueError, match='inside the output directory'):
+        review_inputs.gather_review_inputs(lock, tmp_path / 'out2', fetcher=store.get,
+                                           cache_dir=nested, sleeper=lambda seconds: None)
+
+
+def test_gather_cache_ignores_corrupt_entry_and_refetches(tmp_path, demo_lock):
+    lock, store = demo_lock
+    cache = tmp_path / 'cache'
+    cache.mkdir()
+    (cache / 'demo_1.0.0.orig.tar.gz').write_bytes(b'corrupt cache entry')
+    calls = []
+
+    def counting(name):
+        calls.append(name)
+        return store[name]
+
+    result = review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=counting,
+                                                cache_dir=cache, sleeper=lambda seconds: None)
+    assert result['status'] == 'complete'
+    assert 'demo_1.0.0.orig.tar.gz' in calls
+    assert (cache / 'demo_1.0.0.orig.tar.gz').read_bytes() == store['demo_1.0.0.orig.tar.gz']
+
+
+def test_gather_cache_never_serves_bytes_for_other_lock(tmp_path, demo_lock):
+    lock, store = demo_lock
+    cache = tmp_path / 'cache'
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out1', fetcher=store.get,
+                                       cache_dir=cache, sleeper=lambda seconds: None)
+    other_raw = b'different bytes, same basename'
+    other = dict(lock)
+    other['source_packages'] = [{'name': 'demo', 'version': '9.9.9-9',
+                                 'files': [{'filename': 'demo_1.0.0.orig.tar.gz',
+                                            'sha256': hashlib.sha256(other_raw).hexdigest(),
+                                            'size': len(other_raw),
+                                            'url': 'https://example.invalid/demo_1.0.0.orig.tar.gz'}]}]
+    other['packages'] = []
+
+    def offline(name):
+        raise review_inputs.FetchError('mirror unreachable')
+
+    with pytest.raises(SourceError, match='fetch failed'):
+        review_inputs.gather_review_inputs(other, tmp_path / 'out2', fetcher=offline,
+                                           cache_dir=cache, sleeper=lambda seconds: None)
+
+
 def test_report_lists_provider_inputs_as_not_gathered(tmp_path, demo_lock):
     lock, store = demo_lock
     lock['sources'] = [{'kind': 'git', 'url': 'https://example.invalid/upstream.git'}]

@@ -130,3 +130,46 @@ def test_gather_review_dispatches_with_packaged_lock(tmp_path, monkeypatch, caps
     assert "source_packages" in seen["lock_keys"] and "packages" in seen["lock_keys"]
     assert seen["output_dir"] == str(tmp_path / "o")
     assert '"complete"' in capsys.readouterr().out
+
+
+def test_gather_review_passes_cache_dir(tmp_path, monkeypatch, capsys):
+    import p11lab.review_inputs as gather
+
+    seen = {}
+
+    def stub(lock, output_dir, **kwargs):
+        seen.update(kwargs)
+        return {"status": "complete"}
+
+    monkeypatch.setattr(gather, "gather_review_inputs", stub)
+    code = main(["image", "gather-review", "--environment", "softhsm2", "--channel", "release",
+                 "--output-dir", str(tmp_path / "o"), "--cache-dir", str(tmp_path / "c")])
+    assert code == 0
+    assert seen["cache_dir"] == tmp_path / "c"
+
+
+def test_gather_review_cache_dir_defaults_to_none(tmp_path, monkeypatch, capsys):
+    import p11lab.review_inputs as gather
+
+    seen = {}
+
+    def stub(lock, output_dir, **kwargs):
+        seen.update(kwargs)
+        return {"status": "complete"}
+
+    monkeypatch.setattr(gather, "gather_review_inputs", stub)
+    code = main(["image", "gather-review", "--environment", "softhsm2", "--channel", "release",
+                 "--output-dir", str(tmp_path / "o")])
+    assert code == 0
+    assert seen["cache_dir"] is None
+
+
+def test_image_other_operations_reject_cache_dir(tmp_path, capsys):
+    code = main(["image", "prepare-tools", "--output-dir", str(tmp_path / "o"),
+                 "--cache-dir", str(tmp_path / "c")])
+    assert code == 2
+    assert "does not accept cache-dir" in capsys.readouterr().err
+    code = main(["image", "validate-local", "--artifact", "a.json", "--policy", "p.json",
+                 "--output-dir", str(tmp_path / "o"), "--cache-dir", str(tmp_path / "c")])
+    assert code == 2
+    assert "does not accept cache-dir" in capsys.readouterr().err

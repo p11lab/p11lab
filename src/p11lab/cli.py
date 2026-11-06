@@ -180,6 +180,8 @@ def main(argv=None) -> int:
     image.add_argument("--environment")
     image.add_argument("--channel")
     image.add_argument("--output-dir", required=True, type=Path)
+    image.add_argument("--cache-dir", type=Path,
+                       help="gather-review resume cache for lock-pinned fetch bytes")
     custody = commands.add_parser("custody", help="prepare and replay exact qualification-only image custody")
     custody_operations = custody.add_subparsers(dest="custody_operation", required=True)
     for operation in ("component-sources", "prepare", "finalize"):
@@ -483,6 +485,8 @@ def main(argv=None) -> int:
                 from .delivery_authority import prepare_validation_tools
                 if args.artifact or args.policy:
                     raise ValueError('prepare-tools does not accept artifact or policy')
+                if args.cache_dir:
+                    raise ValueError('prepare-tools does not accept cache-dir')
                 print(json.dumps(prepare_validation_tools(args.output_dir), indent=2, sort_keys=True))
                 return 0
             if args.operation == 'gather-review':
@@ -494,12 +498,15 @@ def main(argv=None) -> int:
                 spec = load_environment(args.environment, args.channel)
                 if spec.get('lock') is None:
                     raise ValueError('gather-review requires a locked channel')
-                print(json.dumps(review_inputs.gather_review_inputs(spec['lock'], args.output_dir),
+                print(json.dumps(review_inputs.gather_review_inputs(spec['lock'], args.output_dir,
+                                                                  cache_dir=args.cache_dir),
                                  indent=2, sort_keys=True))
                 return 0
             from .image_validation import validate_image
             from .jsonutil import loads
             from .models import ArtifactRef
+            if args.cache_dir:
+                raise ValueError('validate-local does not accept cache-dir')
             if not args.artifact or not args.policy:
                 raise ValueError('validate-local requires artifact and policy')
             data = loads(args.artifact.read_bytes())

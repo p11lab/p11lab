@@ -131,6 +131,19 @@ jobs:
           PY
           printf 'gathered bundle and Syft SBOM describe %s\n' "$image" | tee image-identity.txt
 
+      # Cache design: saves use a unique per-run key (cache entries are
+      # immutable), so the restore below intentionally never exact-matches;
+      # convergence comes from the prefix restore-keys, which return the
+      # latest save across reruns. Stale bytes are harmless: the gather tool
+      # size/hash-verifies every cached byte against the current lock.
+      - name: Restore verified fetch cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: fetch-cache/
+          key: review-fetch-${{ inputs.environment }}-${{ inputs.channel }}-${{ inputs.p11lab_ref }}
+          restore-keys: |
+            review-fetch-${{ inputs.environment }}-${{ inputs.channel }}-
+
       - name: Gather license-review inputs from the lock
         shell: bash
         env:
@@ -138,8 +151,9 @@ jobs:
           P11LAB_INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -eu
+          mkdir -p fetch-cache
           p11lab image gather-review --environment "$P11LAB_INPUT_ENVIRONMENT" \
-            --channel "$P11LAB_INPUT_CHANNEL" --output-dir review-bundle
+            --channel "$P11LAB_INPUT_CHANNEL" --output-dir review-bundle --cache-dir fetch-cache
           python - <<'PY'
           import json
           report = json.load(open('review-bundle/report.json'))
@@ -147,8 +161,16 @@ jobs:
                 'binaries:', report['summary']['binaries'],
                 'incorporated:', report['summary']['incorporated'],
                 'source_gaps:', report['summary']['source_gaps'],
-                'binary_gaps:', report['summary']['binary_gaps'])
+                'binary_gaps:', report['summary']['binary_gaps'],
+                'cache_hits:', report['summary']['cache_hits'])
           PY
+
+      - name: Save verified fetch cache
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: fetch-cache/
+          key: review-fetch-${{ inputs.environment }}-${{ inputs.channel }}-${{ inputs.p11lab_ref }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload review bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

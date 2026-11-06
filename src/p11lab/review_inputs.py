@@ -701,12 +701,18 @@ def _gather_incorporated(lock, wanted, have, sources, files_dir, evidence_root, 
     return indices
 
 
-def gather_review_inputs(lock, output_dir, *, fetcher=None, attempts=FETCH_ATTEMPTS, sleeper=time.sleep):
+def gather_review_inputs(lock, output_dir, *, fetcher=None, attempts=FETCH_ATTEMPTS, sleeper=time.sleep,
+                         cache_dir=None):
     """Fetch every lock-pinned Debian source/binary/index file and extract evidence.
 
     fetcher(filename) -> bytes overrides network acquisition (tests); the
-    default fetches each entry URL over HTTPS with retries. Every returned
-    byte string is size/hash-verified against the lock before use. Each
+    default fetches each entry URL over HTTPS with retries. cache_dir names
+    an optional caller-owned directory of previously fetched bytes keyed by
+    quoted entry filename; cached bytes are size/hash-verified against the current lock
+    before use (a mismatch refetches), and every verified network fetch is
+    stored there, so a rerun after a mirror outage resumes instead of
+    restarting. Every returned byte string is size/hash-verified against
+    the lock before use. Each
     binary's declared source identity and any statically incorporated
     sources (Built-Using/Static-Built-Using) resolve through lock entries
     first and the InRelease-pinned Sources.xz indices second; anything
@@ -759,9 +765,54 @@ def gather_review_inputs(lock, output_dir, *, fetcher=None, attempts=FETCH_ATTEM
     files_dir = output / 'files'
     files_dir.mkdir()
     (output / 'evidence').mkdir()
+    cache = Path(cache_dir) if cache_dir is not None else None
+    if cache is not None:
+        cache.mkdir(parents=True, exist_ok=True)
+        if not cache.is_dir() or cache.is_symlink():
+            raise ValueError('gather cache_dir must be a real directory')
+        if cache.resolve() == output.resolve() or cache.resolve().is_relative_to(output.resolve()):
+            raise ValueError('gather cache_dir must not live inside the output directory')
+        for stale in cache.glob('.staging-*'):
+            try:
+                if stale.is_file() and not stale.is_symlink():
+                    stale.unlink()
+            except OSError:
+                pass
+    cache_hits = [0]
+
+    def cache_name(filename):
+        from urllib.parse import quote
+        return quote(filename, safe='')
+
+    def cache_lookup(filename, item):
+        try:
+            raw = (cache / cache_name(filename)).read_bytes()
+        except OSError:
+            return None
+        if len(raw) != item['size'] or hashlib.sha256(raw).hexdigest() != item['sha256']:
+            return None
+        cache_hits[0] += 1
+        return raw
+
+    def cache_store(filename, raw):
+        import os
+        target = cache / cache_name(filename)
+        staging = cache / ('.staging-%s-%d' % (cache_name(filename), os.getpid()))
+        try:
+            staging.write_bytes(raw)
+            staging.replace(target)
+        except OSError:
+            try:
+                staging.unlink()
+            except OSError:
+                pass
 
     def verified_fetch(filename):
         item = entries[filename]
+        if cache is not None:
+            hit = cache_lookup(filename, item)
+            if hit is not None:
+                return hit
         last = None
         for attempt in range(1, attempts + 1):
             try:
@@ -773,6 +824,8 @@ def gather_review_inputs(lock, output_dir, *, fetcher=None, attempts=FETCH_ATTEM
                     raise SourceError('fetcher returned non-bytes for ' + filename)
                 if len(raw) != item['size'] or hashlib.sha256(raw).hexdigest() != item['sha256']:
                     raise SourceError('source payload checksum/size mismatch: ' + filename)
+                if cache is not None:
+                    cache_store(filename, raw)
                 return raw
             if attempt < attempts:
                 sleeper(min(60, 5 * attempt))
@@ -815,7 +868,8 @@ def gather_review_inputs(lock, output_dir, *, fetcher=None, attempts=FETCH_ATTEM
                                                      for tag in s['via'])),
                           'index_resolved': sum(1 for s in sources.values() if 'lock' not in s['via']),
                           'source_gaps': sum(len(s['gaps']) for s in sources.values()),
-                          'binary_gaps': sum(len(b['gaps']) for b in binaries.values())}}
+                          'binary_gaps': sum(len(b['gaps']) for b in binaries.values()),
+                          'cache_hits': cache_hits[0]}}
     staged = output / 'report.json.staged'
     staged.write_text(json.dumps(report, sort_keys=True, indent=2) + '\n')
     manifest = {'report.json': checksum(staged)}
