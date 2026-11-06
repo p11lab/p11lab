@@ -2,6 +2,7 @@
 import hashlib
 import io
 import json
+import lzma
 import tarfile
 from pathlib import Path
 
@@ -39,11 +40,16 @@ MIT_TEXT = b'Permission is hereby granted, free of charge, to any person obtaini
 def demo_lock():
     orig = make_tar({'demo-1.0/Cargo.toml': CARGO, 'demo-1.0/LICENSE-MIT': MIT_TEXT})
     debian = make_tar({'debian/copyright': COPYRIGHT})
-    dsc = b'Format: 3.0 (quilt)\nSource: demo\nVersion: 1.0.0-1\n'
+    asc = b'-----BEGIN PGP SIGNATURE-----\nAAAA\n-----END PGP SIGNATURE-----\n'
+    dsc = ('Format: 3.0 (quilt)\nSource: demo\nVersion: 1.0.0-1\nChecksums-Sha256:\n'
+           ' %s %d demo_1.0.0.orig.tar.gz\n %s %d demo_1.0.0-1.debian.tar.xz\n' % (
+               hashlib.sha256(orig).hexdigest(), len(orig),
+               hashlib.sha256(debian).hexdigest(), len(debian))).encode()
     data_tar = make_tar({'./usr/share/doc/demo/copyright': COPYRIGHT})
     deb = make_ar([('debian-binary', b'2.0\n'), ('control.tar.xz', make_tar({'control': b'Package: demo\n'})),
                    ('data.tar.xz', data_tar)])
-    files = {'demo_1.0.0-1.dsc': dsc, 'demo_1.0.0.orig.tar.gz': orig, 'demo_1.0.0-1.debian.tar.xz': debian}
+    files = {'demo_1.0.0-1.dsc': dsc, 'demo_1.0.0.orig.tar.gz': orig,
+             'demo_1.0.0.orig.tar.gz.asc': asc, 'demo_1.0.0-1.debian.tar.xz': debian}
     payloads = [{'filename': name, 'sha256': hashlib.sha256(raw).hexdigest(), 'size': len(raw),
                  'url': 'https://example.invalid/' + name} for name, raw in files.items()]
     package = {'name': 'demo', 'version': '1.0.0-1', 'architecture': 'amd64',
@@ -97,34 +103,6 @@ def test_gather_retries_transient_failures(tmp_path, demo_lock):
     assert len(attempts) >= 3 * 4
 
 
-def lz4_frame(content):
-    header = bytes([0x60, 0x40])
-    checksum = (review_inputs._xxh32(header) >> 8) & 0xFF
-    token = min(len(content), 15) << 4
-    block = bytes([token])
-    if len(content) >= 15:
-        remaining = len(content) - 15
-        while remaining >= 255:
-            block += b'\xff'
-            remaining -= 255
-        block += bytes([remaining])
-    block += content
-    return (b'\x04\x22\x4d\x18' + header + bytes([checksum])
-            + len(block).to_bytes(4, 'little') + block + b'\x00\x00\x00\x00')
-
-
-def test_lz4_frame_decode_round_trips_literals_and_matches():
-    assert review_inputs.lz4_frame_decode(lz4_frame(b'Sources stanza bytes ' * 9)) == b'Sources stanza bytes ' * 9
-    header = bytes([0x60, 0x40])
-    checksum = (review_inputs._xxh32(header) >> 8) & 0xFF
-    block = b'\x10a\x01\x00'
-    frame = (b'\x04\x22\x4d\x18' + header + bytes([checksum])
-             + len(block).to_bytes(4, 'little') + block + b'\x00\x00\x00\x00')
-    assert review_inputs.lz4_frame_decode(frame) == b'aaaaa'
-    with pytest.raises(SourceError, match='header checksum'):
-        review_inputs.lz4_frame_decode(frame[:6] + b'\x00' + frame[7:])
-
-
 def test_gather_accepts_pool_path_filenames_stored_by_basename(tmp_path, demo_lock):
     lock, store = demo_lock
     prefixed, relocated = {}, {}
@@ -145,12 +123,16 @@ def test_gather_accepts_pool_path_filenames_stored_by_basename(tmp_path, demo_lo
 def test_gather_skips_cargo_gap_for_non_rust_tree(tmp_path, demo_lock):
     lock, store = demo_lock
     bare_orig = make_tar({'demo-1.0/README': b'no license signals here\n'})
+    bare_dsc = b'Format: 3.0 (quilt)\nSource: demo\nVersion: 1.0.0-1\n'
     file_list = lock['source_packages'][0]['files']
     for entry in file_list:
         if entry['filename'] == 'demo_1.0.0.orig.tar.gz':
             entry['sha256'] = hashlib.sha256(bare_orig).hexdigest()
             entry['size'] = len(bare_orig)
-    store = dict(store, **{'demo_1.0.0.orig.tar.gz': bare_orig})
+        if entry['filename'] == 'demo_1.0.0-1.dsc':
+            entry['sha256'] = hashlib.sha256(bare_dsc).hexdigest()
+            entry['size'] = len(bare_dsc)
+    store = dict(store, **{'demo_1.0.0.orig.tar.gz': bare_orig, 'demo_1.0.0-1.dsc': bare_dsc})
     result = review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get)
     assert result['status'] == 'complete'
     report = json.loads((tmp_path / 'out' / 'report.json').read_text())
@@ -163,36 +145,52 @@ def test_gather_flags_rust_tree_without_license_field(tmp_path, demo_lock):
     lock, store = demo_lock
     rust_orig = make_tar({'demo-1.0/Cargo.toml': b'[package]\nname = "demo"\nversion = "1.0.0"\n',
                           'demo-1.0/src/lib.rs': b'// no license\n'})
+    bare_dsc = b'Format: 3.0 (quilt)\nSource: demo\nVersion: 1.0.0-1\n'
     file_list = lock['source_packages'][0]['files']
     for entry in file_list:
         if entry['filename'] == 'demo_1.0.0.orig.tar.gz':
             entry['sha256'] = hashlib.sha256(rust_orig).hexdigest()
             entry['size'] = len(rust_orig)
-    store = dict(store, **{'demo_1.0.0.orig.tar.gz': rust_orig})
+        if entry['filename'] == 'demo_1.0.0-1.dsc':
+            entry['sha256'] = hashlib.sha256(bare_dsc).hexdigest()
+            entry['size'] = len(bare_dsc)
+    store = dict(store, **{'demo_1.0.0.orig.tar.gz': rust_orig, 'demo_1.0.0-1.dsc': bare_dsc})
     review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get)
     report = json.loads((tmp_path / 'out' / 'report.json').read_text())
     assert 'no-cargo-license' in report['sources']['demo=1.0.0-1']['gaps']
 
 
-INDEX_NAME = ('snapshot.debian.org_archive_debian_20260918T000000Z'
+LZ4_NAME = ('snapshot.debian.org_archive_debian_20260918T000000Z'
               '_dists_trixie_main_source_Sources.lz4')
 RELEASE_NAME = ('snapshot.debian.org_archive_debian_20260918T000000Z'
                 '_dists_trixie_InRelease')
+XZ_KEY = 'index/trixie/main/source/Sources.xz'
+
+
+def stanza_for(name, version, directory, files):
+    rows = ''.join(' %s %d %s\n' % (hashlib.sha256(raw).hexdigest(), len(raw), filename)
+                   for filename, raw in files)
+    return 'Package: %s\nVersion: %s\nDirectory: %s\nChecksums-Sha256:\n%s' % (name, version, directory, rows)
+
+
+def release_for(xz):
+    return ('Origin: Debian\nSuite: trixie\nSHA256:\n %s %d main/source/Sources.xz\n' % (
+        hashlib.sha256(xz).hexdigest(), len(xz))).encode()
 
 
 def incorporated_lock(with_built_using=True):
     helper_orig = make_tar({'helper-2.0/LICENSE': MIT_TEXT})
     helper_dsc = b'Format: 3.0 (native)\nSource: helper\nVersion: 2.0-1\n'
-    stanza = ('Package: helper\nVersion: 2.0-1\nDirectory: pool/main/h/helper\n'
-              'Files:\n d41d8cd98f00b204e9800998ecf8427e %d helper_2.0-1.dsc\n'
-              ' d41d8cd98f00b204e9800998ecf8427e %d helper_2.0.orig.tar.gz\n'
-              'Checksums-Sha256:\n %s %d helper_2.0-1.dsc\n %s %d helper_2.0.orig.tar.gz\n' % (
-                  len(helper_dsc), len(helper_orig),
-                  hashlib.sha256(helper_dsc).hexdigest(), len(helper_dsc),
-                  hashlib.sha256(helper_orig).hexdigest(), len(helper_orig)))
-    index = lz4_frame(stanza.encode())
+    demo_orig = make_tar({'demo-1.0/LICENSE': MIT_TEXT})
+    demo_dsc = b'Format: 3.0 (native)\nSource: demo\nVersion: 1.0.0-1\n'
+    text = (stanza_for('helper', '2.0-1', 'pool/main/h/helper',
+                       [('helper_2.0-1.dsc', helper_dsc), ('helper_2.0.orig.tar.gz', helper_orig)])
+            + '\n'
+            + stanza_for('demo', '1.0.0-1', 'pool/main/d/demo',
+                         [('demo_1.0.0-1.dsc', demo_dsc), ('demo_1.0.0.orig.tar.gz', demo_orig)]))
+    xz = lzma.compress(text.encode())
+    release = release_for(xz)
     control = b'Package: demo\nVersion: 1.0.0-1\n'
-    release = b'Origin: Debian\nSuite: trixie\n'
     if with_built_using:
         control += b'Static-Built-Using: helper (= 2.0-1)\n'
     deb = make_ar([('debian-binary', b'2.0\n'), ('control.tar.xz', make_tar({'control': control})),
@@ -203,17 +201,18 @@ def incorporated_lock(with_built_using=True):
                           'binary_acquisition': {'filename': 'demo_1.0.0-1_amd64.deb',
                                                  'sha256': hashlib.sha256(deb).hexdigest(),
                                                  'size': len(deb), 'url': 'https://example.invalid/demo.deb'}}],
-            'signed_index_inputs': [{'filename': INDEX_NAME, 'sha256': hashlib.sha256(index).hexdigest(),
-                                     'size': len(index)},
+            'signed_index_inputs': [{'filename': LZ4_NAME, 'sha256': '1' * 64, 'size': 8},
                                     {'filename': RELEASE_NAME, 'sha256': hashlib.sha256(release).hexdigest(),
                                      'size': len(release)}]}
-    store = {'demo_1.0.0-1_amd64.deb': deb, INDEX_NAME: index, RELEASE_NAME: release,
+    store = {'demo_1.0.0-1_amd64.deb': deb, RELEASE_NAME: release, XZ_KEY: xz,
              'pool/main/h/helper/helper_2.0-1.dsc': helper_dsc,
-             'pool/main/h/helper/helper_2.0.orig.tar.gz': helper_orig}
+             'pool/main/h/helper/helper_2.0.orig.tar.gz': helper_orig,
+             'pool/main/d/demo/demo_1.0.0-1.dsc': demo_dsc,
+             'pool/main/d/demo/demo_1.0.0.orig.tar.gz': demo_orig}
     return lock, store
 
 
-def test_gather_resolves_incorporated_sources_through_pinned_index(tmp_path):
+def test_gather_resolves_sources_through_pinned_index(tmp_path):
     lock, store = incorporated_lock()
     result = review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get,
                                                 sleeper=lambda seconds: None)
@@ -224,48 +223,37 @@ def test_gather_resolves_incorporated_sources_through_pinned_index(tmp_path):
     assert helper['verified'] is True
     assert helper['via'] == ['built-using:demo=1.0.0-1']
     assert any(name.endswith('LICENSE') for name in helper['evidence'])
-    assert report['summary']['incorporated'] == 1
-    assert report['indices'][INDEX_NAME]['stanzas'] == 1
+    assert report['sources']['demo=1.0.0-1']['via'] == ['binary-source:demo=1.0.0-1']
+    assert report['summary']['incorporated'] == 2
+    assert report['indices'][XZ_KEY]['stanzas'] == 2
     assert report['indices'][RELEASE_NAME] == {'suite': 'trixie', 'verified': True,
                                                'sha256': hashlib.sha256(store[RELEASE_NAME]).hexdigest()}
+    assert report['indices'][LZ4_NAME]['downloadable'] is False
 
 
-def test_gather_skips_index_phase_without_built_using(tmp_path):
-    lock, store = incorporated_lock(with_built_using=False)
+def test_gather_records_indices_even_without_wanted_sources(tmp_path):
+    lock, store = incorporated_lock()
+    lock['packages'] = []
     result = review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get,
                                                 sleeper=lambda seconds: None)
     assert result['status'] == 'complete'
     report = json.loads((tmp_path / 'out' / 'report.json').read_text())
     assert report['sources'] == {}
-    assert report['indices'] == {}
+    assert report['indices'][RELEASE_NAME]['verified'] is True
+    assert report['indices'][XZ_KEY]['stanzas'] == 2
 
 
-def test_gather_rejects_unresolved_incorporated_source(tmp_path):
+def test_gather_rejects_unresolved_source(tmp_path):
     lock, store = incorporated_lock()
-    empty = lz4_frame(b'Package: other\nVersion: 1\nDirectory: pool/main/o/other\nFiles:\n'
-                      b' d41d8cd98f00b204e9800998ecf8427e 8 other_1.dsc\nChecksums-Sha256:\n'
-                      b' ' + b'0' * 64 + b' 8 other_1.dsc\n')
-    lock['signed_index_inputs'][0]['sha256'] = hashlib.sha256(empty).hexdigest()
-    lock['signed_index_inputs'][0]['size'] = len(empty)
-    store[INDEX_NAME] = empty
-    with pytest.raises(SourceError, match='unresolved incorporated source'):
+    xz = lzma.compress(stanza_for('other', '1', 'pool/main/o/other', [('other_1.dsc', b'x')]).encode())
+    release = release_for(xz)
+    lock['signed_index_inputs'][1]['sha256'] = hashlib.sha256(release).hexdigest()
+    lock['signed_index_inputs'][1]['size'] = len(release)
+    store[RELEASE_NAME] = release
+    store[XZ_KEY] = xz
+    with pytest.raises(SourceError, match='unresolved source'):
         review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get,
                                            sleeper=lambda seconds: None)
-
-
-def test_xxh32_matches_known_vectors():
-    assert review_inputs._xxh32(b'') == 0x02CC5D05
-    assert review_inputs._xxh32(b'abc') == 0x32D153FF
-    assert review_inputs._xxh32(b'The quick brown fox jumps over the lazy dog') == 0xE85EA4DE
-
-
-def test_lz4_decodes_real_encoder_frame():
-    raw = (Path(__file__).parent / 'fixtures' / 'review-inputs' / 'trixie-updates_Sources.lz4').read_bytes()
-    stanzas = review_inputs._parse_sources_index(review_inputs.lz4_frame_decode(raw).decode())
-    assert ('python3.13', '3.13.5-2+deb13u4') in stanzas
-    directory, files = stanzas[('libdatetime-timezone-perl', '1:2.65-1+2026c')]
-    assert directory == 'pool/main/libd/libdatetime-timezone-perl'
-    assert len(files) == 3
 
 
 @pytest.mark.parametrize('filename', ['/abs/path.deb', '../escape.deb', 'a/../../b.deb', '', '.', 'pool/'])
@@ -315,10 +303,10 @@ def test_ar_rejects_truncated_and_long_name_members():
         review_inputs._read_ar_members(b'!<arch>\n' + long_member)
 
 
-def test_gather_labels_invalid_built_using_and_reads_lowercase(tmp_path, demo_lock):
+def test_gather_parses_lowercase_built_using(tmp_path, demo_lock):
     lock, store = demo_lock
     build = dict(store)
-    control = b'Package: demo\nstatic-built-using: broken entry here\n'
+    control = b'Package: demo\nstatic-built-using: demo (= 1.0.0-1)\n'
     deb = make_ar([('debian-binary', b'2.0\n'), ('control.tar.xz', make_tar({'control': control})),
                    ('data.tar.xz', make_tar({'./usr/share/doc/demo/copyright': COPYRIGHT}))])
     lock['packages'][0]['binary_acquisition']['sha256'] = hashlib.sha256(deb).hexdigest()
@@ -326,25 +314,73 @@ def test_gather_labels_invalid_built_using_and_reads_lowercase(tmp_path, demo_lo
     build['demo_1.0.0-1_amd64.deb'] = deb
     review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=build.get)
     report = json.loads((tmp_path / 'out' / 'report.json').read_text())
-    gaps = report['binaries']['demo=1.0.0-1']['gaps']
-    assert any(gap.startswith('invalid-built-using:') for gap in gaps)
+    assert report['binaries']['demo=1.0.0-1']['incorporated_sources'] == ['demo=1.0.0-1']
+    assert sorted(report['sources']['demo=1.0.0-1']['via']) == ['binary-source:demo=1.0.0-1',
+                                                                 'built-using:demo=1.0.0-1', 'lock']
 
 
-def test_gather_rejects_ambiguous_and_mismatched_index(tmp_path):
+def test_gather_rejects_invalid_built_using_and_duplicates(tmp_path, demo_lock):
+    lock, store = demo_lock
+    for control in (b'Package: demo\nStatic-Built-Using: broken entry here\n',
+                    b'Package: demo\nBuilt-Using: demo (= 1.0.0-1)\nBuilt-Using: demo (= 1.0.0-1)\n'):
+        deb = make_ar([('debian-binary', b'2.0\n'), ('control.tar.xz', make_tar({'control': control})),
+                       ('data.tar.xz', make_tar({'./usr/share/doc/demo/copyright': COPYRIGHT}))])
+        lock['packages'][0]['binary_acquisition']['sha256'] = hashlib.sha256(deb).hexdigest()
+        lock['packages'][0]['binary_acquisition']['size'] = len(deb)
+        with pytest.raises(SourceError):
+            review_inputs.gather_review_inputs(lock, tmp_path / ('o%d' % len(control)),
+                                               fetcher=dict(store, **{'demo_1.0.0-1_amd64.deb': deb}).get)
+    twin = make_ar([('debian-binary', b'2.0\n'), ('control.tar.xz', make_tar({'control': b'Package: demo\n'})),
+                    ('control.tar.gz', make_tar({'control': b'Package: demo\n'})),
+                    ('data.tar.xz', make_tar({'./usr/share/doc/demo/copyright': COPYRIGHT}))])
+    lock['packages'][0]['binary_acquisition']['sha256'] = hashlib.sha256(twin).hexdigest()
+    lock['packages'][0]['binary_acquisition']['size'] = len(twin)
+    with pytest.raises(SourceError, match='ambiguous or missing ar members'):
+        review_inputs.gather_review_inputs(lock, tmp_path / 'twin',
+                                           fetcher=dict(store, **{'demo_1.0.0-1_amd64.deb': twin}).get)
+
+
+def _add_updates_suite(lock, store, stanza_text):
+    second_release = RELEASE_NAME.replace('trixie_InRelease', 'trixie-updates_InRelease')
+    xz = lzma.compress(stanza_text.encode())
+    release = release_for(xz)
+    lock['signed_index_inputs'].append({'filename': second_release,
+                                        'sha256': hashlib.sha256(release).hexdigest(), 'size': len(release)})
+    store[second_release] = release
+    store['index/trixie-updates/main/source/Sources.xz'] = xz
+
+
+def test_gather_prefers_base_suite_on_identical_content(tmp_path):
     lock, store = incorporated_lock()
-    second = INDEX_NAME.replace('trixie_main', 'trixie-updates_main')
+    mirror = stanza_for('helper', '2.0-1', 'pool/updates/main/h/helper',
+                        [('helper_2.0-1.dsc', store['pool/main/h/helper/helper_2.0-1.dsc']),
+                         ('helper_2.0.orig.tar.gz', store['pool/main/h/helper/helper_2.0.orig.tar.gz'])])
+    _add_updates_suite(lock, store, mirror)
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get,
+                                       sleeper=lambda seconds: None)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    helper = report['sources']['helper=2.0-1']
+    assert sorted(helper['files']) == ['pool/main/h/helper/helper_2.0-1.dsc',
+                                       'pool/main/h/helper/helper_2.0.orig.tar.gz']
+    assert not [gap for gap in helper['gaps'] if gap.startswith('ambiguous-source')]
+
+
+def test_gather_flags_content_ambiguity_with_gap(tmp_path):
+    lock, store = incorporated_lock()
     other_dsc = b'Format: 3.0 (native)\nSource: helper\nVersion: 2.0-1\nremarks: other suite\n'
-    stanza = ('Package: helper\nVersion: 2.0-1\nDirectory: pool/main/h/helper\nChecksums-Sha256:\n'
-              ' %s %d helper_2.0-1.dsc\n' % (hashlib.sha256(other_dsc).hexdigest(), len(other_dsc)))
-    index = lz4_frame(stanza.encode())
-    lock['signed_index_inputs'].append({'filename': second, 'sha256': hashlib.sha256(index).hexdigest(),
-                                        'size': len(index)})
-    store[second] = index
-    with pytest.raises(SourceError, match='ambiguous incorporated source'):
-        review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get,
-                                           sleeper=lambda seconds: None)
+    _add_updates_suite(lock, store, stanza_for('helper', '2.0-1', 'pool/main/h/helper',
+                                               [('helper_2.0-1.dsc', other_dsc)]))
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get,
+                                       sleeper=lambda seconds: None)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    assert 'ambiguous-source-preferred:trixie' in report['sources']['helper=2.0-1']['gaps']
+
+
+def test_index_url_validates_snapshot_and_kind():
     with pytest.raises(ValueError, match='outside pinned snapshot'):
-        review_inputs._index_url(INDEX_NAME, '20000101T000000Z')
+        review_inputs._index_url(RELEASE_NAME, '20000101T000000Z')
+    with pytest.raises(ValueError, match='builder-cache fingerprint'):
+        review_inputs._index_url(LZ4_NAME, '20260918T000000Z')
 
 
 def test_gather_handles_native_package_layout(tmp_path, demo_lock):
@@ -352,7 +388,8 @@ def test_gather_handles_native_package_layout(tmp_path, demo_lock):
     native_orig = make_tar({'demo-1.0/debian/copyright': COPYRIGHT})
     native_dsc = b'Format: 3.0 (native)\nSource: demo\nVersion: 1.0.0-1\n'
     file_list = lock['source_packages'][0]['files']
-    renamed = [entry for entry in file_list if '.debian.tar' not in entry['filename']]
+    renamed = [entry for entry in file_list
+               if '.debian.tar' not in entry['filename'] and not entry['filename'].endswith('.asc')]
     assert len(renamed) == 2
     lock['source_packages'][0]['files'] = renamed
     for entry in renamed:
@@ -373,7 +410,7 @@ def test_gather_handles_native_package_layout(tmp_path, demo_lock):
 
 def test_gather_records_cargo_oversize_gap(tmp_path, demo_lock, monkeypatch):
     lock, store = demo_lock
-    monkeypatch.setattr(review_inputs, 'EVIDENCE_FILE_BOUND', 8)
+    monkeypatch.setattr(review_inputs, 'EVIDENCE_FILE_BOUND', 32)
     review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get)
     report = json.loads((tmp_path / 'out' / 'report.json').read_text())
     assert 'oversize-cargo-toml' in report['sources']['demo=1.0.0-1']['gaps']
@@ -388,3 +425,154 @@ def test_gather_manifest_covers_every_output_byte(tmp_path, demo_lock):
     assert not (tmp_path / 'out' / 'report.json.staged').exists()
     for path, digest in manifest.items():
         assert hashlib.sha256((tmp_path / 'out' / path).read_bytes()).hexdigest() == digest
+    expected = {path.relative_to(tmp_path / 'out').as_posix()
+                for path in (tmp_path / 'out').rglob('*') if path.is_file()} - {'SHA256SUMS'}
+    assert set(manifest) == expected
+
+
+def _swap_orig(lock, store, orig):
+    bare_dsc = b'Format: 3.0 (quilt)\nSource: demo\nVersion: 1.0.0-1\n'
+    for entry in lock['source_packages'][0]['files']:
+        if entry['filename'] == 'demo_1.0.0.orig.tar.gz':
+            entry['sha256'] = hashlib.sha256(orig).hexdigest()
+            entry['size'] = len(orig)
+        if entry['filename'] == 'demo_1.0.0-1.dsc':
+            entry['sha256'] = hashlib.sha256(bare_dsc).hexdigest()
+            entry['size'] = len(bare_dsc)
+    return dict(store, **{'demo_1.0.0.orig.tar.gz': orig, 'demo_1.0.0-1.dsc': bare_dsc})
+
+
+def test_gather_attributes_cargo_license_to_manifest(tmp_path, demo_lock):
+    lock, store = demo_lock
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    source = report['sources']['demo=1.0.0-1']
+    assert source['cargo_license'] == 'MIT OR Apache-2.0'
+    assert source['cargo_manifest'] == 'demo-1.0/Cargo.toml'
+
+
+def test_gather_ignores_license_outside_package_table(tmp_path, demo_lock):
+    lock, store = demo_lock
+    orig = make_tar({'demo-1.0/Cargo.toml': b'[package]\nname = "demo"\nversion = "1.0.0"\n'
+                                            b'[package.metadata.other]\nlicense = "Bogus-1.0"\n',
+                     'demo-1.0/src/lib.rs': b'// rust\n'})
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=_swap_orig(lock, store, orig).get)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    source = report['sources']['demo=1.0.0-1']
+    assert source['cargo_license'] is None
+    assert 'no-cargo-license' in source['gaps']
+
+
+def test_gather_falls_back_on_unparseable_manifest(tmp_path, demo_lock):
+    lock, store = demo_lock
+    orig = make_tar({'demo-1.0/Cargo.toml': b'[package\nlicense = "MIT"\n',
+                     'demo-1.0/src/lib.rs': b'// rust\n'})
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=_swap_orig(lock, store, orig).get)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    source = report['sources']['demo=1.0.0-1']
+    assert source['cargo_license'] == 'MIT'
+    assert 'cargo-toml-unparseable' in source['gaps']
+
+
+def test_gather_resolves_and_flags_cargo_license_file(tmp_path, demo_lock):
+    lock, store = demo_lock
+    good = make_tar({'demo-1.0/Cargo.toml': b'[package]\nname = "demo"\nversion = "1.0.0"\n'
+                                            b'license-file = "LICENSE.txt"\n',
+                     'demo-1.0/LICENSE.txt': MIT_TEXT, 'demo-1.0/src/lib.rs': b'// rust\n'})
+    review_inputs.gather_review_inputs(lock, tmp_path / 'good', fetcher=_swap_orig(lock, store, good).get)
+    report = json.loads((tmp_path / 'good' / 'report.json').read_text())
+    source = report['sources']['demo=1.0.0-1']
+    assert source['cargo_license_file'] == 'LICENSE.txt'
+    assert 'demo-1.0/LICENSE.txt' in source['evidence']
+    assert 'no-cargo-license' not in source['gaps']
+    lock2, _ = demo_lock
+    bad = make_tar({'demo-1.0/Cargo.toml': b'[package]\nname = "demo"\nversion = "1.0.0-1"\n'
+                                           b'license-file = "MISSING.txt"\n',
+                    'demo-1.0/src/lib.rs': b'// rust\n'})
+    review_inputs.gather_review_inputs(lock2, tmp_path / 'bad', fetcher=_swap_orig(lock2, store, bad).get)
+    report = json.loads((tmp_path / 'bad' / 'report.json').read_text())
+    assert 'missing-cargo-license-file' in report['sources']['demo=1.0.0-1']['gaps']
+
+
+def test_gather_keeps_vendored_copyright_as_evidence_only(tmp_path, demo_lock):
+    lock, store = demo_lock
+    lock['source_packages'][0]['files'] = [entry for entry in lock['source_packages'][0]['files']
+                                           if '.debian.tar' not in entry['filename']]
+    orig = make_tar({'demo-1.0/vendor/other/debian/copyright': COPYRIGHT})
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=_swap_orig(lock, store, orig).get)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    source = report['sources']['demo=1.0.0-1']
+    assert 'demo-1.0/vendor/other/debian/copyright' in source['evidence']
+    assert 'no-debian-copyright' in source['gaps']
+
+
+def test_deb822_rejects_duplicate_fields_and_files():
+    with pytest.raises(SourceError, match='duplicate or empty deb822 field'):
+        review_inputs._parse_deb822('Package: a\nPackage: a\n')
+    with pytest.raises(SourceError, match='malformed Sources file identity'):
+        review_inputs._parse_sources_index(
+            'Package: a\nVersion: 1\nDirectory: pool/main/a/a\nChecksums-Sha256:\n'
+            ' %s 8 f.dsc\n %s 8 f.dsc\n' % ('0' * 64, '1' * 64))
+
+
+def test_dsc_roster_mismatch_is_fatal(tmp_path, demo_lock):
+    lock, store = demo_lock
+    forged = ('Format: 3.0 (quilt)\nSource: demo\nVersion: 1.0.0-1\nChecksums-Sha256:\n'
+              ' %s 4 ghost.tar.gz\n' % ('0' * 64)).encode()
+    for entry in lock['source_packages'][0]['files']:
+        if entry['filename'] == 'demo_1.0.0-1.dsc':
+            entry['sha256'] = hashlib.sha256(forged).hexdigest()
+            entry['size'] = len(forged)
+    with pytest.raises(SourceError, match='dsc lists unfetched file'):
+        review_inputs.gather_review_inputs(lock, tmp_path / 'out',
+                                           fetcher=dict(store, **{'demo_1.0.0-1.dsc': forged}).get)
+
+
+def test_fetch_url_validates_and_verifies_mocked_bytes(monkeypatch):
+    with pytest.raises(SourceError, match='public HTTPS'):
+        review_inputs.fetch_url('http://example.invalid/f', 8, '0' * 64)
+    with pytest.raises(SourceError, match='pinned sha256'):
+        review_inputs.fetch_url('https://example.invalid/f', 8, 'zzz')
+    with pytest.raises(SourceError, match='acquisition bound'):
+        review_inputs.fetch_url('https://example.invalid/f', 0, '0' * 64)
+
+    raw = b'pinned-bytes'
+
+    class Response:
+        def geturl(self):
+            return 'https://example.invalid/f'
+
+        def read(self, limit=None):
+            return raw
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    class Opener:
+        def open(self, request, timeout=None):
+            assert request.full_url == 'https://example.invalid/f'
+            return Response()
+
+    monkeypatch.setattr(review_inputs, 'build_opener', lambda *args: Opener())
+    digest = hashlib.sha256(raw).hexdigest()
+    assert review_inputs.fetch_url('https://example.invalid/f', len(raw), digest) == raw
+    with pytest.raises(SourceError, match='checksum'):
+        review_inputs.fetch_url('https://example.invalid/f', len(raw), '0' * 64)
+    with pytest.raises(SourceError, match='outside public HTTPS'):
+        review_inputs._HTTPSOnlyRedirect().redirect_request(None, None, 302, '', {}, 'http://evil/x')
+
+
+def test_report_lists_provider_inputs_as_not_gathered(tmp_path, demo_lock):
+    lock, store = demo_lock
+    lock['sources'] = [{'kind': 'git', 'url': 'https://example.invalid/upstream.git'}]
+    lock['patches'] = [{'path': 'a.patch'}]
+    lock['dependencies'] = ['build-essential']
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    assert report['provider_inputs']['status'] == 'not-gathered: debian-only scope'
+    assert report['provider_inputs']['sources'] == lock['sources']
+    assert report['provider_inputs']['patches'] == lock['patches']
+    assert report['provider_inputs']['dependencies'] == ['build-essential']

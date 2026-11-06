@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Review-support lane: gather license-review inputs for one locked
 # environment/channel. Mechanical only: builds the exact candidate, fetches
-# every lock-pinned source/binary/index byte with hash verification, extracts
+# every lock-pinned Debian source/binary/index byte with hash verification,
+# resolves incorporated sources via InRelease-pinned Sources.xz, extracts
 # license evidence texts, and records an informational Syft SBOM of the built
-# image. It concludes no licenses, grants, or eligibility; the reviewer writes
-# those into the committed inventory template from the uploaded bundle.
-# Manual dispatch only; never a PR gate.
+# image. Provider upstream sources ride along from the build tree; the bundle
+# itself is Debian-scoped. It concludes no licenses, grants, or eligibility;
+# the reviewer writes those into the committed inventory template from the
+# uploaded bundle. Manual dispatch only; never a PR gate.
 name: license-review-support
 
 on:
@@ -140,7 +142,7 @@ jobs:
           retention-days: 14
           compression-level: 6
 
-      - name: Upload Syft SBOM and build receipt
+      - name: Upload Syft SBOM, provider sources, and build receipt
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: p11lab-review-context-${{ inputs.environment }}-${{ inputs.channel }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -150,6 +152,7 @@ jobs:
             syft-packages.txt
             image-identity.txt
             build-out/artifact.json
+            build-out/sources/
           if-no-files-found: error
           retention-days: 14
           compression-level: 6
