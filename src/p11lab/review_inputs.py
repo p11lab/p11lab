@@ -30,6 +30,7 @@ PAYLOAD_SIZE_BOUND = 1024**3
 EVIDENCE_FILE_BOUND = 1024**2
 EVIDENCE_TAR_BOUND = 16 * 1024**2
 COMPRESSED_INDEX_BOUND = 128 * 1024**2
+INDEX_DECODER_MEMLIMIT = 256 * 1024**2
 LICENSE_BASENAME = re.compile(r'(?i)(license|licence|copying|copyright)(\.|$|-|_)')
 CARGO_LICENSE_FALLBACK = re.compile(r'^\s*license\s*=\s*["\']([^"\']+)["\']', re.M)
 CARGO_LICENSE_FILE_FALLBACK = re.compile(r'^\s*license-file\s*=\s*["\']([^"\']+)["\']', re.M)
@@ -221,7 +222,19 @@ def _has_rust_signals(tar):
     return False
 
 
+def _tar_root(tar):
+    """Single top-level directory shared by all members, or None if wrapperless."""
+    tops = {m.name[2:].split('/', 1)[0] if m.name.startswith('./') else m.name.split('/', 1)[0]
+            for m in tar.getmembers() if m.name not in ('', '.', './')}
+    if len(tops) != 1:
+        return None
+    (only,) = tops
+    return only if any('/' in (m.name[2:] if m.name.startswith('./') else m.name) for m in tar.getmembers()) else None
+
+
 def _record_copyright(tar, evidence_dir, identity, evidence, gaps):
+    root = _tar_root(tar)
+    want = root + '/debian/copyright' if root else 'debian/copyright'
     for member in tar.getmembers():
         if not member.isfile():
             continue
@@ -238,10 +251,9 @@ def _record_copyright(tar, evidence_dir, identity, evidence, gaps):
         target.write_bytes(text)
         relpath = str(Path('evidence') / identity / target.name)
         evidence[member.name] = relpath
-        # Only a packaging-root copyright satisfies the requirement; deeper
+        # Only the packaging-root copyright satisfies the requirement;
         # vendored copies are retained as evidence under their own paths.
-        segments = plain.split('/')
-        if len(segments) <= 3 and segments[-2:] == ['debian', 'copyright']:
+        if plain == want:
             evidence['debian/copyright'] = relpath
 
 
@@ -279,22 +291,18 @@ def _resolve_license_file(tar, manifest, declared, evidence_dir, identity, evide
 
 
 def _dsc_roster(raw):
-    """Parse a .dsc into {basename: sha256 or None} from its checksum rosters."""
+    """Parse a .dsc into {basename: (sha256 or None, size)} from checksum rosters."""
     fields = _parse_deb822(_strip_clearsign(raw[:262144].decode('utf-8', 'replace')))
-    for section in ('Checksums-Sha256', 'Checksums-Sha1', 'Files'):
-        rows = []
-        for row in fields.get(section, '').splitlines():
-            if not row.strip():
-                continue
-            parts = row.split()
-            if len(parts) != 3:
-                raise SourceError('malformed .dsc checksum row')
-            digest, _, name = parts
-            if '/' in name or name in ('.', '..'):
-                raise SourceError('malformed .dsc file identity')
-            rows.append((digest, name))
-        if rows:
-            return {name: (digest if section == 'Checksums-Sha256' else None) for digest, name in rows}
+    for section in ('checksums-sha256', 'checksums-sha1', 'files'):
+        rows = _checksum_rows(fields.get(section, ''), kind='.dsc')
+        if not rows:
+            continue
+        roster = {}
+        for digest, size, name in rows:
+            if not size.isdigit():
+                raise SourceError('malformed .dsc file size')
+            roster[name] = (digest if section == 'checksums-sha256' else None, int(size))
+        return roster
     return {}
 
 
@@ -323,9 +331,12 @@ def _gather_source(entry, files_dir, evidence_dir, fetch, *, via):
                 native_format = True
             roster = _dsc_roster(raw)
             have = {path.rsplit('/', 1)[-1]: digest for path, digest in fetched.items()}
-            for filename, digest in roster.items():
+            sizes = {item['filename'].rsplit('/', 1)[-1]: item['size'] for item in entry['files']}
+            for filename, (digest, size) in roster.items():
                 if filename not in have:
                     raise SourceError('dsc lists unfetched file %s: %s' % (identity, filename))
+                if sizes[filename] != size:
+                    raise SourceError('dsc size mismatch %s: %s' % (identity, filename))
                 if digest is not None and have[filename] != digest:
                     raise SourceError('dsc checksum mismatch %s: %s' % (identity, filename))
         if name.endswith(('.tar.gz', '.tar.xz', '.tar.bz2', '.tar.zst')) and '.debian.tar' not in name:
@@ -383,17 +394,24 @@ def _gather_binary(package, files_dir, evidence_dir, fetch):
     try:
         with _tar_members(controls[0], name_hint=item['filename']) as tar:
             names = tar.getnames()
-            pick = 'control' if 'control' in names else './control' if './control' in names else None
-            if pick is None:
+            present = [name for name in ('control', './control') if name in names]
+            if not present:
                 problem = 'control file missing in ' + item['filename']
                 text = ''
-            elif tar.getmember(pick).size > EVIDENCE_FILE_BOUND:
+            elif any(tar.getmember(name).size > EVIDENCE_FILE_BOUND for name in present):
                 problem = 'oversize control file in ' + item['filename']
                 text = ''
             else:
-                reader = tar.extractfile(pick)
-                text = reader.read().decode('utf-8', 'replace') if reader else ''
-                problem = None
+                bodies = set()
+                for name in present:
+                    reader = tar.extractfile(name)
+                    bodies.add(reader.read() if reader else b'')
+                if len(bodies) != 1:
+                    problem = 'conflicting control files in ' + item['filename']
+                    text = ''
+                else:
+                    text = bodies.pop().decode('utf-8', 'replace')
+                    problem = None
     except SourceError as error:
         raise SourceError('unreadable control tarball in %s: %s' % (item['filename'], error)) from error
     if problem is not None:
@@ -470,7 +488,10 @@ def _built_using_identities(control_text):
 
 
 def _parse_deb822(paragraph):
-    """Parse one deb822 paragraph; duplicate or malformed fields are fatal."""
+    """Parse one deb822 paragraph; duplicate or malformed fields are fatal.
+
+    Field names are case-insensitive per deb822; keys are stored lowered.
+    """
     fields = {}
     key = None
     for line in paragraph.splitlines():
@@ -482,7 +503,7 @@ def _parse_deb822(paragraph):
             fields[key] += '\n' + line
         elif ':' in line:
             name, value = line.split(':', 1)
-            name = name.strip()
+            name = name.strip().lower()
             if not name or name in fields:
                 raise SourceError('duplicate or empty deb822 field: ' + name)
             key = name
@@ -534,20 +555,20 @@ def _parse_sources_index(text):
         if not paragraph.strip():
             continue
         fields = _parse_deb822(paragraph)
-        if 'Package' not in fields or 'Version' not in fields:
+        if 'package' not in fields or 'version' not in fields:
             continue
         files = []
-        for digest, size, name in _checksum_rows(fields.get('Checksums-Sha256', ''), kind='Sources'):
+        for digest, size, name in _checksum_rows(fields.get('checksums-sha256', ''), kind='Sources'):
             if not re.fullmatch(r'[0-9a-f]{64}', digest) or not size.isdigit():
                 raise SourceError('malformed Sources file identity')
             files.append((digest, int(size), name))
         if not files:
             raise SourceError('Sources stanza lacks sha256 file rows')
-        legacy = [(name, size) for _, size, name in _checksum_rows(fields.get('Files', ''), kind='Sources')]
+        legacy = [(name, size) for _, size, name in _checksum_rows(fields.get('files', ''), kind='Sources')]
         if legacy and [(name, str(size)) for _, size, name in files] != legacy:
             raise SourceError('Sources md5/sha256 file roster mismatch')
-        key = (fields['Package'], fields['Version'])
-        record = (fields.get('Directory', ''), files)
+        key = (fields['package'], fields['version'])
+        record = (fields.get('directory', ''), files)
         if key in stanzas and stanzas[key] != record:
             raise SourceError('conflicting duplicate Sources stanza: %s=%s' % key)
         stanzas.setdefault(key, record)
@@ -558,7 +579,7 @@ def _parse_inrelease(text):
     """Parse an InRelease SHA256 section into {relpath: (sha256, size)}."""
     fields = _parse_deb822(_strip_clearsign(text))
     out = {}
-    for digest, size, path in _checksum_rows(fields.get('SHA256', ''), kind='InRelease', paths=True):
+    for digest, size, path in _checksum_rows(fields.get('sha256', ''), kind='InRelease', paths=True):
         if not re.fullmatch(r'[0-9a-f]{64}', digest) or not size.isdigit():
             raise SourceError('malformed InRelease file identity')
         out[path] = (digest, int(size))
@@ -632,12 +653,12 @@ def _gather_incorporated(lock, wanted, have, sources, files_dir, evidence_root, 
         raw = verified_fetch(key)
         stored = metadata_dir / (suite + '-Sources.xz')
         stored.write_bytes(raw)
-        decoder = lzma.LZMADecompressor()
+        decoder = lzma.LZMADecompressor(memlimit=INDEX_DECODER_MEMLIMIT)
         try:
             text = decoder.decompress(raw, max_length=DECODED_INDEX_BOUND + 1)
         except lzma.LZMAError as error:
             raise SourceError('unreadable Sources.xz for ' + suite) from error
-        if len(text) > DECODED_INDEX_BOUND or not decoder.eof:
+        if len(text) > DECODED_INDEX_BOUND or not decoder.eof or decoder.unused_data:
             raise SourceError('Sources.xz exceeds decode bound for ' + suite)
         suites[suite] = _parse_sources_index(text.decode('utf-8', 'replace'))
         indices[key] = {'suite': suite, 'verified': True, 'sha256': hashlib.sha256(raw).hexdigest(),
@@ -789,7 +810,10 @@ def gather_review_inputs(lock, output_dir, *, fetcher=None, attempts=FETCH_ATTEM
               'apt_snapshot': lock.get('apt_snapshot'), 'sources': sources, 'binaries': binaries,
               'indices': indices, 'provider_inputs': provider_inputs,
               'summary': {'sources': len(sources), 'binaries': len(binaries),
-                          'incorporated': sum(1 for s in sources.values() if 'lock' not in s['via']),
+                          'incorporated': sum(1 for s in sources.values()
+                                              if any(tag.startswith('built-using:')
+                                                     for tag in s['via'])),
+                          'index_resolved': sum(1 for s in sources.values() if 'lock' not in s['via']),
                           'source_gaps': sum(len(s['gaps']) for s in sources.values()),
                           'binary_gaps': sum(len(b['gaps']) for b in binaries.values())}}
     staged = output / 'report.json.staged'

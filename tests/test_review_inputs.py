@@ -224,7 +224,8 @@ def test_gather_resolves_sources_through_pinned_index(tmp_path):
     assert helper['via'] == ['built-using:demo=1.0.0-1']
     assert any(name.endswith('LICENSE') for name in helper['evidence'])
     assert report['sources']['demo=1.0.0-1']['via'] == ['binary-source:demo=1.0.0-1']
-    assert report['summary']['incorporated'] == 2
+    assert report['summary']['incorporated'] == 1
+    assert report['summary']['index_resolved'] == 2
     assert report['indices'][XZ_KEY]['stanzas'] == 2
     assert report['indices'][RELEASE_NAME] == {'suite': 'trixie', 'verified': True,
                                                'sha256': hashlib.sha256(store[RELEASE_NAME]).hexdigest()}
@@ -526,6 +527,72 @@ def test_dsc_roster_mismatch_is_fatal(tmp_path, demo_lock):
     with pytest.raises(SourceError, match='dsc lists unfetched file'):
         review_inputs.gather_review_inputs(lock, tmp_path / 'out',
                                            fetcher=dict(store, **{'demo_1.0.0-1.dsc': forged}).get)
+
+
+def test_dsc_size_mismatch_is_fatal(tmp_path, demo_lock):
+    lock, store = demo_lock
+    orig = store['demo_1.0.0.orig.tar.gz']
+    forged = ('Format: 3.0 (quilt)\nSource: demo\nVersion: 1.0.0-1\nChecksums-Sha256:\n'
+              ' %s %d demo_1.0.0.orig.tar.gz\n' % (hashlib.sha256(orig).hexdigest(), len(orig) + 1)).encode()
+    for entry in lock['source_packages'][0]['files']:
+        if entry['filename'] == 'demo_1.0.0-1.dsc':
+            entry['sha256'] = hashlib.sha256(forged).hexdigest()
+            entry['size'] = len(forged)
+    with pytest.raises(SourceError, match='dsc size mismatch'):
+        review_inputs.gather_review_inputs(lock, tmp_path / 'out',
+                                           fetcher=dict(store, **{'demo_1.0.0-1.dsc': forged}).get)
+
+
+def test_deb822_field_names_are_case_insensitive(tmp_path):
+    with pytest.raises(SourceError, match='duplicate or empty deb822 field'):
+        review_inputs._parse_deb822('Package: a\npackage: a\n')
+    stanzas = review_inputs._parse_sources_index(
+        'package: a\nversion: 1\ndirectory: pool/main/a/a\nchecksums-sha256:\n %s 8 f.dsc\n' % ('0' * 64))
+    assert stanzas[('a', '1')][1] == [('0' * 64, 8, 'f.dsc')]
+
+
+def test_wrapperless_vendor_copyright_is_not_canonical(tmp_path, demo_lock):
+    lock, store = demo_lock
+    lock['source_packages'][0]['files'] = [entry for entry in lock['source_packages'][0]['files']
+                                           if '.debian.tar' not in entry['filename']]
+    orig = make_tar({'Cargo.toml': b'[package]\nname = "demo"\n',
+                     'vendor/debian/copyright': COPYRIGHT})
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=_swap_orig(lock, store, orig).get)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    source = report['sources']['demo=1.0.0-1']
+    assert 'vendor/debian/copyright' in source['evidence']
+    assert 'no-debian-copyright' in source['gaps']
+
+
+def test_conflicting_control_files_are_fatal(tmp_path, demo_lock):
+    lock, store = demo_lock
+    twin = make_ar([('debian-binary', b'2.0\n'),
+                    ('control.tar.xz', make_tar({'control': b'Package: demo\n',
+                                                 './control': b'Package: demo\nBuilt-Using: x (= 1)\n'})),
+                    ('data.tar.xz', make_tar({'./usr/share/doc/demo/copyright': COPYRIGHT}))])
+    lock['packages'][0]['binary_acquisition']['sha256'] = hashlib.sha256(twin).hexdigest()
+    lock['packages'][0]['binary_acquisition']['size'] = len(twin)
+    with pytest.raises(SourceError, match='conflicting control files'):
+        review_inputs.gather_review_inputs(lock, tmp_path / 'out',
+                                           fetcher=dict(store, **{'demo_1.0.0-1_amd64.deb': twin}).get)
+
+
+def test_xz_decoder_limit_and_trailing_streams(tmp_path, monkeypatch):
+    lock, store = incorporated_lock()
+    monkeypatch.setattr(review_inputs, 'INDEX_DECODER_MEMLIMIT', 1024)
+    with pytest.raises(SourceError, match='unreadable Sources.xz'):
+        review_inputs.gather_review_inputs(lock, tmp_path / 'mem', fetcher=store.get,
+                                           sleeper=lambda seconds: None)
+    monkeypatch.setattr(review_inputs, 'INDEX_DECODER_MEMLIMIT', 256 * 1024**2)
+    doubled = store[XZ_KEY] + lzma.compress(b'Package: late\nVersion: 1\n')
+    release = release_for(doubled)
+    lock['signed_index_inputs'][1]['sha256'] = hashlib.sha256(release).hexdigest()
+    lock['signed_index_inputs'][1]['size'] = len(release)
+    with pytest.raises(SourceError, match='exceeds decode bound'):
+        review_inputs.gather_review_inputs(
+            lock, tmp_path / 'trail',
+            fetcher=dict(store, **{RELEASE_NAME: release, XZ_KEY: doubled}).get,
+            sleeper=lambda seconds: None)
 
 
 def test_fetch_url_validates_and_verifies_mocked_bytes(monkeypatch):
