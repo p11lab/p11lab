@@ -145,6 +145,18 @@ def _displayable_name(member):
     return ''.join(char if ' ' <= char != '\x7f' else '?' for char in member)
 
 
+def _portable_component(name):
+    """Quote characters rejected by artifact upload / NTFS-style filesystems.
+
+    Debian identities carry epoch colons (attr=1:2.5.2-3) and archive member
+    names are arbitrary upstream bytes; either would abort the CI bundle
+    upload. Percent-quoting (including '%' itself) keeps the mapping
+    injective, so distinct names never collide on disk.
+    """
+    return ''.join('%%%02X' % ord(char) if char in '"*:<>?|/\\%\r\n' or char < ' ' or char == '\x7f'
+                   else char for char in name)
+
+
 def _extract_texts(tar, evidence_dir, *, budget):
     """Retain license-like member bytes; returns {member: (relpath, sha256)} and gaps."""
     kept, gaps = {}, []
@@ -169,7 +181,7 @@ def _extract_texts(tar, evidence_dir, *, budget):
             continue
         raw = reader.read()
         digest = hashlib.sha256(raw).hexdigest()
-        target = evidence_dir / (digest[:16] + '-' + base)
+        target = evidence_dir / (digest[:16] + '-' + _portable_component(base))
         if not target.exists():
             target.write_bytes(raw)
         kept[member.name] = (target.name, digest)
@@ -249,7 +261,7 @@ def _record_copyright(tar, evidence_dir, identity, evidence, gaps):
         digest = hashlib.sha256(text).hexdigest()
         target = evidence_dir / ('copyright-' + digest[:16])
         target.write_bytes(text)
-        relpath = str(Path('evidence') / identity / target.name)
+        relpath = str(Path('evidence') / _portable_component(identity) / target.name)
         evidence[member.name] = relpath
         # Only the packaging-root copyright satisfies the requirement;
         # vendored copies are retained as evidence under their own paths.
@@ -282,10 +294,10 @@ def _resolve_license_file(tar, manifest, declared, evidence_dir, identity, evide
         text = reader.read() if reader else b''
         digest = hashlib.sha256(text).hexdigest()
         base = _safe_evidence_name(member.name) or 'license-file'
-        target = evidence_dir / (digest[:16] + '-' + base)
+        target = evidence_dir / (digest[:16] + '-' + _portable_component(base))
         if not target.exists():
             target.write_bytes(text)
-        evidence[member.name] = str(Path('evidence') / identity / target.name)
+        evidence[member.name] = str(Path('evidence') / _portable_component(identity) / target.name)
         return
     gaps.append('missing-cargo-license-file')
 
@@ -353,7 +365,7 @@ def _gather_source(entry, files_dir, evidence_dir, fetch, *, via):
                     _resolve_license_file(tar, manifest, found_file, evidence_dir, identity, evidence, gaps)
                 saw_rust = saw_rust or _has_rust_signals(tar)
                 kept, kept_gaps = _extract_texts(tar, evidence_dir, budget=EVIDENCE_TAR_BOUND)
-                evidence.update({member: str(Path('evidence') / identity / filename) for member, (filename, _) in kept.items()})
+                evidence.update({member: str(Path('evidence') / _portable_component(identity) / filename) for member, (filename, _) in kept.items()})
                 gaps.extend(kept_gaps)
                 _record_copyright(tar, evidence_dir, identity, evidence, gaps)
         elif '.debian.tar' in name:
@@ -439,10 +451,10 @@ def _gather_binary(package, files_dir, evidence_dir, fetch):
                 reader = tar.extractfile(member)
                 text = reader.read() if reader else b''
                 digest = hashlib.sha256(text).hexdigest()
-                out = evidence_dir / (digest[:16] + '-' + base)
+                out = evidence_dir / (digest[:16] + '-' + _portable_component(base))
                 if not out.exists():
                     out.write_bytes(text)
-                evidence[member.name] = str(Path('evidence') / identity / out.name)
+                evidence[member.name] = str(Path('evidence') / _portable_component(identity) / out.name)
                 found_copyright = found_copyright or plain == want
     except SourceError as error:
         gaps.append('unreadable-data-tarball:' + str(error))
@@ -691,7 +703,7 @@ def _gather_incorporated(lock, wanted, have, sources, files_dir, evidence_root, 
         for item in entry_files:
             basenames.add(item['filename'].rsplit('/', 1)[-1])
             entries[item['filename']] = item
-        evidence_dir = evidence_root / identity
+        evidence_dir = evidence_root / _portable_component(identity)
         evidence_dir.mkdir(parents=True, exist_ok=True)
         sources[identity] = _gather_source({'name': name, 'version': version, 'files': entry_files},
                                             files_dir, evidence_dir, verified_fetch,
@@ -834,12 +846,12 @@ def gather_review_inputs(lock, output_dir, *, fetcher=None, attempts=FETCH_ATTEM
     sources, binaries = {}, {}
     for source in lock['source_packages']:
         identity = source['name'] + '=' + source['version']
-        evidence_dir = output / 'evidence' / identity
+        evidence_dir = output / 'evidence' / _portable_component(identity)
         evidence_dir.mkdir(parents=True)
         sources[identity] = _gather_source(source, files_dir, evidence_dir, verified_fetch, via=['lock'])
     for package in lock['packages']:
         identity = package['name'] + '=' + package['version']
-        evidence_dir = output / 'evidence' / identity
+        evidence_dir = output / 'evidence' / _portable_component(identity)
         evidence_dir.mkdir(parents=True, exist_ok=True)
         binaries[identity] = _gather_binary(package, files_dir, evidence_dir, verified_fetch)
     wanted = {}
