@@ -713,6 +713,60 @@ def test_gather_cache_never_serves_bytes_for_other_lock(tmp_path, demo_lock):
                                            cache_dir=cache, sleeper=lambda seconds: None)
 
 
+BANNED_UPLOAD_CHARS = set('"*:<>?|\r\n')
+
+
+def assert_bundle_paths_portable(root):
+    offenders = [p.relative_to(root).as_posix() for p in root.rglob('*')
+                 if BANNED_UPLOAD_CHARS & set(p.relative_to(root).as_posix())]
+    assert not offenders, offenders
+
+
+def test_gather_evidence_paths_quote_epoch_colons(tmp_path, demo_lock):
+    lock, store = demo_lock
+    lock['source_packages'][0]['version'] = '1:1.0.0-1'
+    lock['packages'][0]['version'] = '1:1.0.0-1'
+    lock['packages'][0]['source_version'] = '1:1.0.0-1'
+    review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=store.get)
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    assert report['sources']['demo=1:1.0.0-1']['verified'] is True
+    for section in ('sources', 'binaries'):
+        for relpath in report[section]['demo=1:1.0.0-1']['evidence'].values():
+            assert not BANNED_UPLOAD_CHARS & set(relpath), relpath
+            assert (tmp_path / 'out' / relpath).is_file()
+    assert_bundle_paths_portable(tmp_path / 'out')
+
+
+def test_gather_evidence_paths_quote_banned_member_chars(tmp_path, demo_lock):
+    lock, store = demo_lock
+    orig = make_tar({'demo-1.0/Cargo.toml': CARGO, 'demo-1.0/LICENSE-MIT:x': MIT_TEXT})
+    files = dict(store)
+    files['demo_1.0.0.orig.tar.gz'] = orig
+    for item in lock['source_packages'][0]['files']:
+        if item['filename'] == 'demo_1.0.0.orig.tar.gz':
+            item['sha256'] = hashlib.sha256(orig).hexdigest()
+            item['size'] = len(orig)
+    lock['source_packages'][0]['files'] = [
+        item for item in lock['source_packages'][0]['files']
+        if item['filename'] != 'demo_1.0.0.orig.tar.gz.asc']
+    dsc = ('Format: 3.0 (quilt)\nSource: demo\nVersion: 1.0.0-1\nChecksums-Sha256:\n'
+           ' %s %d demo_1.0.0.orig.tar.gz\n' % (hashlib.sha256(orig).hexdigest(), len(orig)))
+    debian = make_tar({'debian/copyright': COPYRIGHT})
+    dsc += ' %s %d demo_1.0.0-1.debian.tar.xz\n' % (hashlib.sha256(debian).hexdigest(), len(debian))
+    files['demo_1.0.0-1.dsc'] = dsc.encode()
+    for item in lock['source_packages'][0]['files']:
+        if item['filename'] == 'demo_1.0.0-1.dsc':
+            item['sha256'] = hashlib.sha256(files['demo_1.0.0-1.dsc']).hexdigest()
+            item['size'] = len(files['demo_1.0.0-1.dsc'])
+    result = review_inputs.gather_review_inputs(lock, tmp_path / 'out', fetcher=files.get)
+    assert result['status'] == 'complete'
+    report = json.loads((tmp_path / 'out' / 'report.json').read_text())
+    relpath = report['sources']['demo=1.0.0-1']['evidence']['demo-1.0/LICENSE-MIT:x']
+    assert not BANNED_UPLOAD_CHARS & set(relpath), relpath
+    assert (tmp_path / 'out' / relpath).read_bytes() == MIT_TEXT
+    assert_bundle_paths_portable(tmp_path / 'out')
+
+
 def test_report_lists_provider_inputs_as_not_gathered(tmp_path, demo_lock):
     lock, store = demo_lock
     lock['sources'] = [{'kind': 'git', 'url': 'https://example.invalid/upstream.git'}]
